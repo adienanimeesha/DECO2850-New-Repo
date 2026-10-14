@@ -1,130 +1,260 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0, user-scalable=no"
-  >
-
-  <title>Cultural Language Companion</title>
-
-  <link rel="stylesheet" href="/css/shared.css">
-  <link rel="stylesheet" href="/css/language.css">
-  <link rel="stylesheet" href="/css/room.css">
-  <link rel="stylesheet" href="/css/colouring.css">
-  <link rel="stylesheet" href="/css/glossary.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Explore Jelly’s underwater common room, stories, nursery rhymes, and cultural festivals.">
+  <title>Jelly's Ocean Home</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <script>
+    // Each local preview requests the matching stylesheet and script afresh.
+    // A stale cached script from the earlier room stops before drawing anything.
+    window.gameAssetVersion = String(Date.now());
+    const gameStyles = document.createElement("link");
+    gameStyles.rel = "stylesheet";
+    gameStyles.href = "/css/ocean.css?v=" + window.gameAssetVersion;
+    document.head.append(gameStyles);
+  </script>
 </head>
-
-<body>
-  <main id="phone-app">
-
-    <!-- Person 4 -->
-    <section id="language-screen"></section>
-
-    <!-- Person 2 -->
-    <section id="room-screen" hidden aria-label="Pet room">
-      <div class="game-frame">
-        <canvas id="room-canvas" width="960" height="620" tabindex="0"
-          aria-label="Move the pet using WASD, arrow keys, or the directional controls."></canvas>
-        <div class="d-pad" aria-label="Movement controls" aria-hidden="true">
-          <button class="d-pad-button d-pad-up" type="button" data-direction="up" aria-label="Move up">
-            <span aria-hidden="true">&uarr;</span>
-          </button>
-          <button class="d-pad-button d-pad-left" type="button" data-direction="left" aria-label="Move left">
-            <span aria-hidden="true">&larr;</span>
-          </button>
-          <div class="d-pad-center" aria-hidden="true"></div>
-          <button class="d-pad-button d-pad-right" type="button" data-direction="right" aria-label="Move right">
-            <span aria-hidden="true">&rarr;</span>
-          </button>
-          <button class="d-pad-button d-pad-down" type="button" data-direction="down" aria-label="Move down">
-            <span aria-hidden="true">&darr;</span>
-          </button>
-        </div>
-        <div class="focus-note">Use the D-pad or keyboard to explore</div>
+<body class="mobile-page immersive-page">
+  <main class="game-shell" id="phone-app">
+    <section class="game-frame" aria-label="Jelly’s adventure world">
+      <canvas id="game" width="960" height="620" tabindex="0" aria-label="Underwater common room. Use the arrow keys or touch controls to swim toward the storybook, radio, wardrobe, and memory shelf."></canvas>
+      <aside class="mission-panel" id="mission-panel" aria-live="polite">
+        <span class="mission-step" id="mission-step">MISSION 1 OF 5</span>
+        <strong id="objective">Swim to the storybook to read a cultural story.</strong>
+        <small id="mission-detail">The book opens when you swim close.</small>
+        <div class="mission-progress" id="mission-progress" aria-hidden="true"></div>
+      </aside>
+      <button class="mailbox-button" id="mailbox-button" type="button" aria-label="Mailbox" disabled><span id="mailbox-icon"></span><span class="mail-badge" id="mail-badge" hidden>1</span></button>
+      <div class="interaction" id="interaction" hidden><span id="interaction-text"></span><button id="interact-button" type="button">Open</button></div>
+      <div class="d-pad" id="d-pad" aria-label="Touch movement controls">
+        <button class="d-pad-button up" type="button" data-direction="up" aria-label="Swim up">↑</button>
+        <button class="d-pad-button left" type="button" data-direction="left" aria-label="Swim left">←</button>
+        <button class="d-pad-button right" type="button" data-direction="right" aria-label="Swim right">→</button>
+        <button class="d-pad-button down" type="button" data-direction="down" aria-label="Swim down">↓</button>
       </div>
-      <p class="room-status" role="status" aria-live="polite"></p>
+      <div class="feedback" id="feedback" role="status" aria-live="polite" hidden></div>
+      <div class="journey-tools"><button id="return-early" type="button" aria-label="Bring Jelly home">↩</button></div>
+      <button class="festival-home primary" id="festival-home" type="button" hidden>All found! Swim home →</button>
+      <span class="connection sr-only" id="connection-status" role="status">Connecting…</span>
     </section>
-
-    <!-- Person 3 Mission Complete -->
-<section id="mission-complete" hidden>
-
-    <h1>Mission Complete!</h1>
-
-    <button
-        id="next-mission"
-        type="button"
-    >
-        Next Mission
-    </button>
-
-</section>
-
-    <!-- Person 4 -->
-    <section id="glossary-screen" hidden></section>
-
   </main>
-
-<!-- Person 3 -->
-<section id="colouring-screen" hidden>
-
-    <h2>Colour your item!</h2>
-
-    <div id="colouring-area">
-
-        <canvas id="colouring-canvas"></canvas>
-
-        <img
-            id="colouring-outline"
-            alt="Item outline"
-        >
-
-    </div>
-
-    <div id="colour-options">
-
-    <button class="colour-btn" data-colour="red">Red</button>
-    <button class="colour-btn" data-colour="orange">Orange</button>
-    <button class="colour-btn" data-colour="yellow">Yellow</button>
-    <button class="colour-btn" data-colour="green">Green</button>
-    <button class="colour-btn" data-colour="blue">Blue</button>
-    <button class="colour-btn" data-colour="purple">Purple</button>
-    <button class="colour-btn" data-colour="pink">Pink</button>
-    <button class="colour-btn" data-colour="white">White</button>
-    <button class="colour-btn" data-colour="black">Black</button>
-
-</div>
-
-    <button id="done-colouring">
-        Done
-    </button>
-
-    <p id="swipe-message" hidden>
-        Swipe up to give it to the robot!
-    </p>
-
-</section>
-
-
-<!-- Person 3 Mission Complete -->
-<div id="mission-complete" hidden>
-
-    <h1>Mission Complete!</h1>
-
-    <button id="next-mission">
-        Next Mission
-    </button>
-
-</div>
-
-<script src="/socket.io/socket.io.js"></script>
-<script src="/js/events.js"></script>
-<script src="/js/room.js"></script>
-<script src="/js/colouring.js"></script>
-<script src="/js/language.js"></script>
-<script src="/js/glossary.js"></script>
-<script src="/js/mobile.js"></script>
+  <section class="language-backdrop" id="language-screen"><div class="welcome-panel">
+    <div class="welcome-jelly" id="welcome-jelly"></div><p class="eyebrow">A LITTLE FRIEND. A BIG ADVENTURE.</p><h1>Let's explore together.</h1>
+    <p>Jelly is waiting in the aquarium. Choose your adventure language and invite Jelly into your ocean home.</p>
+    <div class="language-choices"><button type="button" data-language="indonesian" aria-pressed="false"><span>🌺</span><strong>Bahasa Indonesia</strong><small>Stories from Lombok</small></button><button type="button" data-language="chinese" aria-pressed="false"><span>🏮</span><strong>中文 · Chinese</strong><small>A moonlit adventure</small></button></div>
+    <button class="primary" id="start-adventure" type="button" disabled>Start adventure →</button><p class="welcome-note">Keep the <a href="/pet.html" target="_blank" rel="noopener">aquarium screen ↗</a> open to watch Jelly swim between worlds.</p><p id="welcome-return" role="status"></p>
+  </div></section>
+  <div class="travel-backdrop" id="travel-screen" hidden><div class="travel-jelly" id="travel-jelly"></div><p class="eyebrow">OFF WE GO</p><h2 id="travel-title">Jelly is swimming over…</h2><p id="travel-copy">Follow the bubbles to your ocean home.</p><div class="loading-dots"><i></i><i></i><i></i></div></div>
+  <div class="activity-backdrop" id="activity-screen" hidden><section class="activity-panel" role="dialog" aria-modal="true" aria-labelledby="activity-title"><button class="close-activity" id="close-activity" type="button" aria-label="Close activity">×</button><div id="activity-body"></div></section></div>
+  <div class="storybook-backdrop" id="storybook-backdrop" hidden>
+    <section class="storybook" role="dialog" aria-modal="true" aria-label="Open cultural storybook" data-narrator-side="left">
+      <div class="book-turn-still" id="book-turn-still" aria-hidden="true"></div>
+      <div class="book-page-turn" id="book-page-turn" aria-hidden="true">
+        <div class="turn-front" id="turn-front"></div>
+        <div class="turn-back"></div>
+      </div>
+      <div class="narrator-avatar" aria-hidden="true">
+        <svg viewBox="0 0 90 88" xmlns="http://www.w3.org/2000/svg">
+          <path d="M22 52 Q12 16 45 10 Q78 16 68 52 Q60 60 53 53 Q45 60 37 53 Q29 60 22 52Z" fill="#d59be9" stroke="#875baa" stroke-width="3"/>
+          <path d="M28 55 Q24 68 23 76 M39 58 Q38 72 39 82 M51 58 Q52 73 51 81 M63 55 Q67 69 67 76" fill="none" stroke="#c780d9" stroke-width="5" stroke-linecap="round"/>
+          <ellipse id="narrator-eye-a" cx="35" cy="37" rx="3" ry="4" fill="#544770"/>
+          <ellipse id="narrator-eye-b" cx="55" cy="37" rx="3" ry="4" fill="#544770"/>
+          <ellipse id="narrator-mouth" cx="45" cy="48" rx="5" ry="2" fill="#764765"/>
+          <ellipse cx="24" cy="43" rx="5" ry="3" fill="#ffbadb"/><ellipse cx="66" cy="43" rx="5" ry="3" fill="#ffbadb"/>
+        </svg>
+      </div>
+      <div class="story-top"><span id="story-origin">A legend from Lombok, Indonesia</span><button id="close-story" type="button" aria-label="Close storybook">×</button></div>
+      <div class="animated-scene" id="animated-scene" hidden>
+        <div class="scene-heading"><span id="scene-chapter-title">CHAPTER 1 · THE KIND PRINCESS</span><span id="scene-beat-label">The kingdom</span></div>
+        <div class="scene-stage" id="scene-stage">
+          <svg viewBox="0 0 960 520" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Animated kingdom scene with Princess Mandalika, neighbours, and a seashell">
+            <defs>
+              <linearGradient id="scene-sky" x2="0" y2="1"><stop stop-color="#a6eafb"/><stop offset=".65" stop-color="#d1e8ff"/><stop offset="1" stop-color="#ffe4d2"/></linearGradient>
+              <linearGradient id="scene-sea" x2="0" y2="1"><stop stop-color="#61cdd4"/><stop offset="1" stop-color="#279eba"/></linearGradient>
+              <linearGradient id="scene-dress" x2="0" y2="1"><stop stop-color="#ffbedb"/><stop offset="1" stop-color="#d981bd"/></linearGradient>
+            </defs>
+            <g id="scene-background">
+              <rect width="960" height="520" fill="url(#scene-sky)"/>
+              <circle id="scene-sun" cx="775" cy="93" r="52" fill="#fff4b5"/>
+              <g id="cloud-a" fill="#ffffffd9"><ellipse cx="185" cy="87" rx="75" ry="22"/><ellipse cx="166" cy="68" rx="38" ry="29"/><ellipse cx="221" cy="70" rx="41" ry="27"/></g>
+              <g id="cloud-b" fill="#ffffffb8"><ellipse cx="690" cy="158" rx="67" ry="19"/><ellipse cx="668" cy="142" rx="36" ry="25"/><ellipse cx="716" cy="139" rx="37" ry="25"/></g>
+              <path d="M0 284 Q90 177 201 271 Q302 148 415 271 Q554 170 670 270 Q814 188 960 272 V520 H0Z" fill="#a6c4d4"/>
+              <path d="M0 316 Q185 280 355 311 T680 304 T960 314 V520 H0Z" fill="#95d7c7"/>
+              <path id="scene-water" d="M0 360 Q120 338 240 360 T480 360 T720 360 T960 360 V520 H0Z" fill="url(#scene-sea)"/>
+              <path id="scene-shore" d="M0 393 Q170 373 320 398 T650 391 T960 396 V520 H0Z" fill="#f8d9bd"/>
+              <g id="castle">
+                <rect x="54" y="246" width="293" height="118" rx="18" fill="#f8c5da" stroke="#99699d" stroke-width="6"/>
+                <rect x="86" y="204" width="56" height="159" rx="8" fill="#d7b9eb" stroke="#99699d" stroke-width="5"/>
+                <rect x="262" y="200" width="56" height="164" rx="8" fill="#d7b9eb" stroke="#99699d" stroke-width="5"/>
+                <path d="M80 206 L114 166 L148 206Z M256 202 L290 162 L324 202Z" fill="#e586bb" stroke="#99699d" stroke-width="5"/>
+                <path d="M173 363 V281 Q200 254 227 281 V363Z" fill="#ad8ccc" stroke="#876493" stroke-width="5"/>
+                <rect x="111" y="272" width="30" height="46" rx="14" fill="#a4e2ed"/><rect x="263" y="270" width="30" height="46" rx="14" fill="#a4e2ed"/>
+                <path d="M162 247 L201 209 L240 247Z" fill="#ef9ac6"/>
+                <path d="M333 247 Q374 234 415 246" fill="none" stroke="#f7d87b" stroke-width="7"/>
+              </g>
+              <path d="M0 450 Q275 412 493 447 T960 433 V520 H0Z" fill="#efd9b7"/>
+              <path d="M0 480 Q276 458 484 478 T960 466" fill="none" stroke="#fff3d5" stroke-width="10"/>
+              <g id="scene-plants" stroke-linecap="round">
+                <path d="M72 459 Q49 428 47 402 M72 459 Q91 423 91 402 M874 454 Q855 418 854 392 M874 454 Q895 427 912 404" fill="none" stroke="#49ad9e" stroke-width="11"/>
+                <circle cx="48" cy="399" r="10" fill="#f7a8d4"/><circle cx="92" cy="400" r="10" fill="#fae4a3"/>
+                <circle cx="854" cy="390" r="10" fill="#e1b4f5"/><circle cx="914" cy="401" r="10" fill="#f7a8d4"/>
+                <path d="M369 470 Q342 447 345 427 M369 470 Q388 435 394 420 M756 456 Q735 425 741 409 M756 456 Q778 428 787 416" fill="none" stroke="#50bda7" stroke-width="8"/>
+              </g>
+              <g id="scene-boat" class="chapter-4-choice" role="button" tabindex="-1" aria-label="Launch the festival boat"><circle cx="690" cy="328" r="66" fill="transparent"/><path d="M625 348 H760 L740 371 H650Z" fill="#b27cb9"/><path d="M690 347 V287 L748 339Z" fill="#fff1d5" stroke="#99699d" stroke-width="4"/></g>
+            </g>
+            <g id="coast-flags" hidden>
+              <path d="M130 409 V279 M835 411 V285" stroke="#8c649f" stroke-width="8"/>
+              <path d="M133 286 Q180 281 199 303 Q168 324 133 312Z M839 291 Q795 284 771 304 Q800 326 839 317Z" fill="#f8a6cf" stroke="#a56a9f" stroke-width="4"/>
+            </g>
+            <g id="festival-decor" hidden>
+              <path d="M49 251 Q471 159 909 241" fill="none" stroke="#a46fbb" stroke-width="4"/>
+              <path d="M94 240 l19 31 19-34 M217 218 l19 32 19-35 M344 203 l19 32 19-34 M488 201 l19 31 19-31 M625 206 l19 33 19-31 M760 221 l19 32 19-29" fill="#ffb9d8" stroke="#a46fbb" stroke-width="3"/>
+              <path d="M44 391 L95 348 L150 391Z M787 393 L842 349 L901 393Z" fill="#d8b9ec" stroke="#9067a8" stroke-width="4"/>
+              <rect x="57" y="390" width="80" height="21" rx="6" fill="#f8c9db"/>
+              <rect x="800" y="391" width="86" height="21" rx="6" fill="#f8c9db"/>
+            </g>
+            <g id="legend-stars" hidden fill="#fff2b5">
+              <circle cx="165" cy="67" r="4"/><circle cx="323" cy="108" r="3"/><circle cx="554" cy="78" r="5"/><circle cx="741" cy="121" r="3"/><circle cx="881" cy="61" r="4"/>
+            </g>
+            <g id="coast-crowd" hidden>
+              <g id="crowd-one"><path d="M202 381 Q220 358 239 381 L243 420 H198Z" fill="#a79bdd"/><circle cx="220" cy="355" r="18" fill="#b77f6d"/><path d="M208 354 Q210 331 229 339" fill="none" stroke="#614d70" stroke-width="9"/><path d="M204 390 L186 367 M237 390 L254 368" fill="none" stroke="#b77f6d" stroke-width="8" stroke-linecap="round"/></g>
+              <g id="crowd-two"><path d="M305 384 Q327 359 347 384 L351 423 H301Z" fill="#ffc29e"/><circle cx="326" cy="355" r="18" fill="#dc9d78"/><path d="M313 353 Q320 333 340 343" fill="none" stroke="#735577" stroke-width="9"/><path d="M310 390 L291 369 M343 390 L358 368" fill="none" stroke="#dc9d78" stroke-width="8" stroke-linecap="round"/></g>
+              <g id="crowd-three"><path d="M735 382 Q757 358 778 382 L782 425 H730Z" fill="#f2a6ca"/><circle cx="756" cy="352" r="18" fill="#b77f6d"/><path d="M744 350 Q749 332 766 341" fill="none" stroke="#614d70" stroke-width="9"/><path d="M738 389 L721 370 M776 389 L793 368" fill="none" stroke="#b77f6d" stroke-width="8" stroke-linecap="round"/></g>
+            </g>
+            <g id="legend-mist" hidden>
+              <ellipse cx="603" cy="364" rx="90" ry="52" fill="#fffce1b0"/>
+              <ellipse cx="650" cy="342" rx="72" ry="42" fill="#e2f6ffbd"/>
+              <ellipse cx="567" cy="338" rx="64" ry="40" fill="#fffce1a8"/>
+            </g>
+            <g id="nyale-school" hidden>
+              <path id="nyale-a" d="M560 388 Q582 367 600 389 T644 383" fill="none" stroke="#e28fe6" stroke-width="17" stroke-linecap="round"/>
+              <path id="nyale-b" d="M690 408 Q715 385 735 409 T778 403" fill="none" stroke="#ffc17c" stroke-width="15" stroke-linecap="round"/>
+              <path id="nyale-c" d="M388 399 Q410 378 433 402 T475 396" fill="none" stroke="#bda1f6" stroke-width="15" stroke-linecap="round"/>
+            </g>
+            <g id="peace-ripple" class="scene-choice chapter-2-choice" role="button" tabindex="-1" aria-label="Send a peaceful ripple across the sea">
+              <circle cx="723" cy="373" r="53" fill="transparent"/>
+              <circle id="ripple-ring-a" cx="723" cy="373" r="18" fill="#fff8c667" stroke="#fff7c6" stroke-width="5"/>
+              <circle id="ripple-ring-b" cx="723" cy="373" r="30" fill="none" stroke="#fff7c6" stroke-width="4"/>
+              <path d="M713 371 Q723 385 733 371" fill="none" stroke="#fff7c6" stroke-width="5"/>
+            </g>
+            <g id="villager-left" class="scene-character">
+              <ellipse cx="0" cy="0" rx="32" ry="9" fill="#456c8660"/>
+              <g id="villager-left-legs"><path id="left-leg-a" d="M-13-12 L-19 2" stroke="#825d81" stroke-width="11" stroke-linecap="round"/><path id="left-leg-b" d="M13-12 L19 2" stroke="#825d81" stroke-width="11" stroke-linecap="round"/></g>
+              <path d="M-25-85 Q0-106 25-85 L28-14 H-28Z" fill="#8e9bd8" stroke="#6a6da8" stroke-width="4"/>
+              <g id="villager-left-arm"><path d="M-22-76 Q-42-62-45-42" fill="none" stroke="#ae7968" stroke-width="11" stroke-linecap="round"/></g>
+              <path d="M23-77 Q34-56 27-44" fill="none" stroke="#ae7968" stroke-width="10" stroke-linecap="round"/>
+              <circle cx="0" cy="-115" r="29" fill="#b67c69"/><path d="M-29-119 Q-25-154 7-149 Q30-146 30-118 Q11-132-6-127 Q-20-128-29-119Z" fill="#574a70"/>
+              <circle id="left-eye-a" cx="-10" cy="-113" r="2.6" fill="#514266"/><circle id="left-eye-b" cx="11" cy="-113" r="2.6" fill="#514266"/>
+              <path d="M-7-103 Q0-97 7-103" fill="none" stroke="#754c69" stroke-width="2"/>
+            </g>
+            <g id="villager-right" class="scene-character">
+              <ellipse cx="0" cy="0" rx="32" ry="9" fill="#456c8660"/>
+              <g id="villager-right-legs"><path id="right-leg-a" d="M-13-12 L-19 2" stroke="#6b80ad" stroke-width="11" stroke-linecap="round"/><path id="right-leg-b" d="M13-12 L19 2" stroke="#6b80ad" stroke-width="11" stroke-linecap="round"/></g>
+              <path d="M-25-85 Q0-106 25-85 L28-14 H-28Z" fill="#f9b99f" stroke="#d8949f" stroke-width="4"/>
+              <path d="M-23-77 Q-34-53-29-43" fill="none" stroke="#df9c77" stroke-width="10" stroke-linecap="round"/>
+              <g id="villager-right-arm"><path d="M22-77 Q43-58 43-38" fill="none" stroke="#df9c77" stroke-width="11" stroke-linecap="round"/></g>
+              <circle cx="0" cy="-115" r="29" fill="#df9c77"/><path d="M-29-119 Q-26-151 5-148 Q31-143 30-118 Q12-132-7-127 Q-20-127-29-119Z" fill="#745575"/>
+              <circle id="right-eye-a" cx="-10" cy="-113" r="2.6" fill="#514266"/><circle id="right-eye-b" cx="11" cy="-113" r="2.6" fill="#514266"/>
+              <path d="M-7-102 Q0-96 7-102" fill="none" stroke="#754c69" stroke-width="2"/>
+            </g>
+            <g id="prince-left" class="scene-character chapter-1-choice" role="button" tabindex="-1" aria-label="Give the invitation to the prince in blue" hidden>
+              <ellipse cx="0" cy="0" rx="32" ry="9" fill="#456c8660"/>
+              <g id="prince-left-legs"><path id="prince-left-leg-a" d="M-15-15 L-21 2" stroke="#5767a6" stroke-width="12" stroke-linecap="round"/><path id="prince-left-leg-b" d="M15-15 L21 2" stroke="#5767a6" stroke-width="12" stroke-linecap="round"/></g>
+              <path d="M-29-94 Q0-109 29-94 L33-15 H-33Z" fill="#78a9dc" stroke="#5e73b3" stroke-width="4"/>
+              <path d="M-24-64 H24" stroke="#ffdf9d" stroke-width="7"/>
+              <g id="prince-left-arm"><path d="M-27-87 Q-50-65-46-43" fill="none" stroke="#bb806c" stroke-width="11" stroke-linecap="round"/></g>
+              <path d="M26-86 Q51-70 48-46" fill="none" stroke="#bb806c" stroke-width="11" stroke-linecap="round"/>
+              <circle cx="0" cy="-125" r="30" fill="#bb806c"/><path d="M-28-132 Q-24-164 7-158 Q31-153 29-128 Q12-142-10-136Z" fill="#453f65"/>
+              <path d="M-20-158 L-14-171 L0-159 L14-172 L21-158Z" fill="#ffdc89"/>
+              <circle cx="-10" cy="-126" r="2.5" fill="#514266"/><circle cx="10" cy="-126" r="2.5" fill="#514266"/>
+              <path id="prince-left-mouth" d="M-6-115 Q0-110 6-115" fill="none" stroke="#734d67" stroke-width="2"/>
+              <g id="prince-left-invite" hidden><rect x="-12" y="-71" width="28" height="20" rx="3" fill="#fff6d9" stroke="#a86aa5" stroke-width="2"/><circle cx="2" cy="-60" r="4" fill="#ef9ac6"/></g>
+            </g>
+            <g id="prince-right" class="scene-character chapter-1-choice" role="button" tabindex="-1" aria-label="Give the invitation to the prince in green" hidden>
+              <ellipse cx="0" cy="0" rx="32" ry="9" fill="#456c8660"/>
+              <g id="prince-right-legs"><path id="prince-right-leg-a" d="M-15-15 L-21 2" stroke="#4d8f91" stroke-width="12" stroke-linecap="round"/><path id="prince-right-leg-b" d="M15-15 L21 2" stroke="#4d8f91" stroke-width="12" stroke-linecap="round"/></g>
+              <path d="M-29-94 Q0-109 29-94 L33-15 H-33Z" fill="#78c4ae" stroke="#56989e" stroke-width="4"/>
+              <path d="M-24-64 H24" stroke="#ffe5a4" stroke-width="7"/>
+              <path d="M-27-87 Q-49-64-45-42" fill="none" stroke="#d69c77" stroke-width="11" stroke-linecap="round"/>
+              <g id="prince-right-arm"><path d="M26-86 Q51-68 47-45" fill="none" stroke="#d69c77" stroke-width="11" stroke-linecap="round"/></g>
+              <circle cx="0" cy="-125" r="30" fill="#d69c77"/><path d="M-28-132 Q-24-164 7-158 Q31-153 29-128 Q12-142-10-136Z" fill="#644c68"/>
+              <path d="M-20-158 L-14-171 L0-159 L14-172 L21-158Z" fill="#ffdc89"/>
+              <circle cx="-10" cy="-126" r="2.5" fill="#514266"/><circle cx="10" cy="-126" r="2.5" fill="#514266"/>
+              <path id="prince-right-mouth" d="M-6-115 Q0-110 6-115" fill="none" stroke="#734d67" stroke-width="2"/>
+              <g id="prince-right-invite" hidden><rect x="-12" y="-71" width="28" height="20" rx="3" fill="#fff6d9" stroke="#a86aa5" stroke-width="2"/><circle cx="2" cy="-60" r="4" fill="#ef9ac6"/></g>
+            </g>
+            <g id="princess" class="scene-character">
+              <ellipse cx="0" cy="0" rx="38" ry="10" fill="#456c8660"/>
+              <g id="princess-legs"><path id="princess-leg-a" d="M-17-25 L-20 3" stroke="#8b5c91" stroke-width="12" stroke-linecap="round"/><path id="princess-leg-b" d="M17-25 L20 3" stroke="#8b5c91" stroke-width="12" stroke-linecap="round"/></g>
+              <path d="M-31-173 Q-52-148-39-102 L-44-52 Q0-37 44-52 L38-104 Q53-148 29-173Z" fill="#86518e"/>
+              <path d="M-24-92 Q0-108 24-92 L50-17 Q0 1-50-17Z" fill="url(#scene-dress)" stroke="#a45e9c" stroke-width="5"/>
+              <path d="M-28-102 Q0-116 28-102 L34-73 H-34Z" fill="#f7a4ce"/>
+              <g id="princess-left-arm"><path d="M-26-95 Q-48-72-44-48" fill="none" stroke="#d99570" stroke-width="12" stroke-linecap="round"/></g>
+              <g id="princess-right-arm"><path d="M27-96 Q49-69 45-46" fill="none" stroke="#d99570" stroke-width="12" stroke-linecap="round"/></g>
+              <circle cx="0" cy="-145" r="34" fill="#dda176"/>
+              <path d="M-33-154 Q-28-199 12-193 Q37-185 35-152 Q19-169-2-166 Q-23-165-33-154Z" fill="#574066"/>
+              <path d="M-22-188 L-12-207 L0-191 L13-211 L25-187Z" fill="#ffe489" stroke="#c28b91" stroke-width="3"/>
+              <ellipse cx="-12" cy="-138" rx="5" ry="3" fill="#f4a0a5"/><ellipse cx="13" cy="-138" rx="5" ry="3" fill="#f4a0a5"/>
+              <ellipse id="princess-eye-a" cx="-11" cy="-149" rx="2.5" ry="3.5" fill="#554064"/><ellipse id="princess-eye-b" cx="11" cy="-149" rx="2.5" ry="3.5" fill="#554064"/>
+              <path id="princess-mouth" d="M-7-135 Q0-128 7-135" fill="none" stroke="#8b526e" stroke-width="2.5" stroke-linecap="round"/>
+            </g>
+            <g id="nyale-target" class="scene-choice chapter-3-choice" role="button" tabindex="-1" aria-label="Choose the colourful nyale">
+              <circle cx="690" cy="412" r="51" fill="transparent"/>
+              <path id="nyale-target-body" d="M648 423 Q666 383 688 411 T734 404" fill="none" stroke="#e994ea" stroke-width="21" stroke-linecap="round"/>
+              <circle cx="726" cy="399" r="3" fill="#59466d"/>
+            </g>
+            <g id="story-shell" class="scene-choice chapter-0-choice" role="button" tabindex="-1" aria-label="Choose the seashell">
+              <circle cx="684" cy="443" r="45" fill="transparent"/>
+              <path d="M659 461 Q648 422 682 412 Q720 420 709 461 Q684 475 659 461Z" fill="#ffbfdc" stroke="#a86aa5" stroke-width="5"/>
+              <path d="M682 416 L682 466 M669 422 L675 466 M697 423 L689 466" stroke="#fff1e9" stroke-width="4"/>
+            </g>
+            <g id="story-fish" class="scene-choice chapter-0-choice chapter-3-choice" role="button" tabindex="-1" aria-label="Choose the fish">
+              <circle cx="563" cy="319" r="42" fill="transparent"/>
+              <path d="M536 320 Q559 291 588 319 Q559 347 536 320Z M539 319 L516 301 V339Z" fill="#f4b1d5" stroke="#ab6da9" stroke-width="4"/>
+              <circle cx="572" cy="315" r="3" fill="#554064"/>
+            </g>
+            <g id="story-flower" class="scene-choice chapter-0-choice" role="button" tabindex="-1" aria-label="Choose the flower">
+              <circle cx="816" cy="427" r="40" fill="transparent"/>
+              <path d="M816 433 V466" stroke="#439f96" stroke-width="6"/>
+              <circle cx="816" cy="420" r="12" fill="#ffe3a1"/>
+              <circle cx="816" cy="402" r="10" fill="#eaa5d7"/><circle cx="834" cy="420" r="10" fill="#eaa5d7"/>
+              <circle cx="816" cy="438" r="10" fill="#eaa5d7"/><circle cx="798" cy="420" r="10" fill="#eaa5d7"/>
+            </g>
+            <g id="scene-sparkles" fill="#fff7ba"><circle cx="637" cy="410" r="5"/><circle cx="735" cy="416" r="4"/><circle cx="703" cy="387" r="6"/></g>
+          </svg>
+          <div class="scene-prompt" id="scene-prompt" hidden>Can you tap the seashell? 🐚</div>
+        </div>
+        <div class="narrator-strip">
+          <div class="book-margin-note"><span id="book-page-marker">PAGE 1 OF 5</span><strong id="story-name">Putri Mandalika</strong><small id="book-note">Watch the story, then tap the glowing choice.</small></div>
+          <div class="subtitle-bubble"><span id="scene-subtitle" aria-live="polite">Once upon a time...</span><small id="scene-status">Jelly is telling the story</small></div>
+        </div>
+        <div class="scene-controls">
+          <button id="scene-play" type="button">⏸ Pause</button>
+          <button id="scene-replay" type="button">↺ Replay narration</button>
+          <span class="scene-spacer"></span>
+          <button id="scene-prev" type="button" disabled>← Previous page</button>
+          <button id="scene-next" type="button" disabled>Next page →</button>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/journey-content.js?v=20261015-rhyme-colour-4"></script>
+  <script src="/js/ocean-art.js?v=20261015-rhyme-colour-4"></script>
+  <script src="/js/song-player.js?v=20261015-rhyme-colour-4"></script>
+  <script src="/js/rhyme-colouring.js?v=20261015-rhyme-colour-4"></script>
+  <script src="/js/journey-mobile.js?v=20261015-rhyme-colour-4"></script>
+  <script>
+    const gameScript = document.createElement("script");
+    gameScript.src = "/js/ocean-room.js?v=" + window.gameAssetVersion;
+    gameScript.onerror = () => {
+      const message = document.querySelector("#feedback");
+      message.textContent = "The game could not load. Please reload the page to try again.";
+      message.hidden = false;
+    };
+    document.body.append(gameScript);
+  </script>
 </body>
 </html>

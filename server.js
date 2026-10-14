@@ -7,9 +7,16 @@ const activitiesByLanguage = require("./data/activities");
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+const journey = require('./journey').createJourney(io);
 
 // Only public files are served; activity answers stay on the server.
-app.use(express.static(path.join(__dirname, "public")));
+// Development screens must fetch matching HTML, scripts, and styles after edits.
+app.use(express.static(path.join(__dirname, "public"), {
+  etag: false,
+  lastModified: false,
+  setHeaders(response) { response.setHeader('Cache-Control', 'no-store'); },
+}));
+app.get('/', (_request, response) => response.redirect('/mobile.html'));
 
 // One shared, in-memory adventure for the robot and mobile devices.
 const gameState = {};
@@ -152,10 +159,10 @@ const PORT = process.env.PORT || 3000;
 if (require.main === module) {
   server.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on port ${PORT}`);
-    console.log(`Robot: http://localhost:${PORT}/pet.html`);
+    console.log(`Aquarium: http://localhost:${PORT}/pet.html`);
     console.log(`Mobile: http://localhost:${PORT}/mobile.html`);
   });
 }
 
 // Tests can start the real server on an available port and inspect its state.
-module.exports = { app, server, io, gameState, resetGame };
+module.exports = { app, server, io, gameState, resetGame, journey };

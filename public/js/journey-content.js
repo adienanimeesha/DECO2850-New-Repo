@@ -1,0 +1,138 @@
+// Shared content: the server owns progress; both screens use these descriptions.
+(function (root) {
+"use strict";
+const mandalika = [
+  {
+    title: "The Kind Princess", prompt: "Tap the seashell beside the path 🐚",
+    beats: [
+      { label: "The kingdom", line: "Once upon a time, in a Sasak legend from Lombok, we meet a kind princess named Mandalika.", minSeconds: 4 },
+      { label: "Mandalika arrives", line: "Here comes Putri Mandalika. Putri means princess in Indonesian. She walks through her home with a warm smile.", minSeconds: 5 },
+      { label: "A kind greeting", line: "Mandalika cared for her community. She greeted her neighbours and listened when they spoke.", minSeconds: 5 },
+      { label: "Your turn", line: "Can you help me find the seashell beside the path? Tap it to join our story.", minSeconds: 3 },
+      { label: "A new word", line: "You found it! Kerang means seashell in Indonesian. Thank you for exploring with me. Let's see what happens next.", minSeconds: 4 },
+    ],
+  },
+  {
+    title: "A Difficult Choice", prompt: "Tap both princes to share the invitation ✉️",
+    beats: [
+      { label: "Visitors arrive", line: "Several princes came to Mandalika's kingdom. Each hoped to marry her, and they began to disagree.", minSeconds: 4 },
+      { label: "A disagreement", line: "The princes spoke over one another. Mandalika listened, but she worried their rivalry could hurt the peace of her community.", minSeconds: 5 },
+      { label: "A thoughtful plan", line: "Mandalika invited everyone to meet at the coast. She wanted to speak to all the people together.", minSeconds: 5 },
+      { label: "Your turn", line: "Will you help me share the invitation? Tap each prince so both know where to meet.", minSeconds: 3 },
+      { label: "An invitation", line: "Thank you! Undangan means invitation in Indonesian. Now everyone can travel to the coast and listen to Mandalika.", minSeconds: 4 },
+    ],
+  },
+  {
+    title: "The Gathering at the Sea", prompt: "Tap the glowing water to send a peaceful ripple 🌊",
+    beats: [
+      { label: "Toward the coast", line: "The people travelled toward the shore. The sea sparkled as the crowd gathered on Lombok's coast.", minSeconds: 4 },
+      { label: "Everyone listens", line: "Mandalika stood before the people. The princes and neighbours quieted down to hear her words.", minSeconds: 5 },
+      { label: "A wish for peace", line: "She said she cared for everyone and wished for peace among them. Her choice was her own.", minSeconds: 5 },
+      { label: "Your turn", line: "Let's send a peaceful ripple across the sea. Tap the glowing water beside the crowd.", minSeconds: 3 },
+      { label: "Peace", line: "Beautiful! Damai means peace in Indonesian. Mandalika's wish for harmony is an important part of this legend.", minSeconds: 4 },
+    ],
+  },
+  {
+    title: "The Legend of the Nyale", prompt: "Tap the colourful nyale swimming in the water ✨",
+    beats: [
+      { label: "A legendary moment", line: "In the traditional legend, Mandalika stepped toward the sea. Soft waves and mist surrounded her.", minSeconds: 4 },
+      { label: "The sea holds a mystery", line: "She disappeared beneath the waves. The people looked for her, but could not find her.", minSeconds: 5 },
+      { label: "Colours in the water", line: "Soon, many colourful nyale appeared in the sea. In the legend, people connect the nyale with Mandalika.", minSeconds: 5 },
+      { label: "Your turn", line: "Can you find a nyale? Tap the colourful wiggling sea creature, not the fish.", minSeconds: 3 },
+      { label: "A story remembered", line: "You found the nyale! Nyale is a Sasak name for these sea worms. This is a legend, and the nyale are real animals.", minSeconds: 4 },
+    ],
+  },
+  {
+    title: "Bau Nyale Festival", prompt: "Tap the boat to join the coastal celebration ⛵",
+    beats: [
+      { label: "Today in Lombok", line: "Now our story moves from legend to life today. People in Lombok gather on the coast for Bau Nyale.", minSeconds: 4 },
+      { label: "A community gathering", line: "Families come together by the sea. They remember Mandalika's story and watch for the seasonal nyale.", minSeconds: 5 },
+      { label: "The festival", line: "Boats glide nearby, and people share the celebration. Bau Nyale is a living Sasak tradition.", minSeconds: 5 },
+      { label: "Your turn", line: "Can you help the little boat join the celebration? Tap it and watch it sail past the shore.", minSeconds: 3 },
+      { label: "Our story ends", line: "Wonderful! In Sasak, bau means catch. Bau Nyale remembers Mandalika's legend and brings people together by the sea.", minSeconds: 4 },
+    ],
+  },
+];
+function chapter(title, prompt, lines) {
+ return { title, prompt, beats: lines.map((line,i) => ({label: ["A new beginning", "Watch the story", "Discover together", "Your turn", "A new word"][i], line, minSeconds: 2})) };
+}
+const moonStory = [
+ chapter("The Moon Rabbit", "Tap the bright moon 月亮", [
+  "Look up at the night sky. In Chinese folklore, a rabbit lives on the moon. This is an imagined journey inspired by that legend.",
+  "Jelly follows a silver path toward a bright round moon. What might we discover there?",
+  "A little rabbit waves hello from a moonlit garden. Its long ears bounce as it welcomes us.",
+  "Can you point to the moon? Tap the round moon shining above the garden.",
+  "You found it! 月亮, yuè liang, means moon. The moon lights our story tonight."
+ ]),
+ chapter("A Family Invitation", "Tap both family members to invite them", [
+  "Back on Earth, a family is getting ready for the Mid-Autumn Festival.",
+  "They think about people they love, near and far. They want to celebrate together.",
+  "Jelly has two invitations to share. The moon will shine above the gathering.",
+  "Tap both family members to give each one an invitation.",
+  "Both are invited! 家人, jiā rén, means family members. Everyone has a place at our table."
+ ]),
+ chapter("A Mooncake to Share", "Tap the mooncake 月饼", [
+  "The family gathers around a table in the moonlit garden.",
+  "A round mooncake sits in the middle. Mooncakes are shared during the Mid-Autumn Festival.",
+  "Sharing a treat gives everyone a chance to enjoy it together.",
+  "Tap the mooncake on the table to help us share it.",
+  "Lovely! 月饼, yuè bǐng, means mooncake. Sharing makes our celebration warmer."
+ ]),
+ chapter("Light the Lantern", "Tap the lantern 灯笼, not the star", [
+  "The garden grows darker, and the family brings colourful lanterns.",
+  "Jelly finds a lantern waiting to be lit. A little star twinkles beside it.",
+  "Soft lantern light makes a path through the garden.",
+  "Which one is the lantern? Tap the lantern, not the star.",
+  "You found it! 灯笼, dēng long, means lantern. Look at its warm glow."
+ ]),
+ chapter("Together Under the Moon", "Tap the rabbit lantern to join the celebration", [
+  "Our imagined moon rabbit joins a real celebration: the Mid-Autumn Festival.",
+  "Families admire the moon, share mooncakes, and enjoy the evening together.",
+  "A rabbit lantern bobs along the garden path. Jelly is ready to join in.",
+  "Tap the rabbit lantern to send it into the celebration.",
+  "Wonderful! 团圆, tuán yuán, means reunion. Our story ends with people coming together."
+ ])
+];
+const journeys = {
+ indonesian: {
+  label: "Bahasa Indonesia", shortLabel: "Indonesian", speech: "id-ID", storyTitle: "Putri Mandalika", storyLabel: "A Sasak legend from Lombok, Indonesia", chapters: mandalika,
+  festival: "Bau Nyale", place: "Lombok's shore", festivalIntro: "Follow Jelly to a colourful seaside celebration. Help Jelly with three requests across the food courtyard, music gathering, and harbour.",
+  storyRewards: [
+   {id:"kerang", word:"kerang", meaning:"seashell", icon:"shell"}, {id:"undangan",word:"undangan",meaning:"invitation",icon:"letter"},
+   {id:"damai",word:"damai",meaning:"peace",icon:"ripple"}, {id:"nyale-story",word:"nyale",meaning:"sea worm (Sasak)",icon:"nyale"},
+   {id:"bau",word:"bau",meaning:"catch (Sasak)",icon:"boat"}
+  ],
+  rhyme: { title: "Bintang Kecil", subtitle: "Sing along with Lintang Media", videoId:"NXad9gFbCLI", channel:"Lintang Media", lines:[
+   {word:"bintang",meaning:"star",icon:"star"},
+   {word:"langit",meaning:"sky",icon:"sky"},
+   {word:"terbang",meaning:"fly",icon:"fly"}
+  ]},
+  outfits:[{id:"sasak-lilac",name:"Lilac woven wrap",description:"A stylised Sasak-inspired woven wrap and headcloth.",colour:"#aa7cce",accent:"#ffe3a0"},{id:"sasak-rose",name:"Rose woven wrap",description:"The same festival outfit in warm rose and gold.",colour:"#e392b7",accent:"#fff0bb"}],
+  festivalAreas:[{name:'Food courtyard',decor:'food',distractors:[{id:'food-shell',icon:'shell',x:310,y:440}]},{name:'Music gathering',decor:'music',distractors:[{id:'music-lantern',icon:'lantern',x:710,y:500}]},{name:'Seaside harbour',decor:'harbour',distractors:[{id:'harbour-drum',icon:'drum',x:320,y:430}]}],
+  festivalItems:[
+   {id:'ayam-taliwang',word:'ayam Taliwang',meaning:'Taliwang grilled chicken',icon:'chicken',area:0,x:660,y:420,request:"I'm hungry! Can you find ayam Taliwang and bring it to me?",thanks:'Thank you for feeding me ayam Taliwang!',fact:'Ayam Taliwang is a grilled chicken dish from Lombok, usually prepared with a spicy seasoning. Families often enjoy it with rice and vegetables.'},
+   {id:'gendang',word:'gendang',meaning:'drum',icon:'drum',area:1,x:300,y:370,request:"I'd love to hear the music! Find me a gendang at the music gathering.",thanks:'Thank you for finding a gendang!',fact:'Gendang means drum. In Lombok, Sasak musicians play large drums together in the Gendang Beleq ensemble during celebrations.'},
+   {id:'perahu',word:'perahu',meaning:'boat',icon:'boat',area:2,x:660,y:400,request:"Let's explore the shore! Find me a perahu at the harbour.",thanks:'Thank you for finding a perahu!',fact:'Perahu means boat. Boats help coastal communities travel and fish. This little boat keepsake will remind us of our seaside adventure.'}
+  ]
+ },
+ chinese: {
+  label:"中文 · Chinese",shortLabel:"Chinese",speech:"zh-CN",storyTitle:"The Moon Rabbit",storyLabel:"An imagined journey inspired by Chinese moon folklore",chapters:moonStory,
+  festival:"Mid-Autumn Festival",place:"the moonlit garden",festivalIntro:"Follow Jelly to a lantern-lit garden. Help Jelly with three requests across the mooncake courtyard, lantern walk, and moon garden.",
+  storyRewards:[{id:"moon-story",word:"月亮",pronunciation:"yuè liang",meaning:"moon",icon:"moon"},{id:"family",word:"家人",pronunciation:"jiā rén",meaning:"family members",icon:"letter"},{id:"mooncake-story",word:"月饼",pronunciation:"yuè bǐng",meaning:"mooncake",icon:"mooncake"},{id:"lantern-story",word:"灯笼",pronunciation:"dēng long",meaning:"lantern",icon:"lantern"},{id:"reunion",word:"团圆",pronunciation:"tuán yuán",meaning:"reunion",icon:"rabbit"}],
+  rhyme:{title:"小星星",subtitle:"Sing along with BabyBus",videoId:"GxtknJ9KFKY",channel:"BabyBus",lines:[
+   {word:"星星",pronunciation:"xīng xing",meaning:"star",icon:"star"},
+   {word:"天空",pronunciation:"tiān kōng",meaning:"sky",icon:"sky"},
+   {word:"眼睛",pronunciation:"yǎn jing",meaning:"eyes",icon:"eyes"}
+  ]},
+  outfits:[{id:"hanfu-lilac",name:"Lilac hanfu",description:"A playful hanfu-inspired robe for our moonlit gathering.",colour:"#a889cf",accent:"#fff0b8"},{id:"hanfu-rose",name:"Rose hanfu",description:"A rose-coloured version with a golden sash.",colour:"#e799bd",accent:"#ffedac"}],
+  festivalAreas:[{name:'Mooncake courtyard',decor:'food',distractors:[{id:'food-star',icon:'star',x:310,y:440}]},{name:'Lantern walk',decor:'lanterns',distractors:[{id:'walk-mooncake',icon:'mooncake',x:710,y:500}]},{name:'Moon garden',decor:'garden',distractors:[{id:'garden-moon',icon:'moon',x:320,y:430}]}],
+  festivalItems:[
+   {id:'mooncake-festival',word:'月饼',pronunciation:'yuè bǐng',meaning:'mooncake',icon:'mooncake',area:0,x:660,y:420,request:"I'm hungry! Can you find 月饼 and bring it to me?",thanks:'Thank you for feeding me 月饼!',fact:'月饼 is a mooncake, a pastry enjoyed during the Mid-Autumn Festival. Sharing mooncakes is part of celebrating together with family.'},
+   {id:'lantern-festival',word:'灯笼',pronunciation:'dēng long',meaning:'lantern',icon:'lantern',area:1,x:300,y:370,request:"I'd love to light up our evening! Find me a 灯笼 on the lantern walk.",thanks:'Thank you for finding a 灯笼!',fact:'灯笼 means lantern. Children carry colourful lanterns during Mid-Autumn celebrations, lighting up the evening together.'},
+   {id:'rabbit-festival',word:'兔子',pronunciation:'tù zi',meaning:'rabbit',icon:'rabbit',area:2,x:660,y:400,request:"Let's remember our story! Find me the 兔子 decoration in the moon garden.",thanks:'Thank you for finding the 兔子!',fact:'兔子 means rabbit. This decoration reminds us of the Moon Rabbit from our storybook and the bright moon above our festival.'}
+  ]
+ }
+};
+if (typeof module !== "undefined" && module.exports) module.exports = journeys;
+else root.JOURNEYS = journeys;
+})(typeof window !== "undefined" ? window : globalThis);
