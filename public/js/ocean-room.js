@@ -9,6 +9,9 @@ let wardrobeProximityArmed = true;
 let radioProximityArmed = true;
 let storyVoiceTimer = null, storyVoiceListener = null;
 const art = window.OceanArt;
+let learning = null, learningOptions = null, learningApproach = null;
+let learningStoryUnlocked = false;
+const learningBusy = () => Boolean(learning?.blocked);
 
 // The original prototype's canvas loop, axis-by-axis movement, collision boxes,
 // and pointer D-pad are kept here. Art is drawn directly so no assets are needed.
@@ -66,7 +69,7 @@ window.addEventListener("keydown", (event) => {
     else if (event.code === "ArrowLeft" && !event.repeat) { event.preventDefault(); previousPage(); }
     return;
   }
-  if (journey.locked || roomLocked) return;
+  if (journey.locked || roomLocked || learningBusy()) return;
   autoPath = []; autoTarget = null;
   if (event.code === "KeyE" && !event.repeat) { event.preventDefault(); interact(); return; }
   if (!movementKeys.has(event.code)) return;
@@ -75,6 +78,8 @@ window.addEventListener("keydown", (event) => {
 });
 window.addEventListener("keyup", (event) => keysDown.delete(event.code));
 window.addEventListener("blur", clearMovement);
+window.addEventListener('pagehide',()=>learning?.stop());
+document.addEventListener('visibilitychange',()=>{if(document.hidden)learning?.cancelNarration();});
 function clearMovement() {
   autoPath = []; autoTarget = null;
   keysDown.clear();
@@ -86,7 +91,7 @@ dPadButtons.forEach((button) => {
   button.addEventListener("pointerdown", (event) => {
     event.preventDefault();
     button.setPointerCapture(event.pointerId);
-    if (journey.locked || storyOpen || roomLocked) return;
+    if (journey.locked || storyOpen || roomLocked || learningBusy()) return;
     autoPath = []; autoTarget = null;
     touchPointers.set(event.pointerId, button.dataset.direction);
     button.classList.add("is-pressed");
@@ -146,7 +151,7 @@ function movePlayer(dx, dy) {
   }
 }
 function update(delta) {
-  if (!storyOpen && !journey.locked && !roomLocked) {
+  if (!storyOpen && !journey.locked && !roomLocked && !learningBusy()) {
     tickAutoWalk(delta);
     const input = readMovement();
     player.moving = Boolean(input.x || input.y || autoPath.length);
@@ -168,15 +173,25 @@ function stations() {
    ...(area>0?[{id:'area-left',kind:'portal',area:area-1,label:c.festivalAreas[area-1].name,x:80,y:450,radius:34}]:[]),
    ...(area<c.festivalAreas.length-1?[{id:'area-right',kind:'portal',area:area+1,label:c.festivalAreas[area+1].name,x:880,y:450,radius:34}]:[])];
  }
- return [
+ if(learning?.active) return learning.objects.map(item=>({...item,id:'@vocabulary/'+item.id,vocabularyId:item.id}));
+ const common = [
   {id:'book',kind:'book',label:'Read the cultural story',x:486,y:269,radius:104},
   {id:'radio',kind:'radio',label:'Sing a nursery rhyme',x:180,y:214,radius:95},
   {id:'wardrobe',kind:'wardrobe',label:'Try on a festival outfit',x:810,y:212,radius:100},
   {id:'memories',kind:'memories',label:'Open your memory book',x:190,y:413,radius:112}
  ];
+ if(!learningOptions)return common;
+ return common.filter(s=>s.kind!=='book'||learningStoryUnlocked).map(s=>s.kind==='radio'?{...s,id:'learning-bookshelf',kind:'learning-bookshelf',label:'Choose a vocabulary level'}:s);
 }
 function updateInteraction() {
- if (journey.locked || roomLocked || storyOpen) { interaction.hidden=true; nearTarget=null; return; }
+ if (journey.locked || roomLocked || storyOpen || learningBusy()) { interaction.hidden=true; nearTarget=null; return; }
+ if(learningOptions && journey.state?.phase==='room') {
+  const nearby=stations().find(s=>(s.kind==='vocabulary'||s.kind==='learning-bookshelf')&&distance(player,s)<=s.radius);
+  if(!nearby)learningApproach=null;
+  const moving=keysDown.size>0||touchPointers.size>0||Boolean(autoTarget);
+  if(nearby&&moving&&learningApproach!==nearby.id){learningApproach=nearby.id;nearTarget=nearby;interact();return;}
+  if(learning?.active){interaction.hidden=true;nearTarget=nearby||null;return;}
+ }
  if(journey.state?.phase==='festival') {
   interaction.hidden=true;
   const moving=keysDown.size>0||touchPointers.size>0||Boolean(autoTarget);
@@ -227,9 +242,15 @@ function updateInteraction() {
  if (nearTarget) { interactionText.textContent=nearTarget.label; document.querySelector('#interact-button').textContent=nearTarget.kind==='treasure' ? 'Collect' : 'Open'; }
 }
 function interact() {
- if (storyOpen || journey.locked || !nearTarget) return;
+ if (storyOpen || journey.locked || roomLocked || learningBusy() || !nearTarget || distance(player,nearTarget)>nearTarget.radius) return;
  autoPath=[];autoTarget=null;
- if (nearTarget.kind==='book') openStory();
+ if (nearTarget.kind==='vocabulary') learning.select(nearTarget.vocabularyId);
+ else if(nearTarget.kind==='learning-bookshelf') {
+  clearMovement();learningApproach=nearTarget.id;
+  learningOptions.onBookshelf?.('learning-bookshelf');
+  window.dispatchEvent(new CustomEvent('ocean-room-interaction',{detail:{id:'learning-bookshelf'}}));
+ }
+ else if (nearTarget.kind==='book') openStory();
  else if (nearTarget.kind==='treasure') journey.send('journey-find',nearTarget.id);
  else if (nearTarget.kind==='portal') {areaPending=true;journey.send('journey-area',nearTarget.area);}
  else {
@@ -241,7 +262,7 @@ function interact() {
 }
 function updateHud() {} // Shared journey state updates the HUD.
 function walkTo(id) {
- if (journey.locked || storyOpen || roomLocked) return;
+ if (journey.locked || storyOpen || roomLocked || learningBusy()) return;
  const target=stations().find(s => s.id===id); if (!target) return;
  clearMovement();
  // Breadth-first search across the room; click-to-walk respects the furniture.
@@ -277,7 +298,7 @@ function tickAutoWalk(delta) {
  }
 }
 canvas.addEventListener('pointerup', e => {
- if(journey.locked||storyOpen) return;
+ if(journey.locked||storyOpen||roomLocked||learningBusy()) return;
  const rect=canvas.getBoundingClientRect(),p={x:(e.clientX-rect.left)*960/rect.width,y:(e.clientY-rect.top)*620/rect.height};
  const closest=stations().map(s=>({...s,d:distance(p,s)})).sort((a,b)=>a.d-b.d)[0];
  if(closest&&closest.d<85) walkTo(closest.id);
@@ -288,7 +309,7 @@ function showFeedback(message, duration = 4500) {
   feedbackUntil = performance.now() + duration;
 }
 function openStory() {
-  if (journey.state?.phase !== "room") return;
+  if (journey.state?.phase !== "room" || learning?.active || (learningOptions && !learningStoryUnlocked)) return;
   storyProximityArmed=false;
   pageIndex = Math.min(journey.state.storyPage, chapters.length-1);
   chapters = journey.content.chapters;
@@ -1091,7 +1112,8 @@ function drawFurniture(item, time) {
     roundedRect(x, y - 36, width, height + 39, 17, "#8b71b7", "#5d649d");
     roundedRect(x + 10, y - 24, width - 20, 30, 11, "#c1b0e8");
     roundedRect(x + 10, y + 14, width - 20, 32, 11, "#c1b0e8");
-    art.canvasIcon(context,"radio",x+width/2,y+4,90);
+    art.canvasIcon(context,learningOptions?'bookshelf':'radio',x+width/2,y+4,90);
+    if(learningOptions)return;
     for (let i = 0; i < 5; i += 1) {
       ellipse(x + 29 + i * 31, y - 7, 11, 11, ["#fff4c8", "#fcbadf", "#aaf1e3"][i % 3]);
       ellipse(x + 29 + i * 31, y + 36, 9, 9, ["#c9b3f2", "#fff4c8", "#fcbadf"][i % 3]);
@@ -1108,7 +1130,7 @@ function drawFurniture(item, time) {
     roundedRect(x + 64, y + 35, 17, 63, 6, "#946ca9");
     ellipse(x + 73, y + 37, 79, 40, "#b583c9", "#7d5f9d", 5);
     ellipse(x + 73, y + 27, 72, 32, "#f8cee9", "#ffffff", 4);
-    drawBook(x + 72, y + 20, time);
+    if(!learningOptions||learningStoryUnlocked)drawBook(x + 72, y + 20, time);
   } else if (item.id === "anemone-pot") {
     ellipse(x + 33, y + 66, 40, 14, "#508ea355");
     for (let i = 0; i < 7; i += 1) {
@@ -1169,9 +1191,12 @@ function drawJellyfish(time) {
   const lookY = player.facingY;
   ellipse(-10 + lookX, -15 + lookY, 2.8, 3.5, "#544770");
   ellipse(10 + lookX, -15 + lookY, 2.8, 3.5, "#544770");
-  context.beginPath(); context.moveTo(-4 + lookX, -5 + lookY);
-  context.quadraticCurveTo(0 + lookX, 1 + lookY, 4 + lookX, -5 + lookY);
-  context.strokeStyle = "#544770"; context.lineWidth = 2; context.stroke();
+  if(learning?.speaking) ellipse(lookX,-3+lookY,3.5,2+Math.sin(time/85)**2*2,'#544770');
+  else {
+   context.beginPath(); context.moveTo(-4 + lookX, -5 + lookY);
+   context.quadraticCurveTo(0 + lookX, 1 + lookY, 4 + lookX, -5 + lookY);
+   context.strokeStyle = "#544770"; context.lineWidth = 2; context.stroke();
+  }
   ellipse(-19, -31, 11, 5, "#ffffff6b");
   context.restore();
   drawWornOutfit(time);
@@ -1181,6 +1206,7 @@ function draw() {
   drawRoom(time);
   drawStations(time);
   const drawables = furniture.map((item) => ({ depth: item.y + item.height, render: () => drawFurniture(item, time) }));
+  if(journey.state?.phase==='room' && learning?.active)drawables.push({depth:0,render:()=>learning.draw(context,time,player)});
   if(journey.state?.phase === "festival") stations().filter(i=>i.kind==='treasure').forEach(item=>drawables.push({depth:item.y,render:()=>drawFestivalItem(item,time)}));
   drawables.push({ depth: player.y + player.radius, render: () => drawJellyfish(time) });
   drawables.sort((a, b) => a.depth - b.depth);
@@ -1216,7 +1242,7 @@ function stationLabel(text,x,y) {
 }
 function drawStations(time) {
  if(journey.state?.phase === 'festival') return;
- stationLabel('CORAL RADIO',180,161);
+ stationLabel(learningOptions?'LEARNING BOOKSHELF':'CORAL RADIO',180,161);
  stationLabel('MEMORY SHELF',179,347);
 }
 function drawWornOutfit(time) {
@@ -1341,8 +1367,35 @@ continueButton.addEventListener('click',()=>{
  cancelIntroSpeech();introState.narrationDone=true;introState.elapsed=100;
 });
 window.OceanRoom={
- lock(value){roomLocked=value;clearMovement();},clearMovement,walkTo,closeStory,feedback:showFeedback,
+ // Called by Person 3 after scripts and popup hosts are mounted. No wire events
+ // or backend fields are assumed: adapter callbacks wrap the shared contract.
+ configureLearning(options){
+  if(!window.VocabularyGameplay)throw new Error('Load vocabulary gameplay modules before configuring the room.');
+  learning?.destroy();learning=null;learningOptions=null;closeStory();clearMovement();learningStoryUnlocked=false;learningApproach=null;
+  learning=window.VocabularyGameplay.create({...options,room:{
+   clearMovement,
+   geometry:()=>({bounds:world.bounds,furniture:roomFurniture,player:{...player},reserved:[{x:180,y:270,radius:55},{x:190,y:413,radius:50}]}),
+   isNear:item=>journey.state?.phase==='room'&&!journey.locked&&!roomLocked&&!storyOpen&&distance(player,item)<=item.radius
+  }});
+  const controller=learning;learningOptions=options;
+  return {
+   sync(view,{storyUnlocked=false}={}){
+    if(learning!==controller)return;
+    learningStoryUnlocked=storyUnlocked===true;
+    if(!learningStoryUnlocked)closeStory();
+    if(journey.state?.phase!=='room'){learning.stop();return;}
+    const prior=learning.active;learning.sync(view);
+    if(prior!==learning.active)clearMovement();
+    if(!learning.active)learningApproach=null;
+   },
+   stop(){controller.stop();if(learning===controller)learningApproach=null;},
+   destroy(){controller.destroy();if(learning===controller){learning=null;learningOptions=null;learningApproach=null;}},
+   get controller(){return controller;}
+  };
+ },
+ lock(value){roomLocked=value;clearMovement();if(value)learning?.cancelNarration();},clearMovement,walkTo,closeStory,feedback:showFeedback,
  sync(next,prev){
+  if(learning && (next.phase!=='room'||next.trip!==activeTrip)){learning.stop();learningApproach=null;learningStoryUnlocked=false;}
   chapters=window.JOURNEYS[next.language||'indonesian'].chapters;
   if(next.trip!==activeTrip) {
    activeTrip=next.trip;festivalApproach=null;areaPending=false;closeStory();pageIndex=0;introState.completedChapters=chapters.map((_,i)=>i<next.storyPage);
