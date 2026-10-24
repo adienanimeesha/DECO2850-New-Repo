@@ -7,7 +7,7 @@ const journeys=require('../public/js/journey-content');
 function page(t,name='mobile.html') {
  const source=fs.readFileSync(path.join(__dirname,'../public',name),'utf8').replace(/<script[\s\S]*?<\/script>/g,'');
  const dom=new JSDOM(source,{runScripts:'outside-only',url:'http://localhost:3000/'+name});t.after(()=>dom.window.close());
- const w=dom.window;const songPlayers=[];w.YT={Player:class{constructor(frame,options){this.events=options.events;songPlayers.push(this);}destroy(){}}};let now=0,sequence=0;const frames=new Map(),timers=new Map(),events=[],handlers={};
+ const w=dom.window;let now=0,sequence=0;const frames=new Map(),timers=new Map(),events=[],handlers={};
  const context=new Proxy({createLinearGradient:()=>({addColorStop(){}})}, {get:(o,k)=>o[k]||(()=>{}),set:(o,k,v)=>(o[k]=v,true)});
  w.HTMLCanvasElement.prototype.getContext=()=>context;
  w.HTMLCanvasElement.prototype.toDataURL=()=> 'data:image/png;base64,Y29sb3Vy';
@@ -20,13 +20,11 @@ function page(t,name='mobile.html') {
  w.setTimeout=(fn,delay)=>{const id=++sequence;timers.set(id,{fn,at:now+delay});return id;};w.clearTimeout=id=>timers.delete(id);
  const socket={connected:true,on:(event,fn)=>{handlers[event]=fn;},emit:(event,payload)=>{events.push([event,payload]);respond(event,payload);}};
  w.io=()=>socket;
- let state={phase:'aquarium',language:null,storyPage:0,storyDone:false,rhymeStep:0,rhymeDone:false,rhymeListened:false,invited:false,outfit:null,festivalArea:0,festivalMission:0,festivalFeedback:false,festivalFound:[],bag:[],memories:[],trip:0};
+ let state={phase:'aquarium',language:null,storyPage:0,storyDone:false,invited:false,outfit:null,festivalArea:0,festivalMission:0,festivalFeedback:false,festivalFound:[],bag:[],memories:[],trip:0};
  function publish(){handlers['journey-state']?.(structuredClone(state));}
  function respond(event,payload){
   const c=journeys[state.language];
-  if(event==='journey-start'){state={phase:'departing',language:payload,storyPage:0,storyDone:false,rhymeStep:0,rhymeDone:false,rhymeListened:false,invited:false,outfit:null,festivalArea:0,festivalMission:0,festivalFeedback:false,festivalFound:[],bag:[],memories:[],trip:state.trip+1};publish();return;}
-  if(event==='journey-rhyme-listened'){state.rhymeListened=true;publish();}
-  if(event==='journey-rhyme-answer'&&state.rhymeListened){const icon=typeof payload==='string'?payload:payload.icon;if(c.rhyme.lines[state.rhymeStep]?.icon!==icon){handlers['journey-hint']?.('Good try! Choose another object.');return;}const line=c.rhyme.lines[state.rhymeStep];state.bag.push({...line,id:'rhyme-'+line.icon,artwork:payload.artwork,language:state.language,source:'rhyme'});state.rhymeStep++;state.rhymeDone=state.rhymeStep===3;publish();}
+  if(event==='journey-start'){state={phase:'departing',language:payload,storyPage:0,storyDone:false,invited:false,outfit:null,festivalArea:0,festivalMission:0,festivalFeedback:false,festivalFound:[],bag:[],memories:[],trip:state.trip+1};publish();return;}
   if(event==='journey-story-page'&&payload===state.storyPage){state.bag.push({...c.storyRewards[payload],language:state.language,source:'story'});state.storyPage++;state.storyDone=state.storyPage===5;publish();}
   if(event==='journey-invitation'){state.invited=true;publish();}
   if(event==='journey-try-outfit'){state.outfit=payload;publish();}
@@ -38,32 +36,24 @@ function page(t,name='mobile.html') {
   if(event==='journey-exit'){state.phase='returning';state.memories=[...state.bag];publish();}
  }
  function load(file){w.eval(fs.readFileSync(path.join(__dirname,'../public/js',file),'utf8'));}
- for(const file of ['journey-content.js','ocean-art.js','song-player.js','rhyme-colouring.js',name==='mobile.html'?'journey-mobile.js':'aquarium.js'])load(file);
+ for(const file of ['journey-content.js','ocean-art.js',name==='mobile.html'?'journey-mobile.js':'aquarium.js'])load(file);
  if(name==='mobile.html')load('ocean-room.js');
  handlers.connect?.();publish();
  async function advance(ms){for(let i=0;i<Math.ceil(ms/50);i++){now+=50;for(const[id,task]of [...timers])if(task.at<=now){timers.delete(id);task.fn();}const current=[...frames];frames.clear();current.forEach(([,fn])=>fn(now));await Promise.resolve();}}
  function click(selector){const el=w.document.querySelector(selector);assert.ok(el,`Missing ${selector}`);assert.notEqual(el.disabled,true,`${selector} disabled`);if(typeof el.click === "function")el.click();else el.dispatchEvent(new w.MouseEvent("click",{bubbles:true}));}
  function walk(id){
-  const item=state.phase==='festival'?([...journeys[state.language].festivalItems,...journeys[state.language].festivalAreas[state.festivalArea].distractors,{id:'area-right',x:880,y:450},{id:'area-left',x:80,y:450}].find(i=>i.id===id)):{book:{x:486,y:269},radio:{x:180,y:214},wardrobe:{x:810,y:212},memories:{x:190,y:413}}[id];
+  const item=state.phase==='festival'?([...journeys[state.language].festivalItems,...journeys[state.language].festivalAreas[state.festivalArea].distractors,{id:'area-right',x:880,y:450},{id:'area-left',x:80,y:450}].find(i=>i.id===id)):{book:{x:486,y:269},wardrobe:{x:810,y:212},memories:{x:190,y:413}}[id];
   assert.ok(item,'Unknown world station '+id);
   w.document.getElementById('game').dispatchEvent(new w.MouseEvent('pointerup',{bubbles:true,clientX:item.x,clientY:item.y*520/620}));
  }
- function finishSong(){assert.ok(songPlayers.length,'video player exists');songPlayers.at(-1).events.onStateChange({data:0});}
- async function colourAnswer(icon){click(`[data-answer="${icon}"]`);click('#rhyme-fill');await advance(200);click('#rhyme-colour-done');await advance(200);if(w.document.querySelector('#rhyme-next')){assert.equal(w.document.querySelector('#activity-title').textContent,'Correct!');assert.ok(w.document.querySelector('.rhyme-earned-art'));click('#rhyme-next');}}
- return {w,events,advance,click,walk,finishSong,colourAnswer,get state(){return state;},update(data){Object.assign(state,data);publish();}};
+ return {w,events,advance,click,walk,get state(){return state;},update(data){Object.assign(state,data);publish();}};
 }
-for(const language of ['indonesian','chinese'])test(`${language}: mobile walks to stations, completes stories and rhyme, tries clothes, explores festival`,async t=>{
+for(const language of ['indonesian','chinese'])test(`${language}: mobile completes a cultural story, accepts an invitation, dresses, and explores the festival`,async t=>{
  const p=page(t),d=p.w.document;
  p.click(`[data-language="${language}"]`);p.click('#start-adventure');assert.equal(d.querySelector('#travel-screen').hidden,false);
  p.update({phase:'room'});assert.equal(d.querySelector('#language-screen').hidden,true);
  assert.equal(d.querySelector('#mission-step').textContent,'MISSION 1 OF 5');
  assert.equal(d.querySelector('#mailbox-button').disabled,true);
- p.walk('radio');await p.advance(6500);assert.match(d.querySelector('#activity-title').textContent,/Bintang|小星星/);
- assert.ok(d.querySelector('#rhyme-player'));assert.equal(d.querySelector('[data-answer]'),null,'no questions before the song ends');
- p.finishSong();
- assert.equal(d.querySelector('#activity-title').textContent,'What is '+journeys[language].rhyme.lines[0].word+'?');
- for(const line of journeys[language].rhyme.lines)await p.colourAnswer(line.icon);
- assert.equal(p.state.rhymeDone,true);p.click('#rhyme-done');
  p.walk('book');await p.advance(6500);assert.equal(d.querySelector('#storybook-backdrop').hidden,false);
  for(let chapter=0;chapter<5;chapter++){
   for(let beat=0;beat<3;beat++){p.click('#scene-continue');await p.advance(100);}
@@ -104,13 +94,13 @@ for(const language of ['indonesian','chinese'])test(`${language}: mobile walks t
   p.click('#festival-next');
  }
  assert.equal(p.state.festivalFound.length,3);assert.ok(d.querySelector('#take-home'));
- p.click('#take-home');assert.equal(p.state.phase,'returning');assert.equal(p.state.memories.length,11);
+ p.click('#take-home');assert.equal(p.state.phase,'returning');assert.equal(p.state.memories.length,8);
  p.update({phase:'aquarium'});assert.equal(d.querySelector('#language-screen').hidden,false);
- assert.match(d.querySelector('#welcome-return').textContent,/11 discoveries/);
+ assert.match(d.querySelector('#welcome-return').textContent,/8 discoveries/);
  assert.ok(!d.querySelector('script[src*="robot.js"]'));
 });
 test('refresh restores completed activity and memory book; aquarium displays returned collections',async t=>{
- const p=page(t);p.update({language:'chinese',phase:'room',trip:2,storyPage:5,storyDone:true,rhymeDone:true,rhymeStep:3,invited:true});
+ const p=page(t);p.update({language:'chinese',phase:'room',trip:2,storyPage:5,storyDone:true,invited:true});
  p.walk('book');await p.advance(6500);
  // Reopening a completed story still lets the reader browse without earning duplicates.
  assert.equal(p.w.document.querySelector('#scene-next').disabled,false);
@@ -265,7 +255,7 @@ test('a device without a Mandarin voice uses subtitles instead of reading Hanzi 
 });
 test('wardrobe opens automatically on approach without confirmation and stays closed until approached again',async t=>{
  const p=page(t),d=p.w.document;
- p.update({phase:'room',language:'chinese',trip:1,storyDone:true,rhymeDone:true,invited:true});
+ p.update({phase:'room',language:'chinese',trip:1,storyDone:true,invited:true});
  // Swim across the floor, then up toward the wardrobe.
  p.w.dispatchEvent(new p.w.KeyboardEvent('keydown',{code:'ArrowRight',key:'ArrowRight'}));await p.advance(1500);
  p.w.dispatchEvent(new p.w.KeyboardEvent('keyup',{code:'ArrowRight',key:'ArrowRight'}));
@@ -281,7 +271,7 @@ test('wardrobe opens automatically on approach without confirmation and stays cl
 test('Bring Jelly home keeps its outfit and memories until starting a fresh adventure',async t=>{
  const p=page(t),d=p.w.document,learned={...journeys.chinese.storyRewards[0],language:'chinese',source:'story'};
  p.click('[data-language="chinese"]');p.click('#start-adventure');
- p.update({phase:'room',bag:[learned],storyPage:1,rhymeStep:1,outfit:journeys.chinese.outfits[0].id});
+ p.update({phase:'room',bag:[learned],storyPage:1,outfit:journeys.chinese.outfits[0].id});
  p.click('#return-early');assert.match(d.querySelector('#activity-title').textContent,/Bring Jelly home/);
  p.click('#keep-playing');assert.equal(p.state.bag.length,1,'cancelling keeps earned progress');
  p.click('#return-early');p.click('#exit-confirm');assert.equal(p.state.phase,'returning');
@@ -291,7 +281,7 @@ test('Bring Jelly home keeps its outfit and memories until starting a fresh adve
  assert.equal(d.querySelectorAll('[data-language][aria-pressed="true"]').length,0);
  assert.match(d.querySelector('#welcome-return').textContent,/1 discoveries/);
  p.click('[data-language="indonesian"]');p.click('#start-adventure');
- assert.equal(p.state.memories.length,0);assert.equal(p.state.bag.length,0);assert.equal(p.state.outfit,null);assert.equal(p.state.storyPage,0);assert.equal(p.state.rhymeStep,0);
+ assert.equal(p.state.memories.length,0);assert.equal(p.state.bag.length,0);assert.equal(p.state.outfit,null);assert.equal(p.state.storyPage,0);
  assert.equal(p.w.JellyJourney.memories.length,0);
  p.update({phase:'room'});p.walk('memories');await p.advance(6500);
  assert.equal(d.querySelectorAll('.memory-card').length,0);assert.match(d.querySelector('.memory-grid').textContent,/No discoveries yet/);
@@ -301,43 +291,6 @@ test('Bring Jelly home keeps its outfit and memories until starting a fresh adve
  a.update({phase:'aquarium',language:'chinese',outfit:journeys.chinese.outfits[0].id,memories:[learned]});await a.advance(50);
  assert.match(a.w.document.querySelector('#aquarium-status').textContent,/1 collected memories/);
 });
-for(const language of ['indonesian','chinese'])test(`${language}: nursery rhyme waits for the song to end, offers outline objects, and rewards only after colouring Done`,async t=>{
- const p=page(t),d=p.w.document,created=[];
- p.w.YT={Player:class {
-  constructor(frame,options){this.frame=frame;this.events=options.events;this.destroyed=false;created.push(this);}
-  destroy(){this.destroyed=true;}
- }};
- p.update({phase:'room',language,trip:1});p.walk('radio');await p.advance(6500);
- assert.equal(created.length,1);assert.equal(d.querySelector('[data-answer]'),null);
- created[0].events.onStateChange({data:1});assert.match(d.querySelector('#song-status').textContent,/Listen until/);
- created[0].events.onStateChange({data:0});assert.equal(p.state.rhymeListened,true);assert.equal(created[0].destroyed,true);assert.equal(d.querySelector('#rhyme-player'),null,'video is removed before the picture activity');
- assert.equal(d.querySelector('#activity-title').textContent,'What is '+journeys[language].rhyme.lines[0].word+'?');assert.equal(d.querySelector('#activity-body').textContent.includes('star'),false);
- for(const shape of d.querySelectorAll('.rhyme-choices svg [fill]'))assert.ok(['#fff','none'].includes(shape.getAttribute('fill')),'objects are not coloured');
- p.click('[data-answer="star"]');assert.equal(p.state.bag.length,0,'choosing alone does not earn a reward');
- assert.equal(d.querySelector('#rhyme-colour-done').disabled,true,'must colour before Done');
- p.click('#rhyme-fill');await p.advance(200);assert.equal(p.state.bag.length,0,'colouring alone does not earn a reward');
- p.click('#rhyme-colour-done');await p.advance(200);
- assert.equal(p.state.bag.length,1);assert.equal(p.state.bag[0].artwork,'data:image/png;base64,Y29sb3Vy');
- assert.equal(d.querySelector('#activity-title').textContent,'Correct!');assert.equal(d.querySelector('[data-answer]'),null);
- assert.ok(d.querySelector('.rhyme-earned-art'));assert.ok(d.querySelector('#activity-body').textContent.includes(journeys[language].rhyme.lines[0].word));
- p.click('#rhyme-next');
- assert.equal(d.querySelector('#activity-title').textContent,'What is '+journeys[language].rhyme.lines[1].word+'?');
- await p.colourAnswer('star');assert.equal(p.state.rhymeStep,1,'wrong coloured answer stays on the current question');
- assert.equal(d.querySelector('#rhyme-paint'),null);assert.match(d.querySelector('#rhyme-status').textContent,/Good try/);
- p.click('#close-activity');created[0].events.onStateChange({data:0});assert.equal(p.state.rhymeStep,1,'old player callbacks are ignored');
-});
-test('radio opens automatically when swimming near it and stays closed after dismissal',async t=>{
- const p=page(t),d=p.w.document;p.update({phase:'room',language:'indonesian',trip:1});
- p.w.dispatchEvent(new p.w.KeyboardEvent('keydown',{code:'ArrowLeft',key:'ArrowLeft'}));await p.advance(1200);
- // The memory shelf opens on this route; close it and swim up toward the radio.
- if(!d.querySelector('#activity-screen').hidden)p.click('#close-activity');
- p.w.dispatchEvent(new p.w.KeyboardEvent('keydown',{code:'ArrowUp',key:'ArrowUp'}));await p.advance(500);
- p.w.dispatchEvent(new p.w.KeyboardEvent('keyup',{code:'ArrowUp',key:'ArrowUp'}));
- p.w.dispatchEvent(new p.w.KeyboardEvent('keydown',{code:'ArrowLeft',key:'ArrowLeft'}));await p.advance(500);
- assert.equal(d.querySelector('#activity-screen').hidden,false);assert.match(d.querySelector('#activity-title').textContent,/Bintang/);assert.equal(d.querySelector('#interaction').hidden,true);
- p.click('#close-activity');await p.advance(1000);assert.equal(d.querySelector('#activity-screen').hidden,true);
-});
-
 test('common room bubbles drift smoothly in seconds and wrap while invisible',t=>{
  const p=page(t);
  for(let i=0;i<18;i++)for(let time=0;time<100;time+=.1){
@@ -347,7 +300,6 @@ test('common room bubbles drift smoothly in seconds and wrap while invisible',t=
   else assert.ok(Math.abs(a.y-b.y)<.5,'normal motion is at most 24px per second');
  }
 });
-
 for(const language of ['indonesian','chinese'])test(`${language}: reconnect restores thank-you and walking through side gates changes area`,async t=>{
  const p=page(t),d=p.w.document,item=journeys[language].festivalItems[0];
  p.update({phase:'festival',language,trip:1,festivalFeedback:true,festivalFound:[item.id],bag:[{...item,language,source:'festival'}]});
@@ -361,16 +313,4 @@ for(const language of ['indonesian','chinese'])test(`${language}: reconnect rest
  p.w.dispatchEvent(new p.w.KeyboardEvent('keyup',{code:'ArrowRight'}));
  p.walk('area-left');await p.advance(2000);assert.equal(p.state.festivalArea,0,'can revisit the previous area');
  assert.equal(p.state.festivalMission,1,'changing map does not skip a mission');
-});
-
-for(const language of ['indonesian','chinese'])test(`${language}: every colouring object preserves the selected picture and its hidden edges`,async t=>{
- const p=page(t),d=p.w.document;
- p.update({phase:'room',language,trip:1,rhymeListened:true});p.walk('radio');await p.advance(6500);
- for(const item of journeys[language].rhyme.lines){
-  const choice=d.querySelector(`[data-answer="${item.icon}"] svg`).outerHTML;
-  p.click(`[data-answer="${item.icon}"]`);
-  assert.equal(d.querySelector('.colour-base svg').outerHTML,choice,'colouring uses the actual selected object');
-  assert.equal(d.querySelector('.colour-lines svg').outerHTML,choice,'overlay preserves white fills that hide overlapping edges');
-  p.click('#change-rhyme-object');
- }
 });
