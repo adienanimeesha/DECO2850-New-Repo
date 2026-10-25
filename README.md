@@ -1,8 +1,6 @@
 # Jelly's Ocean Home
 
-A two-screen, full-viewport language-learning adventure: Jelly lives in an aquarium and swims into a mobile common room to discover stories, nursery rhymes, and cultural festivals.
-
-The underwater room, jellyfish, Canvas illustration style, Putri Mandalika storybook SVG, and page-turn animation are adapted from the supplied `test.zip`. The active experience draws its art directly with Canvas and SVG; it does not use the old PNG assets.
+A two-screen language-learning adventure built with Node.js, Express, Socket.IO, vanilla JavaScript, Canvas, and SVG. Jelly travels from an aquarium to a common room, learns cultural vocabulary, reads a story, and visits its festival.
 
 ## Run locally
 
@@ -11,48 +9,38 @@ npm install
 npm start
 ```
 
-During development, `npm run dev` reloads the server when backend files change, so it does not keep running an older version of the adventure state logic. Refresh the browser after frontend edits.
-
-Open both screens connected to the same server:
+Open both screens on the same server:
 
 - Mobile adventure: <http://localhost:3000/mobile.html>
 - Aquarium: <http://localhost:3000/pet.html>
 
-For a phone on the same Wi-Fi, replace `localhost` with the computer's local IP address. The server listens on `0.0.0.0` and uses port 3000 by default, or the `PORT` environment variable.
+For a phone on the same Wi-Fi, use the computer's local IP in place of localhost. The server listens on `0.0.0.0`, port 3000 (or `PORT`). `npm run dev` restarts the server on backend changes; refresh pages after frontend changes.
 
 ## Adventure flow
 
-1. Choose Indonesian or Chinese on mobile and press **Start adventure**.
-2. Jelly swims out of the aquarium and arrives in the common room.
-3. Walk to the **storybook** for five animated chapters. Each chapter includes an interaction and a vocabulary reward. In the Chinese story, click the illustrated page objects themselves; Jelly’s narration includes mouth and blink animation in both languages. Listen to narration, or use **Continue narration** to read at your own pace. The interaction is required to finish the page.
-4. Walk to the **coral radio**, press play in the video, and listen until the song ends. Then answer three questions such as “What is bintang?” without translations. All choices are outline drawings. Select an object, colour it with the brush or Fill object, and press Done. Correct coloured objects are collected; incorrect choices return to the same question. The compact mission card guides the five stages: story, song, invitation, wardrobe, and festival. The story and rhyme can still be completed in either order.
-5. Completing both activities unlocks a festival invitation. **Tap the envelope in the top-left corner** to open the mailbox immediately. Accept it and walk to the **wardrobe**.
-6. Both outfit cards show clothing illustrations before selection. Try on either colour of the language's festival outfit. Jelly wears the selected outfit in the preview and world. Press **Done** to travel to the festival.
-7. Walk around the festival and collect three glowing keepsakes.
-8. Swim home. The adventure's 11 discoveries appear as scattered aquarium decorations, and Jelly swims around wearing the chosen outfit.
-9. Use the mobile **memory book** to revisit vocabulary and pronunciation. Start another adventure to explore again, or try the other language.
+1. Choose Indonesian or Mandarin Chinese and press **Start new adventure** for a clean session. Jelly leaves the aquarium and arrives in the common room.
+2. Approach the learning bookshelf. Only Level 1 is initially unlocked. Start it to learn five vocabulary words.
+3. Move Jelly to a floating picture that matches the spoken word. An incorrect answer gives a contextual hint. A confirmed correct answer opens colouring.
+4. Draw or use Fill object, then press Done. The server accepts the colouring before advancing. Back to room keeps the answer saved; Continue colouring reopens it. Refreshing or reconnecting restores an active colouring question. All choices have numbered outlines, a gentle float, and matching pointer/keyboard controls; a comic caption follows Jelly using the current question.
+5. Completing Level 1 automatically celebrates the storybook unlock. Approach the physical storybook, choose a story, and start reading after server confirmation.
+6. Each of five chapters has narration and an illustrated interaction. Continue narration provides a read-along option. The next page becomes available after the server accepts completion.
+7. Finish the story, open the mailbox, and accept the festival invitation. Approach the wardrobe, select an outfit, and press Done to travel.
+8. Explore three connected festival areas, find each requested object, and read its cultural explanation before the next mission. The side gates lead to neighbouring areas.
+9. Swim home. Earned discoveries decorate the aquarium and Jelly retains the selected outfit while home.
+10. Choose **Continue adventure** for the same language to replay completed levels or stories and finish optional Levels 2–5. Each level has five questions and unlocks the next level. Completed rewards are never awarded twice.
 
-Move with **WASD**, **arrow keys**, or the touch **D-pad**. The storybook, memory book, wardrobe, and nursery rhyme automatically open when Jelly swims close to their furniture. There is no separate memory-book button or confirmation. The shelf starts empty and displays only earned words and collected items; the memory book shows the same collection, for the current adventure only. Clicking furniture in the room makes Jelly walk there around obstacles and open it. The mailbox opens directly when clicked. Escape closes an activity. Festival objects respond automatically when approached, and the arrows at the sides lead to neighbouring areas of the same festival. Closing a story before completion lets you resume from the current uncompleted chapter later.
+Use WASD, arrow keys, the touch D-pad, or click a destination to walk there. Floating choices respond on approach. The bookshelf and storybook open their selection menus. The memory shelf displays earned discoveries. Escape closes idle dialogs; Exit level explicitly ends a vocabulary run. Restarting that level begins at question 1. The home control can return early with discoveries already earned.
 
-**Back → Bring Jelly home** returns Jelly to the aquarium wearing the chosen outfit and carrying discoveries already earned. **Keep exploring** cancels the return. Completing the festival and choosing **Swim home** also brings its discoveries home.
+## Content and speech
 
-The aquarium initially has no collected items. Returned items and clothing stay visible while Jelly is home, including after a page refresh. **Starting a new adventure** resets all mission progress, words, items, invitation state, and clothing on both screens. The new common-room memory shelf and aquarium collection are empty again. Choosing a language alone does not reset anything; pressing **Start adventure** does.
+| Language | Story | Festival | Clothing |
+| --- | --- | --- | --- |
+| Indonesian | Putri Mandalika, a Sasak legend from Lombok | Bau Nyale | Sasak-inspired woven wrap and headcloth |
+| Mandarin Chinese | An imagined Moon Rabbit adventure | Mid-Autumn Festival | Hanfu-inspired robe |
 
-## Content
+Each language has five levels and 25 questions tied to its existing story, food, clothing, setting, and celebration. All vocabulary choices and colouring targets have SVG illustrations. Abstract words use contextual scenes, such as family gathering or sharing a mooncake. The clothing and festival art are playful interpretations. The story distinguishes the imagined moon adventure from the festival tradition; nyale and bau are identified as Sasak words.
 
-| Language | Story | Nursery rhyme | Festival | Clothing |
-| --- | --- | --- | --- | --- |
-| Indonesian | Putri Mandalika, adapted from the supplied reference | Bintang Kecil, sung by Lintang Media | Bau Nyale, Lombok | Stylised Sasak-inspired woven wrap and headcloth |
-| Chinese | An imagined Moon Rabbit journey inspired by Chinese folklore | 小星星, sung by BabyBus | Mid-Autumn Festival | Stylised hanfu-inspired robe |
-
-Nursery activities embed real sung videos with the YouTube player: [Bintang Kecil by Lintang Media](https://www.youtube.com/watch?v=NXad9gFbCLI) and [小星星 by BabyBus](https://www.youtube.com/watch?v=GxtknJ9KFKY). They require internet access. The player stays mounted between picture questions, so answering does not restart playback. Each activity includes a direct YouTube link if embedded playback fails. There is no spoken-lyric or generated melody substitute.
-
-Song questions start after playback ends and display only the heritage target word in an English question, without English translations or visible English labels on the outline choices. The video is not replayed between questions. A fallback completion button is offered only if the embedded player fails, after watching via the direct YouTube link. Learned meanings and pronunciation remain available afterwards in the mobile memory book. Nursery quiz prompts and picture choices do not display translations. Story narration is in English with heritage vocabulary. Indonesian target words use an explicitly selected `id-ID` voice. Chinese Hanzi are spoken as separate segments with an explicitly selected Mandarin voice; pinyin stays in subtitles and is not spoken by the English voice. If a device has no Mandarin voice, the story shows a subtitle notice instead of reading Chinese with an English or Cantonese voice; the memory book replays individual words with `id-ID` or `zh-CN` browser voices. Subtitles and read-along controls keep stories usable without sound.
-
-The aquarium fills the viewport and has no visible text, links, or buttons. Returned discoveries are automatically scattered through the sand and water. The mobile world also fills the viewport, with the mission card at the top, mailbox at the top-left, and movement controls overlaid in the corners.
-The clothing and festival art are playful interpretations. The Chinese story explicitly distinguishes its imagined adventure from the festival tradition. Nyale and bau are identified as Sasak words.
-
-Both festivals have three connected map areas and three ordered requests from Jelly. Walk to the requested object to feed or help Jelly, read the thank-you and cultural explanation, then choose **Next mission**. Walk towards a side arrow to reach the next area; clicking the sign also makes Jelly walk there. Wrong objects do not award a memory. Mission prompts use native target words without translations; explanations appear after success. Indonesia explores a food courtyard, music gathering, and seaside harbour; Chinese explores a mooncake courtyard, lantern walk, and moon garden. Fresh adventures clear the area, mission, and thank-you state too.
+Narration separates English context from Indonesian (`id-ID`) or Mandarin (`zh-CN`) vocabulary. Pinyin is displayed and is never synthesized as English. Jelly's mouth follows speech playback. Devices without the required voice show an audio notice and retain text and pronunciation guidance. Actual voice availability and autoplay behavior depend on the browser/device. No native-speaker recordings are bundled.
 
 Cultural references used for the festival context:
 
@@ -62,28 +50,29 @@ Cultural references used for the festival context:
 - [Singapore National Heritage Board: Mid-Autumn mooncakes and lanterns](https://www.nhb.gov.sg/~/media/nhb/files/sharedhtml/whos_your_neighbour.pdf?la=en)
 - [Singapore National Heritage Board: rabbit symbolism and Mid-Autumn](https://www.nhb.gov.sg/~/media/nhb/files/resources/publications/muse%20sg/bemuse_v4_issue1-vol4_issue1_exploring_the_world_through_artefacts.pdf)
 
-## Project structure
+## Architecture
 
-- `server.js`: Express static server and Socket.IO.
-- `journey.js`: shared adventure state, mission gates, timed transitions, and rewards.
-- `public/mobile.html`: mobile room, storybook SVG, and activity overlays.
-- `public/pet.html`: aquarium screen.
-- `public/js/journey-content.js`: bilingual content shared by server and clients.
-- `public/js/ocean-room.js`: ZIP-based room, movement, collision, pathfinding, storybook, and festival illustration.
-- `public/js/journey-mobile.js`: language selection, radio, invitation, outfit preview, and memory book.
-- `public/js/ocean-art.js`: shared SVG illustration helpers.
+- `server.js`: static serving and Socket.IO; retains the separate earlier activity protocol.
+- `journey.js`: authoritative phases, questions, answer validation, colouring acceptance, unlocks, stories, outfits, festivals, and deduplicated rewards.
+- `public/js/journey-content.js`: bilingual curriculum, stories, and festivals shared by server and clients.
+- `public/js/learning-backend.js`: exact event/payload adapter, result/state correlation, timeout/error handling, question mapping, and selected-content resolution. No Socket.IO acknowledgement callbacks are assumed.
+- `public/js/learning-interface.js`: authoritative level and story menus, bookshelf guidance, unlock celebration, and gameplay mounting.
+- `public/js/vocabulary-gameplay.js`: reachable floating choices, proximity interaction, and colouring restoration.
+- `public/js/vocabulary-colouring.js`: brush, fill, clear, PNG export, and save retry.
+- `public/js/vocabulary-speech.js`: language voices, segmented speech, and cancellation.
+- `public/js/journey-mobile.js`: mobile phase UI, mailbox, wardrobe, memory book, and state synchronization.
+- `public/js/ocean-room.js`: room movement, collision, pathfinding, story illustrations, narration mouth animation, and festival world.
+- `public/js/ocean-art.js`: shared SVG pictures and colouring outlines.
 - `public/js/aquarium.js`: aquarium animation and returned collections.
-- `public/js/song-player.js`: embedded sung videos, completion callbacks, and playback error fallback.
-- `public/js/rhyme-colouring.js`: nursery outline colouring, brush/fill controls, and transparent artwork snapshots carried home.
-- `public/css/ocean.css`: ZIP styling plus the new journey screens and responsive layouts.
+- `public/mobile.html`, `public/pet.html`, `public/css/ocean.css`: screen hosts, dependency order, and responsive layouts.
 
-The earlier low-fidelity game's modules, activities, assets, and tests remain in the repository for reference. They are not loaded by the new mobile or aquarium screens. New screens identify themselves as journey clients; the earlier event contract remains isolated from journey broadcasts.
+See `docs/learning-contract.md` for the wire protocol and `docs/learning-gameplay-integration.md` for the integrated presentation API. Earlier prototype modules, assets, and their tests remain isolated and are not loaded by these pages.
 
 ## State and limits
 
-This prototype runs **one shared adventure per server**, not separate accounts or sessions for each visitor. Server state is authoritative for the activity order, invitation unlock, selected outfit, festival items, and collection deduplication. It accepts a story-page completion notification from the client rather than verifying every narrated beat.
+One shared adventure exists per server process. Every connected journey screen observes the same progress. Refresh and reconnect restore authoritative state. **Start new adventure** clears learning, story history, outfit, active drawings, and memories, including for the same language. **Continue adventure** explicitly revisits the retained same-language track. Refresh/reconnect restores the current authoritative session. Switching language begins a fresh track. An explicit `journey-reset` or server restart clears progress. There is no database or account system.
 
-Refreshing either screen restores the current phase, completed chapters, radio step, outfit, and collections. Returned collections and clothing remain while Jelly is home, until **Start adventure** begins a fresh game. **Restarting the server clears progress and memories.** There is no database or account system.
+The backend validates the current question, stage, attempt, option ID, and artwork format/size. It does not grade drawing quality or verify individual story narration beats. Attempts remain unique across resets within the running server. Monotonic snapshot revisions prevent delayed previous-session snapshots from restoring cleared visuals.
 
 ## Validation
 
@@ -91,4 +80,6 @@ Refreshing either screen restores the current phase, completed chapters, radio s
 npm test
 ```
 
-Tests cover the retained earlier event contract plus both new language journeys, synchronized clients, reconnect snapshots, invalid submissions, progression gates, preserved home outfits and collections, resets on new adventures, cancelled transition timers, and deduplicated rewards. DOM interaction tests exercise the actual new UI scripts, click-to-walk around furniture, stories, rhyme choices, invitation, outfit selection, festival collectibles, and aquarium memory display with simulated Canvas and animation timing. They do not replace visual checks in a real browser or device checks for speech playback.
+The suite retains earlier tests and adds real Socket.IO integration with the complete script lists from both HTML pages. It covers all 50 curriculum questions and assets, both complete Level 1 runs, wrong-answer hints, colouring and recovery, sequential optional levels, cultural stories, invitation/outfit/festival progression, return to aquarium, replay, reset, stale attempts, duplicate submissions, errors, timeouts, and reconnects.
+
+Canvas, image loading, animation clocks, and speech APIs are simulated in DOM tests. Manual checks remain necessary on phone and desktop browsers: portrait/landscape layout, touch movement, brush alignment, illustration recognisability, PNG rendering, Indonesian/Mandarin pronunciation, speech permissions, and mouth animation. Check both mobile and aquarium together and interrupt/reconnect during colouring. Automated tests do not establish real-device audio or visual quality.

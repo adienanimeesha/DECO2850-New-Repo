@@ -3,7 +3,7 @@ const journeys = require('./public/js/journey-content');
 // One authoritative, in-memory adventure shared by journey-enabled sockets.
 function createJourney(io, { transitionMs = 2200 } = {}) {
   let timer;
-  let attemptSequence = 0;
+  let attemptSequence = 0, revision = 0;
   const fresh = (trip = 0, language = null) => ({
     phase: 'aquarium', language, trip,
     learning: {
@@ -20,8 +20,8 @@ function createJourney(io, { transitionMs = 2200 } = {}) {
     festivalFound: [], bag: [], memories: [],
   });
   let state = fresh();
-  const snapshot = () => JSON.parse(JSON.stringify(state));
-  const publish = () => io.to('journey-devices').emit('journey-state', snapshot());
+  const snapshot = () => JSON.parse(JSON.stringify({...state, revision}));
+  const publish = () => { revision++; io.to('journey-devices').emit('journey-state', snapshot()); };
   const content = () => journeys[state.language];
   const story = () => content()?.stories.find(item => item.id === state.activeStoryId);
   const festival = () => content()?.festivals.find(item => item.id === state.festivalId);
@@ -95,10 +95,12 @@ function createJourney(io, { transitionMs = 2200 } = {}) {
     if (socket.handshake.auth.journey !== true) return;
     socket.join('journey-devices');
     socket.emit('journey-state', snapshot());
-    socket.on('journey-start', language => {
+    socket.on('journey-start', payload => {
+      const language = typeof payload === 'string' ? payload : payload?.language;
+      const startFresh = typeof payload === 'object' && payload?.fresh === true;
       if (!Object.hasOwn(journeys, language) || state.phase !== 'aquarium')
         return invalid(socket, 'journey-start');
-      if (state.language !== language) {
+      if (startFresh || state.language !== language) {
         state = fresh(state.trip, language);
         state.stories = content().stories.map(item => ({
           id: item.id, language, title: item.title, festivalId: item.festivalId,
@@ -109,7 +111,7 @@ function createJourney(io, { transitionMs = 2200 } = {}) {
       transition('departing', 'room');
     });
     socket.on('journey-reset', () => {
-      clearTimeout(timer); state = fresh(); attemptSequence = 0; publish();
+      clearTimeout(timer); state = fresh(state.trip + 1); publish();
     });
     socket.on('journey-learning-start', payload => {
       const level = payload?.level;
@@ -190,13 +192,13 @@ function createJourney(io, { transitionMs = 2200 } = {}) {
       publish();
     });
     socket.on('journey-try-outfit', id => {
-      if (state.phase !== 'room' || !state.invited ||
+      if (state.phase !== 'room' || state.learning.active || !state.invited ||
           !festival()?.outfits.some(item => item.id === id))
         return invalid(socket, 'journey-try-outfit');
       state.outfit = id; publish();
     });
     socket.on('journey-festival', () => {
-      if (state.phase !== 'room' || !state.invited || !state.outfit || !festival())
+      if (state.phase !== 'room' || state.learning.active || !state.invited || !state.outfit || !festival())
         return invalid(socket, 'journey-festival');
       transition('travelling', 'festival');
     });

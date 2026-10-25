@@ -1,242 +1,64 @@
-# Learning gameplay handoff
+# Integrated learning gameplay
 
-Implemented on `feature/learning-gameplay`. No merge or push was performed.
+The integration branch connects the authoritative protocol in `learning-contract.md` to the existing Canvas room and vocabulary components. `journey.js` owns progression; no client component awards unlocks or advances a question locally.
 
-`docs/learning-contract.md` was absent during implementation. The current backend
-and shared content still implement the nursery rhyme. Consequently, this change
-provides **independent rendering and interaction components** and an opt-in room
-integration. It does not invent Socket.IO event names, backend state fields,
-level content, reward rules, or a second unlock system. The old experience stays
-active until Person 3 connects the new components. This file describes a local
-presentation API, not the team's final shared backend contract.
+## Page loading and ownership
 
-## Ownership and changes
+`mobile.html` loads Socket.IO, shared content, OceanArt, vocabulary speech, colouring, gameplay, the learning backend adapter, the learning interface, and mobile orchestration. The room loads last and announces `ocean-room-ready`. `pet.html` loads the shared content/art/adapter utilities and aquarium renderer.
 
-- `public/js/ocean-room.js`: bookshelf rendering and interaction, vocabulary
-  stations, proximity checks, room narration mouth animation, authoritative
-  story visibility input, and cleanup hooks. Existing pathfinding, collision,
-  storybook, festival, and travel implementations remain in use.
-- `public/js/ocean-art.js`: bookshelf illustration and `hasIcon(icon)`.
-- `public/js/vocabulary-gameplay.js`: content-driven question presentation,
-  reachable object placement, selection/confirmation, colouring orchestration.
-- `public/js/vocabulary-speech.js`: segmented narration, replay/cancellation,
-  explicit language voices, missing-voice notices, recording support.
-- `public/js/vocabulary-colouring.js`: instance-scoped version of the existing
-  brush/fill/clear/export mechanics, with async Done and retry support.
-- `test/vocabulary-gameplay.test.js`: new component and room integration tests.
+`learning-interface.js` configures the room once. The room's bookshelf event opens the level menu; its storybook callback opens the story selector. The interface joins content definitions with backend progress. `unlocked` controls level availability, `completed` controls Replay, and `learning.storybookUnlocked` controls both drawing and interaction for the storybook.
 
-No edits were made to `server.js`, `journey.js`, `journey-content.js`,
-`journey-mobile.js`, `mobile.html`, `ocean.css`, or the old colouring module.
+## Adapter and authoritative presentation
 
-## Person 3: load and mount
+`JourneyLearning.create({socket, timeoutMs, onError})` returns `request(name, payload)`. Supported actions are `startLevel`, `selectObject`, `completeQuestion`, `exitLevel`, `selectStory`, and `storyPage`. These map to the exact existing protocol. Story selection also starts a reading run; there is no additional story-start event.
 
-Add these scripts after `ocean-art.js` and before configuring the room:
+The adapter permits one pending action, rejects stale question keys, observes `journey-state`, correlates `journey-learning-result` by question/attempt, and rejects on `journey-error`, timeout, disconnect, or incompatible phase/track changes. It does not depend on acknowledgement callbacks. Successful selection supplies the gameplay result shape `{correct: true, colouringAllowed: true}`. Selection-stage changes can also be restored entirely from authoritative snapshots.
 
-```html
-<script src="/js/vocabulary-speech.js"></script>
-<script src="/js/vocabulary-colouring.js"></script>
-<script src="/js/vocabulary-gameplay.js"></script>
-```
-
-Add one empty host outside `.game-frame`, preferably after the main game shell:
-
-```html
-<div id="vocabulary-gameplay" hidden></div>
-```
-
-No fixed IDs are needed inside it. Components create the dialogue, replay/exit
-controls, status messages, modal, palette, canvas, and Done button. Vocabulary
-text is inserted with DOM text nodes, not HTML interpolation. Cultural outlines
-come from the internal SVG registry, not external image URLs.
-
-After `ocean-room-ready` (or immediately if `window.OceanRoom` already exists),
-configure once:
-
-```js
-const learning = window.OceanRoom.configureLearning({
-  root: document.getElementById('vocabulary-gameplay'),
-  onBookshelf(id) {
-    // id === 'learning-bookshelf'
-    // Person 3 opens their level-selection popup here.
-  },
-  adapter: {
-    async select({ key, objectId }) {
-      // Map to the AGREED backend contract and await confirmation.
-      // Return { correct: false, hint?: contentHint } for a retry, or:
-      // { correct: true, colouringAllowed: true } to open colouring.
-    },
-    async complete({ key, objectId, artwork }) {
-      // Submit the PNG data URL using the agreed backend contract.
-      // Resolve only after acceptance; reject on failure for a Done retry.
-      // Do not advance locally. The next authoritative snapshot calls sync.
-    },
-    async exit() {
-      // Request exit through the agreed backend contract.
-      // On confirmed inactive state, call learning.sync(null, unlockInput).
-    }
-  }
-});
-```
-
-Alternatively consume `window`'s `ocean-room-interaction` CustomEvent with
-`event.detail.id === 'learning-bookshelf'`. Choose the callback **or** the event
-to avoid opening the popup twice. Physical approach and click-to-walk both use
-the same bookshelf identifier. No level popup or unlock celebration is supplied.
-
-Close the level popup and release `OceanRoom.lock(false)` before presenting the
-first question. Do this after the backend confirms Start, not on an optimistic
-local click. Feed the mapped authoritative presentation into:
-
-```js
-learning.sync(presentation, { storyUnlocked: authoritativeLevelOneComplete });
-```
-
-`authoritativeLevelOneComplete` above is a placeholder local variable, **not an
-invented backend field**. Person 3 must derive it from the shared contract.
-Pass it on every sync, including inactive snapshots. The default is false. The
-book drawing and interaction both stay hidden/disabled while false; this module
-never awards the unlock or displays a celebration.
-
-Map each backend question to this local presentation shape:
+`JourneyLearning.presentation(state, content)` resolves `learning.active` against the actual curriculum and returns:
 
 ```js
 {
-  key,       // opaque unique string identifying trip + level + attempt + question
-  language,  // 'indonesian' or 'chinese'
-  level,     // integer 1–5
-  index,     // zero-based question index 0–4
-  question: {
-    before,        // English context preceding the target word
-    word,          // exact shared-content heritage word / Hanzi
-    after,         // English context following the target word
-    pronunciation, // editorially verified guidance; tone-marked Pinyin required for Chinese
-    hint,          // contextual shared-content hint, required
-    objects: [     // correct object AND distractors, all supplied by shared content
-      { id, icon }
-    ],
-    beforeAudio,   // optional verified same-origin recording URL
-    wordAudio,     // optional verified native-speaker recording URL
-    afterAudio     // optional verified same-origin recording URL
-  }
+ key, language, level, index, questionId, attemptId, stage,
+ colouringItemId, colouringAsset,
+ question: {
+  before, word, after, pronunciation, hint,
+  objects: [{id, icon}]
+ }
 }
 ```
 
-This shape carries no correct-answer field. Only the backend adapter decides
-whether a selection is correct. IDs must be unique within the question. At least
-two choices are required. Do not create a separate vocabulary list to satisfy
-this API: map the final shared data. All choices must have an explicit registered
-`OceanArt` icon; unsupported keys fail visibly instead of showing a misleading
-seashell. Add culturally appropriate outlines to `ocean-art.js` for any new
-shared-content objects before enabling those questions.
+The key includes language, trip, attempt, and question. Repeated snapshots with the same key preserve in-progress drawing. A new attempt gets a new key. Mandarin pronunciation is tone-marked Pinyin; the spoken target is Hanzi. The correct item identity is used to restore the colouring stage, while answer acceptance remains exclusively on the backend.
 
-Keep each question presentation immutable under its `key`. Repeated snapshots
-of the same key do not restart narration or discard an in-progress drawing.
-Every new question and every level replay needs a distinct key. After question
-five, pass `null` to remove objects/dialogue and restore ordinary room controls.
-There is no hardcoded Level 1 path: all five levels use this same presentation.
-Mandatory Level 1, optional Levels 2–5, replay permissions, and reward
-deduplication belong to the authoritative backend and Person 3's popup.
+`JourneyLearning.selectedContent(content, state)` resolves stories and festivals by `activeStoryId` and `festivalId`, projecting their fields into the room's existing rendering API. Before accepting an invitation, its festival is resolved through the selected story's link. The aquarium uses the same resolver for outfits.
 
-On a wrong result, `question.hint` is displayed unless the confirmed result
-supplies its own content-specific `hint`. Optional `speechParts` on a wrong
-result can contain pre-segmented `{text, lang, audio?}` hint narration; target
-segments must use `id-ID` or `zh-CN`. Otherwise only the prompt is narrated on
-replay, and the contextual hint is shown as text.
+## Gameplay and recovery
 
-Resolve selection and completion promises only on backend acknowledgement, and
-reject them on network errors/timeouts. After accepted Done the modal closes,
-but movement/selection remain paused until a new authoritative presentation
-arrives. Do not count a promise resolving as an additional reward. For reconnect
-to an interrupted colouring step, map the shared contract so the correct object
-can be selected and confirmed again, or coordinate a restore interface once the
-backend's colouring-stage contract exists.
+`OceanRoom.configureLearning({root, onBookshelf?, onStorybook?, adapter})` returns an integration with `sync`, `stop`, `destroy`, and a diagnostic `controller`. The mobile interface consumes the bookshelf event rather than also configuring its callback. Every room snapshot calls `sync(view, {storyUnlocked})`.
 
-## Lifecycle and other interfaces
+Floating objects occupy deterministic, reachable grid positions. Placement checks full 100 × 108 world-unit envelopes (including hit targets, glow and maximum float) against painted furniture silhouettes, floor decorations, other choices, and visible controls. All choices have identical numbered badges, soft outlines, and pointer/keyboard controls. The float and glow respect reduced-motion preferences; visual motion never moves a hitbox. While learning is active, furniture interactions are excluded. Click-to-walk ignores incidental choices along the path to the selected destination. A comic caption follows Jelly, displaying the same authoritative mixed-language question without restarting narration. It measures several responsive widths and chooses a position avoiding Jelly’s head, the choices, and movement controls. It disappears during colouring and is removed on question change or exit. Replay and Exit float directly inside the full-height room. The duplicate prompt, progress and numbered controls are screen-reader-only; the character bubble retains visible pronunciation guidance. Wrong confirmed answers display contextual hints. Correct authoritative stages mount colouring.
 
-- `learning.sync(null, {storyUnlocked})`: end/exit level, including after Q5.
-- `learning.stop()`: immediate local interruption cleanup. Call on disconnect,
-  connect error, cancellation, and before replacing the activity with another UI.
-  Reconnect must supply a fresh authoritative `sync`.
-- `learning.destroy()`: dispose the integration and restore the legacy room mode.
-- `learning.controller`: gameplay controller for diagnostics; includes `active`,
-  `blocked`, `speaking`, `objects`, `replay()`, and `cancelNarration()`.
-- `VocabularyGameplay.create({root, adapter, room, colouring?})`: standalone
-  component. The room adapter supplies `geometry()`, `isNear(item)`, and
-  `clearMovement()`; normal integration should use `OceanRoom.configureLearning`.
-- `VocabularyGameplay.placeObjects(objects, geometry)`: deterministic placement
-  on reachable grid points; throws if choices cannot fit with sufficient spacing.
-- `VocabularyColouring.mount(root, {icon}, onDone, onCancel)`: returns `{close()}`.
-  `onDone(artwork)` may return a promise. Rejection keeps the drawing and enables
-  retry. No grading, content selection, or reward logic is performed here.
-- `VocabularySpeech.create({onSpeaking, onStatus})`: returns `play(parts)` and
-  `cancel()`. `parts` are `{text, lang, audio?}`; Pinyin is never synthesized as
-  English by the prompt builder. English/Indonesian/Mandarin use separate voices.
+A `colouring` snapshot restores the correct outline without another selection event. Back to room closes the modal, retaining the accepted answer; Continue colouring or approaching the correct object reopens it. Cancelled colouring stays closed on duplicate snapshots, while a fresh reconnect restores it automatically. Drawing itself is local until Done; reconnect restores the activity, not unsaved brush strokes.
 
-Leaving the common-room phase, changing trip, or pagehide clears the component.
-Hiding the page or locking the room cancels narration and returns the mouth to
-rest. While a vocabulary level is active, other furniture stations are removed
-from proximity navigation. Person 3 should also disable/hide competing mission,
-mailbox, and global activity controls, and wire the normal Back action through
-`learning.stop()` as appropriate. Keep one speech owner active at a time.
+Done exports a PNG, waits for backend acceptance, and advances only through the resulting snapshot. Rejected saves keep the drawing for retry. Exiting a level waits for an inactive snapshot. Disconnect and pagehide stop local presentation; reconnect supplies a fresh snapshot. Hiding or locking the room cancels narration and rests the mouth. Inactive snapshots do not interrupt unrelated walking or story narration.
 
-## Person 3: required styling
+All 48 curriculum asset keys are registered in `ocean-art.js`. Concrete words use object illustrations; abstract words use contextual scenes. Unsupported curriculum art is a validation error, never a silently substituted seashell. `OceanArt.outline` derives colouring outlines from the same SVG primitives.
 
-Add styles to your owned CSS. The component reuses existing `subtitle-bubble`,
-`activity-panel`, `rhyme-paper`, `colour-base`, `colour-lines`, `rhyme-palette`,
-`paint-tools`, `primary`, `secondary`, and `small-note` rules. Its new classes are:
+## Stories and celebrations
 
-- `vocabulary-bubble`, `vocabulary-prompt`, `vocabulary-pronunciation`
-- `vocabulary-hint`, `vocabulary-audio-status`, `vocabulary-replay`, `vocabulary-exit`
-- `vocabulary-colouring-host`, `vocabulary-colouring`, `vocabulary-paint`,
-  `vocabulary-paint-status`
+Approaching the unlocked physical storybook opens the story menu. Selecting a story waits for its accepted snapshot before opening the reader. Story-page completion similarly waits for accepted page progress; a rejected page stays locked and offers retry through Continue narration. Historical completed stories can be replayed without duplicate rewards.
 
-Reserve a separate dialogue band so it does not cover floating choices. The
-following is a starting point for Person 3 to adapt and visually verify; toggle
-`is-vocabulary-active` on the body from the mapped authoritative question:
+The unlock popup uses a live `storybookUnlockVersion` transition within the current track. Initial/reconnect snapshots do not replay it. Reset and language changes allow the next track's first unlock to celebrate. Dismissing the popup is local and sends no backend mutation.
 
-```css
-body.is-vocabulary-active { --vocabulary-band: clamp(185px, 30dvh, 240px); }
-.mobile-page.is-vocabulary-active .game-frame { bottom: var(--vocabulary-band); }
-.mobile-page.is-vocabulary-active .mission-panel { display: none; }
-#vocabulary-gameplay {
-  position: fixed; inset: auto 0 0; z-index: 5;
-  height: var(--vocabulary-band); box-sizing: border-box; padding: 8px 12px;
-}
-.vocabulary-bubble { height: 100%; min-height: 0; overflow: auto; padding: 10px 16px; }
-.vocabulary-prompt { margin: 4px 0; line-height: 1.4; font-weight: 800; }
-.vocabulary-prompt mark { background: #ffe6a3; color: #624379; border-radius: 4px; }
-.vocabulary-pronunciation, .vocabulary-audio-status { display: block; }
-.vocabulary-hint { margin: 4px 0; }
-.vocabulary-replay, .vocabulary-exit { margin: 4px; padding: 7px 12px; }
-.vocabulary-colouring-host {
-  position: fixed; inset: 0; z-index: 22; display: grid; place-items: center;
-  padding: 12px; background: #315b7d88; backdrop-filter: blur(5px);
-}
-.vocabulary-colouring { box-sizing: border-box; }
-@media (max-height: 500px) {
-  body.is-vocabulary-active { --vocabulary-band: 165px; }
-}
-```
+The server rejects conflicting story, outfit, and travel actions while a vocabulary level is active. The wardrobe is also excluded from proximity navigation until the current story is complete and its invitation is authoritatively accepted. A mailbox-triggered walk waits for that acceptance. Explicit Exit level or Bring Jelly home provides safe departure. Attempts remain unique across server-session resets.
 
-The colouring dialog traps Tab, supports Escape/Back while idle, and restores
-focus on close. Its Cancel action keeps the same question and requires another
-physical approach to try again. Do not cover or disable the movement controls
-with the dialogue host. Check portrait, landscape, long prompts, and Pinyin.
+## Verification
 
-## Verification and remaining limits
+`test/learning-integration.test.js` reads both HTML script lists, mounts the actual modules, and uses real Socket.IO connections to the real journey backend. Both languages complete all 25 vocabulary questions through physical approach and actual colouring controls, then exercise stories, festivals, returning home, optional levels, replay, and colouring reconnect. Additional cases cover all art references, authoritative menus, stale attempts, conflicting actions, timeout/disconnect recovery, selected content, celebrations, and delayed/rejected story pages. Existing component, legacy protocol, and cultural story tests remain intact.
 
-Automated tests exercise reachable placement, existing click-to-walk, real room
-integration, wrong-choice hints, confirmation gates, actual colouring controls,
-Done retry, question transitions across all five levels/both tracks, replay,
-missing/late voices, stale narration callbacks, and interruption cleanup.
-Canvas, speech, recordings, and animation timing are simulated in Node/jsdom.
+Canvas drawing, images, speech, and frame timing are simulated in Node/jsdom. No browser connection was available during implementation. Portrait/landscape layout, touch control behavior, actual SVG/PNG rendering, art recognisability, native-language pronunciation, browser audio permissions, and mouth synchronization still require manual device verification. No pronunciation-quality or device-rendering claim follows from the automated tests.
 
-No browser/device testing or native-speaker pronunciation assessment has been
-performed. Voice selection is checked programmatically; pronunciation accuracy
-is not claimed. The code accepts optional verified recordings, but none were
-provided. The final five-level cultural dataset, backend contract, reward replay
-tests against that backend, popup, script tags, host, and CSS integration are
-still needed. Current shared content supplies only three festival objects per
-language; tests reuse those existing cultural items as fixtures, not as a new
-five-level curriculum. New essential illustrations must be supplied for any
-additional vocabulary in the final dataset.
+## Fresh sessions versus continuation
+
+Start new adventure sends `journey-start: {language, fresh:true}`. The backend clears learning, current and historical story/festival progress, memories, bag, outfit and invitation before publishing the new trip. Continue adventure sends the existing language string and retains same-language learning/history/memories. Reconnect sends neither action and restores the current snapshot.
+
+Every state publication includes an increasing revision. Mobile, learning adapter, and aquarium ignore delayed older snapshots, with a new reconnect allowed to adopt a restarted server. Attempt IDs remain unique across resets. Trip changes clear presentation, captions, paint dialogs, focus/highlights, movement, story/activity overlays and cached memory art; aquarium image callbacks retain their existing version guard.

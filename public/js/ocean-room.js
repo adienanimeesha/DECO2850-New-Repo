@@ -6,7 +6,6 @@ let festivalApproach = null, areaPending = false;
 let storyProximityArmed = true;
 let memoryProximityArmed = true;
 let wardrobeProximityArmed = true;
-let radioProximityArmed = true;
 let storyVoiceTimer = null, storyVoiceListener = null;
 const art = window.OceanArt;
 let learning = null, learningOptions = null, learningApproach = null;
@@ -35,20 +34,38 @@ const roomFurniture = [
   { id: "anemone-pot", x: 785, y: 441, width: 65, height: 63 },
 ];
 let furniture = roomFurniture;
+// Painted silhouettes extend beyond the physical collision boxes. Include the
+// book's label/glow, furniture shadows, swaying plants, shells and floor coral.
+const roomVisualObstacles = [
+ {x:62,y:337,width:221,height:117}, {x:77,y:110,width:180,height:112},
+ {x:717,y:103,width:180,height:179}, {x:373,y:196,width:226,height:184},
+ {x:774,y:397,width:88,height:130}, {x:20,y:450,width:97,height:130},
+ {x:812,y:452,width:116,height:130}, {x:278,y:500,width:515,height:80},
+ ...Array.from({length:11},(_,i)=>({x:77+i*77,y:274+(i%3)*95,width:12,height:12}))
+];
+function learningGeometry() {
+ const rect=canvas.getBoundingClientRect();
+ const ui=[...document.querySelectorAll('.d-pad,.journey-tools,.mailbox-button,.mission-panel,.vocabulary-controls')]
+  .filter(node=>!node.hidden&&node.getClientRects().length).map(node=>{
+   const box=node.getBoundingClientRect();
+   return {x:(box.left-rect.left)*960/rect.width,y:(box.top-rect.top)*620/rect.height,width:box.width*960/rect.width,height:box.height*620/rect.height};
+  });
+ return {bounds:world.bounds,furniture:roomFurniture,player:{...player},visualObstacles:roomVisualObstacles,reserved:ui};
+}
 const keysDown = new Set();
 const touchPointers = new Map();
 const movementKeys = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "KeyW", "KeyA", "KeyS", "KeyD"]);
 let lastFrameTime = performance.now();
 let nearTarget = null;
 let feedbackUntil = 0;
-let storyOpen = false;
+let storyOpen = false, storySubmission = null, storySaveError = false;
 let pageIndex = 0;
 let lastFocus = null;
 
 // Every chapter uses the same five-beat stage: place, action, reaction,
 // child interaction, and a spoken vocabulary response.
 let chapters = window.JOURNEYS.indonesian.chapters;
-const storyChapterCount = chapters.length;
+let storyChapterCount = chapters.length;
 let pageTurning = false;
 let pageTurnTimer = 0;
 const introState = {
@@ -81,6 +98,7 @@ window.addEventListener("blur", clearMovement);
 window.addEventListener('pagehide',()=>learning?.stop());
 document.addEventListener('visibilitychange',()=>{if(document.hidden)learning?.cancelNarration();});
 function clearMovement() {
+  learning?.setTarget(null);
   autoPath = []; autoTarget = null;
   keysDown.clear();
   touchPointers.clear();
@@ -176,17 +194,17 @@ function stations() {
  if(learning?.active) return learning.objects.map(item=>({...item,id:'@vocabulary/'+item.id,vocabularyId:item.id}));
  const common = [
   {id:'book',kind:'book',label:'Read the cultural story',x:486,y:269,radius:104},
-  {id:'radio',kind:'radio',label:'Sing a nursery rhyme',x:180,y:214,radius:95},
+  {id:'learning-bookshelf',kind:'learning-bookshelf',label:'Choose a vocabulary level',x:180,y:214,radius:95},
   {id:'wardrobe',kind:'wardrobe',label:'Try on a festival outfit',x:810,y:212,radius:100},
   {id:'memories',kind:'memories',label:'Open your memory book',x:190,y:413,radius:112}
  ];
- if(!learningOptions)return common;
- return common.filter(s=>s.kind!=='book'||learningStoryUnlocked).map(s=>s.kind==='radio'?{...s,id:'learning-bookshelf',kind:'learning-bookshelf',label:'Choose a vocabulary level'}:s);
+ if(!learningOptions)return common.filter(s=>s.kind!=='wardrobe'||(journey.wardrobeReady ?? (journey.state?.storyDone&&journey.state?.invited)));
+ return common.filter(s=>(s.kind!=='book'||learningStoryUnlocked) && (s.kind!=='wardrobe'||journey.wardrobeReady));
 }
 function updateInteraction() {
  if (journey.locked || roomLocked || storyOpen || learningBusy()) { interaction.hidden=true; nearTarget=null; return; }
  if(learningOptions && journey.state?.phase==='room') {
-  const nearby=stations().find(s=>(s.kind==='vocabulary'||s.kind==='learning-bookshelf')&&distance(player,s)<=s.radius);
+  const nearby=stations().find(s=>(s.kind==='vocabulary'||s.kind==='learning-bookshelf')&&(!autoTarget||s.id===autoTarget)&&distance(player,s)<=s.radius);
   if(!nearby)learningApproach=null;
   const moving=keysDown.size>0||touchPointers.size>0||Boolean(autoTarget);
   if(nearby&&moving&&learningApproach!==nearby.id){learningApproach=nearby.id;nearTarget=nearby;interact();return;}
@@ -195,7 +213,7 @@ function updateInteraction() {
  if(journey.state?.phase==='festival') {
   interaction.hidden=true;
   const moving=keysDown.size>0||touchPointers.size>0||Boolean(autoTarget);
-  const nearby=stations().find(s=>distance(player,s)<=s.radius);
+  const nearby=stations().find(s=>(!autoTarget||s.id===autoTarget)&&distance(player,s)<=s.radius);
   if(!nearby){festivalApproach=null;return;}
   if(moving && festivalApproach!==nearby.id && !areaPending) {
    festivalApproach=nearby.id;nearTarget=nearby;interact();
@@ -230,15 +248,7 @@ function updateInteraction() {
   }
  }
  nearTarget=stations().map(s => ({...s,dist:distance(player,s)})).filter(s => s.dist <= s.radius).sort((a,b) => a.dist-b.dist)[0] || null;
- const radio=stations().find(s=>s.kind==='radio');
- if(radio) {
-  const gap=distance(player,radio);
-  if(gap>radio.radius+20)radioProximityArmed=true;
-  if(radioProximityArmed&&(keysDown.size>0||touchPointers.size>0||autoTarget==='radio')&&gap<=radio.radius) {
-   radioProximityArmed=false;journey.openActivity('rhyme');return;
-  }
- }
- interaction.hidden=!nearTarget||['book','memories','wardrobe','radio'].includes(nearTarget.kind);
+ interaction.hidden=!nearTarget||['book','memories','wardrobe'].includes(nearTarget.kind);
  if (nearTarget) { interactionText.textContent=nearTarget.label; document.querySelector('#interact-button').textContent=nearTarget.kind==='treasure' ? 'Collect' : 'Open'; }
 }
 function interact() {
@@ -256,8 +266,7 @@ function interact() {
  else {
   if(nearTarget.kind==='memories') memoryProximityArmed=false;
   if(nearTarget.kind==='wardrobe') wardrobeProximityArmed=false;
-  if(nearTarget.kind==='radio') radioProximityArmed=false;
-  journey.openActivity(nearTarget.kind === 'radio' ? 'rhyme' : nearTarget.kind);
+  journey.openActivity(nearTarget.kind);
  }
 }
 function updateHud() {} // Shared journey state updates the HUD.
@@ -284,7 +293,9 @@ function walkTo(id) {
  if (!end) { showFeedback('Use the arrows to swim a little closer.',3500);return; }
  const path=[];
  while(end) {path.unshift({x:end[0]*grid,y:end[1]*grid});end=seen.get(key(...end));}
- autoPath=path;autoTarget=id;canvas.focus();
+ autoPath=path;autoTarget=id;
+ if(target.kind==='vocabulary')learning?.setTarget(target.vocabularyId);
+ canvas.focus();
 }
 function tickAutoWalk(delta) {
  if (!autoPath.length) return;
@@ -297,9 +308,18 @@ function tickAutoWalk(delta) {
   if(target) {nearTarget=target;interact();}
  }
 }
+function vocabularyPointer(event) {
+ if(!learning?.active)return;
+ const rect=canvas.getBoundingClientRect(),p={x:(event.clientX-rect.left)*960/rect.width,y:(event.clientY-rect.top)*620/rect.height};
+ const item=learning.hitTest(p);learning.setHover(item?.id||null);canvas.style.cursor=item?'pointer':'';
+}
+canvas.addEventListener('pointermove',vocabularyPointer);
+canvas.addEventListener('pointerdown',vocabularyPointer);
+canvas.addEventListener('pointerleave',()=>{learning?.setHover(null);canvas.style.cursor='';});
 canvas.addEventListener('pointerup', e => {
  if(journey.locked||storyOpen||roomLocked||learningBusy()) return;
  const rect=canvas.getBoundingClientRect(),p={x:(e.clientX-rect.left)*960/rect.width,y:(e.clientY-rect.top)*620/rect.height};
+ if(learning?.active){const item=learning.hitTest(p);if(item)walkTo('@vocabulary/'+item.id);return;}
  const closest=stations().map(s=>({...s,d:distance(p,s)})).sort((a,b)=>a.d-b.d)[0];
  if(closest&&closest.d<85) walkTo(closest.id);
 });
@@ -308,11 +328,12 @@ function showFeedback(message, duration = 4500) {
   feedback.hidden = false;
   feedbackUntil = performance.now() + duration;
 }
-function openStory() {
+function openStory(selected = false) {
   if (journey.state?.phase !== "room" || learning?.active || (learningOptions && !learningStoryUnlocked)) return;
   storyProximityArmed=false;
+  if (!selected && learningOptions?.onStorybook) { clearMovement(); learningOptions.onStorybook(); return; }
+  chapters = journey.content.chapters;storyChapterCount=chapters.length;
   pageIndex = Math.min(journey.state.storyPage, chapters.length-1);
-  chapters = journey.content.chapters;
   lastFocus = document.activeElement;
   storyOpen = true;
   clearMovement();
@@ -439,7 +460,7 @@ function nextPage() {
     turnPage(pageIndex + 1);
   } else {
     closeStory();
-    showFeedback("Your story is complete! Visit the radio or check your mailbox.", 6500);
+    showFeedback("Your story is complete! Check your mailbox for a festival invitation.", 6500);
   }
 }
 function renderPage(startNarration = true) {
@@ -547,6 +568,7 @@ function cancelIntroSpeech() {
   if ("speechSynthesis" in window) window.speechSynthesis.cancel();
 }
 function enterIntro() {
+  storySubmission=null;storySaveError=false;
   introState.active = true;
   introState.playing = true;
   introState.totalTime = 0;
@@ -561,6 +583,7 @@ function enterIntro() {
   introState.frame = requestAnimationFrame(tickIntro);
 }
 function leaveIntro() {
+  storySubmission=null;storySaveError=false;
   if (!introState.active) return;
   introState.active = false;
   cancelAnimationFrame(introState.frame);
@@ -607,6 +630,7 @@ function startIntroBeat(index, speak = true) {
 }
 function replayIntroNarration() {
   if (!introState.active) return;
+  storySaveError=false;
   cancelIntroSpeech();
   introState.playing = true;
   introState.narrationDone = false;
@@ -797,13 +821,22 @@ function tickIntro(time) {
       if (introState.beat < 3) startIntroBeat(introState.beat + 1);
       else if (introState.beat === 3 && introState.interactionDone) startIntroBeat(4);
       else if (introState.beat === 4) {
-        if (!introState.completed) journey.send('journey-story-page',pageIndex);
-        introState.completed = true;
-        introState.completedChapters[pageIndex] = true;
-        introElement("scene-next").disabled = false;
-        introStatus(pageIndex === storyChapterCount - 1
-          ? "Story complete · choose Finish story to return to the ocean"
-          : "Page complete · choose Next page");
+        if (introState.completedChapters[pageIndex]) {
+          introState.completed=true;introElement('scene-next').disabled=false;
+        } else if (!storySubmission && !storySaveError) {
+          const submission={page:pageIndex,trip:journey.state.trip,story:journey.state.activeStoryId};
+          storySubmission=submission;introElement('scene-next').disabled=true;introStatus('Saving this page…');
+          journey.completeStoryPage(pageIndex).then(()=>{
+            if(storySubmission!==submission||!storyOpen)return;
+            storySubmission=null;introState.completed=true;introState.completedChapters[submission.page]=true;
+            introElement('scene-next').disabled=false;
+            introStatus(submission.page===storyChapterCount-1?'Story complete · choose Finish story to return to the ocean':'Page complete · choose Next page');
+          }).catch(error=>{
+            if(storySubmission!==submission||!storyOpen)return;
+            storySubmission=null;storySaveError=true;introState.completed=false;
+            introElement('scene-next').disabled=true;introStatus(error.message+' Use Continue narration to retry.');
+          });
+        }
       }
     }
     applyIntroVisual();
@@ -1112,7 +1145,7 @@ function drawFurniture(item, time) {
     roundedRect(x, y - 36, width, height + 39, 17, "#8b71b7", "#5d649d");
     roundedRect(x + 10, y - 24, width - 20, 30, 11, "#c1b0e8");
     roundedRect(x + 10, y + 14, width - 20, 32, 11, "#c1b0e8");
-    art.canvasIcon(context,learningOptions?'bookshelf':'radio',x+width/2,y+4,90);
+    art.canvasIcon(context,'bookshelf',x+width/2,y+4,90);
     if(learningOptions)return;
     for (let i = 0; i < 5; i += 1) {
       ellipse(x + 29 + i * 31, y - 7, 11, 11, ["#fff4c8", "#fcbadf", "#aaf1e3"][i % 3]);
@@ -1242,7 +1275,7 @@ function stationLabel(text,x,y) {
 }
 function drawStations(time) {
  if(journey.state?.phase === 'festival') return;
- stationLabel(learningOptions?'LEARNING BOOKSHELF':'CORAL RADIO',180,161);
+ stationLabel('LEARNING BOOKSHELF',180,161);
  stationLabel('MEMORY SHELF',179,347);
 }
 function drawWornOutfit(time) {
@@ -1364,7 +1397,7 @@ const continueButton=document.createElement('button');continueButton.type='butto
 introElement('scene-replay').after(continueButton);
 continueButton.addEventListener('click',()=>{
  if(!introState.active||!introState.playing)return;
- cancelIntroSpeech();introState.narrationDone=true;introState.elapsed=100;
+ cancelIntroSpeech();storySaveError=false;introState.narrationDone=true;introState.elapsed=100;
 });
 window.OceanRoom={
  // Called by Person 3 after scripts and popup hosts are mounted. No wire events
@@ -1374,7 +1407,7 @@ window.OceanRoom={
   learning?.destroy();learning=null;learningOptions=null;closeStory();clearMovement();learningStoryUnlocked=false;learningApproach=null;
   learning=window.VocabularyGameplay.create({...options,room:{
    clearMovement,
-   geometry:()=>({bounds:world.bounds,furniture:roomFurniture,player:{...player},reserved:[{x:180,y:270,radius:55},{x:190,y:413,radius:50}]}),
+   geometry:learningGeometry, walkTo,
    isNear:item=>journey.state?.phase==='room'&&!journey.locked&&!roomLocked&&!storyOpen&&distance(player,item)<=item.radius
   }});
   const controller=learning;learningOptions=options;
@@ -1386,20 +1419,22 @@ window.OceanRoom={
     if(journey.state?.phase!=='room'){learning.stop();return;}
     const prior=learning.active;learning.sync(view);
     if(prior!==learning.active)clearMovement();
-    if(!learning.active)learningApproach=null;
+    if(!learning.active){learningApproach=null;canvas.style.cursor='';}
    },
    stop(){controller.stop();if(learning===controller)learningApproach=null;},
    destroy(){controller.destroy();if(learning===controller){learning=null;learningOptions=null;learningApproach=null;}},
    get controller(){return controller;}
   };
  },
+ startStory(){openStory(true);},learningGeometry,
  lock(value){roomLocked=value;clearMovement();if(value)learning?.cancelNarration();},clearMovement,walkTo,closeStory,feedback:showFeedback,
  sync(next,prev){
-  if(learning && (next.phase!=='room'||next.trip!==activeTrip)){learning.stop();learningApproach=null;learningStoryUnlocked=false;}
-  chapters=window.JOURNEYS[next.language||'indonesian'].chapters;
+  if(learning && (next.phase!=='room'||next.trip!==activeTrip)){canvas.style.cursor='';learning.stop();learningApproach=null;learningStoryUnlocked=false;}
+  chapters=journey.content.chapters;storyChapterCount=chapters.length;
+  if (storyOpen && (next.activeStoryId !== prev?.activeStoryId || next.storyPage < (prev?.storyPage || 0) || next.learning?.active)) closeStory();
   if(next.trip!==activeTrip) {
    activeTrip=next.trip;festivalApproach=null;areaPending=false;closeStory();pageIndex=0;introState.completedChapters=chapters.map((_,i)=>i<next.storyPage);
-   player.x=486;player.y=408;clearMovement();storyProximityArmed=true;memoryProximityArmed=true;wardrobeProximityArmed=true;radioProximityArmed=true;
+   player.x=486;player.y=408;clearMovement();storyProximityArmed=true;memoryProximityArmed=true;wardrobeProximityArmed=true;
   }
   if(next.phase!==activePhase){clearMovement();if(next.phase==='festival'){player.x=480;player.y=450;}activePhase=next.phase;}
   if(next.phase==='festival'&&prev?.phase==='festival'&&next.festivalArea!==prev.festivalArea){

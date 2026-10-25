@@ -17,17 +17,25 @@ function create({ action, getContent, room = () => window.OceanRoom }) {
  const levelItems = value => {
   const model = learning(value) || {};
   const content = getContent(value) || {};
+  if (content.learningLevels && model.levels) return content.learningLevels.map(definition => ({
+   ...definition, ...model.levels.find(item => item.level === definition.level)
+  }));
   const definitions = model.levels || value?.vocabularyLevels || content.vocabularyLevels || [];
   return Array.isArray(definitions) ? definitions : [];
  };
  const storyItems = value => {
   const model = learning(value) || {};
   const content = getContent(value) || {};
+  if (content.stories && value?.stories) return content.stories.map(definition => ({
+   ...definition, ...value.stories.find(item => item.id === definition.id),
+   locked: !content.festivals?.some(festival => festival.id === definition.festivalId)
+  }));
   const definitions = model.stories || value?.culturalStories || content.culturalStories || [];
   return Array.isArray(definitions) ? definitions : [];
  };
  function levelOneComplete(value) {
   const model = learning(value) || {};
+  if (typeof model.storybookUnlocked === 'boolean') return model.storybookUnlocked;
   if (typeof model.storyUnlocked === 'boolean') return model.storyUnlocked;
   if (typeof value?.storyUnlocked === 'boolean') return value.storyUnlocked;
   const first = levelItems(value)[0];
@@ -35,13 +43,13 @@ function create({ action, getContent, room = () => window.OceanRoom }) {
  }
  function tutorialStarted(value) {
   const model = learning(value) || {};
-  if (model.activeLevel != null || model.presentation || model.currentQuestion) return true;
+  if (model.active || model.activeLevel != null || model.presentation || model.currentQuestion) return true;
   const first = levelItems(value)[0];
   return first?.started === true || first?.completed === true || first?.status === 'in-progress' || first?.status === 'completed';
  }
  function presentation(value) {
   const model = learning(value) || {};
-  return model.presentation || model.currentQuestion || value?.vocabularyPresentation || null;
+  return window.JourneyLearning?.presentation(value, getContent(value)) || model.presentation || model.currentQuestion || value?.vocabularyPresentation || null;
  }
 
  function focusable(root) {
@@ -73,7 +81,7 @@ function create({ action, getContent, room = () => window.OceanRoom }) {
  function statusOf(item, index) {
   if (!item) return { locked: true, completed: false };
   const completed = item.completed === true || item.status === 'completed';
-  const locked = item.locked === true || item.available === false || ['locked', 'unavailable'].includes(item.status);
+  const locked = item.unlocked === false || item.locked === true || item.available === false || ['locked', 'unavailable'].includes(item.status);
   return { locked, completed };
  }
  function labelledButton(text, className) {
@@ -133,7 +141,7 @@ function create({ action, getContent, room = () => window.OceanRoom }) {
     button.addEventListener('click', async () => {
      if (pending) return;
      pending = true; button.disabled = true;
-     try { await action('selectStory', { storyId: item.id }); closePopup(); }
+     try { await action('selectStory', { storyId: item.id }); closePopup(); room()?.startStory?.(); }
      catch (error) { $('learning-story-status').textContent = error?.message || 'That story could not open. Please try again.'; button.disabled = false; }
      finally { pending = false; }
     });
@@ -172,6 +180,7 @@ function create({ action, getContent, room = () => window.OceanRoom }) {
   });
  }
  function sync(next, prior) {
+  if (!next?.language || learning(next)?.storybookUnlockVersion === 0 || (prior && next.language !== prior.language)) unlockShown = false;
   previous = prior; state = next;
   configureRoom();
   const hasLearning = enabled(next), inRoom = next?.phase === 'room';
@@ -187,20 +196,23 @@ function create({ action, getContent, room = () => window.OceanRoom }) {
   if (activePopup === 'levels') renderLevels();
   if (activePopup === 'stories') renderStories();
   const wasUnlocked = prior && enabled(prior) ? levelOneComplete(prior) : false;
-  const explicitCelebration = learning(next)?.showStoryUnlockCelebration === true;
-  if (inRoom && unlocked && !unlockShown && (explicitCelebration || (prior && !wasUnlocked))) showUnlock();
+  const model = learning(next), oldModel = learning(prior);
+  const firstUnlock = typeof model?.storybookUnlockVersion === 'number'
+   ? prior?.language === next.language && oldModel?.storybookUnlockVersion === 0 && model.storybookUnlockVersion > 0
+   : model?.showStoryUnlockCelebration === true || (prior && !wasUnlocked);
+  if (inRoom && unlocked && !unlockShown && firstUnlock) showUnlock();
  }
  function approach(id) {
   if (id === 'learning-bookshelf') openLevels();
   if (['learning-storybook','storybook','book'].includes(id)) openStories();
  }
- function stop() { learningRoom?.stop(); document.body.classList.remove('is-vocabulary-active'); gameplayRoot.hidden = true; }
+ function stop() { closePopup(false); learningRoom?.stop(); document.body.classList.remove('is-vocabulary-active'); gameplayRoot.hidden = true; }
 
  $('close-level-select').addEventListener('click', closePopup);
  $('close-story-select').addEventListener('click', closePopup);
  $('explore-storybook').addEventListener('click', async () => {
   closePopup();
-  try { await action('acknowledgeStoryUnlock'); } catch { /* visibility is still authoritative */ }
+  // The unlock is permanent backend state; dismissing it is a local UI action.
  });
  [levelScreen, storyScreen].forEach(screen => screen.addEventListener('pointerdown', event => { if (event.target === screen) closePopup(); }));
  window.addEventListener('ocean-room-ready', configureRoom);

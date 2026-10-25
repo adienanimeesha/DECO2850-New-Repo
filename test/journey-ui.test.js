@@ -24,7 +24,7 @@ function page(t,name='mobile.html') {
  function publish(){handlers['journey-state']?.(structuredClone(state));}
  function respond(event,payload){
   const c=journeys[state.language];
-  if(event==='journey-start'){state={phase:'departing',language:payload,storyPage:0,storyDone:false,invited:false,outfit:null,festivalArea:0,festivalMission:0,festivalFeedback:false,festivalFound:[],bag:[],memories:[],trip:state.trip+1};publish();return;}
+  if(event==='journey-start'){state={phase:'departing',language:typeof payload==='string'?payload:payload.language,storyPage:0,storyDone:false,invited:false,outfit:null,festivalArea:0,festivalMission:0,festivalFeedback:false,festivalFound:[],bag:[],memories:[],trip:state.trip+1};publish();return;}
   if(event==='journey-story-page'&&payload===state.storyPage){state.bag.push({...c.storyRewards[payload],language:state.language,source:'story'});state.storyPage++;state.storyDone=state.storyPage===5;publish();}
   if(event==='journey-invitation'){state.invited=true;publish();}
   if(event==='journey-try-outfit'){state.outfit=payload;publish();}

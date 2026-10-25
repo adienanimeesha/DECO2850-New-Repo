@@ -3,11 +3,11 @@
 const socket = io({ auth: { journey: true } });
 let state = null, selectedLanguage = null, activity = null, outfitChoice = null, activityFocus = null;
 let collectedMemories = [];
-let learningInterface = null;
+let learningInterface = null, awaitingSnapshot = true, invitationWalkPending = false;
 
 const $ = id => document.getElementById(id);
 const art = window.OceanArt;
-const content = () => window.JOURNEYS[state?.language || selectedLanguage || 'indonesian'];
+const content = () => { const track = window.JOURNEYS[state?.language || selectedLanguage || 'indonesian']; return window.JourneyLearning?.selectedContent(track,state) || track; };
 const send = (name, data) => { if (socket.connected) socket.emit(name, data); };
 const outfit = () => content().outfits.find(x => x.id === (outfitChoice || state?.outfit));
 $('welcome-jelly').innerHTML = art.jelly();
@@ -19,8 +19,14 @@ document.querySelectorAll('[data-language]').forEach(button => button.addEventLi
  selectedLanguage = button.dataset.language;
  document.querySelectorAll('[data-language]').forEach(b => b.setAttribute('aria-pressed', String(b === button)));
  $('start-adventure').disabled = !socket.connected;
+ updateContinue();
 }));
-$('start-adventure').addEventListener('click', () => { $('start-adventure').disabled = true; send('journey-start', selectedLanguage); });
+function updateContinue() {
+ $('continue-adventure').hidden = !selectedLanguage || state?.language !== selectedLanguage;
+ $('continue-adventure').disabled = !socket.connected;
+}
+$('start-adventure').addEventListener('click', () => { $('start-adventure').disabled = true; send('journey-start', {language:selectedLanguage,fresh:true}); });
+$('continue-adventure').addEventListener('click', () => { $('continue-adventure').disabled = true; send('journey-start', selectedLanguage); });
 $('return-early').addEventListener('click', () => openActivity('exit'));
 $('close-activity').addEventListener('click', closeActivity);
 $('activity-screen').addEventListener('pointerdown', e => { if (e.target === $('activity-screen')) closeActivity(); });
@@ -56,16 +62,23 @@ function closeActivity() {
  if (was === 'wardrobe') outfitChoice = null;
  (activityFocus?.isConnected ? activityFocus : $('game')).focus();
 }
+function wardrobeReady() {
+ const progress=state?.stories?.find(item=>item.id===state.activeStoryId);
+ const selected=window.JOURNEYS[state?.language]?.stories?.find(item=>item.id===state.activeStoryId);
+ return state?.phase==='room' && state.storyDone && state.invited && (state.learning ? state.festivalId===selected?.festivalId : true) && (!state.learning || (progress?.completed && progress?.invited)) && !state.learning?.active;
+}
 function openActivity(type) {
  if (!['mail','wardrobe','memories','festival-feedback','festival-complete','exit'].includes(type)) return;
  if (!state || !['room','festival'].includes(state.phase)) return;
+ if (state.learning?.active && type !== 'exit') return;
+ if (type === 'wardrobe' && !wardrobeReady()) return;
  window.OceanRoom?.closeStory();
  if (!activity) activityFocus = document.activeElement;
  stopAudio(); activity = type; window.OceanRoom?.lock(true);
  $('activity-screen').hidden = false; renderActivity(); $('close-activity').focus();
 }
 function card(item) {
- return `<article class="memory-card"><div>${item.artwork ? `<img src="${item.artwork}" alt="${item.word}">` : art.svg(item.icon)}</div><strong>${item.word}</strong>${item.pronunciation ? `<small>${item.pronunciation}</small>` : ''}<span>${item.meaning}</span><small>${{story:'Storybook',vocabulary:'Vocabulary',festival:'Festival'}[item.source] || 'Memory'} · ${window.JOURNEYS[item.language]?.shortLabel || ''}</small><button type="button" class="word-replay" data-word="${item.word}" data-lang="${item.language}" aria-label="Hear ${item.word}">Hear word ♫</button></article>`;
+ return `<article class="memory-card"><div>${item.artwork ? `<img src="${item.artwork}" alt="${item.word}">` : art.svg(item.icon)}</div><strong>${item.word}</strong>${item.pronunciation ? `<small>${item.pronunciation}</small>` : ''}<span>${item.meaning}</span><small>${{story:'Storybook',learning:'Vocabulary',vocabulary:'Vocabulary',festival:'Festival'}[item.source] || 'Memory'} · ${window.JOURNEYS[item.language]?.shortLabel || ''}</small><button type="button" class="word-replay" data-word="${item.word}" data-lang="${item.language}" aria-label="Hear ${item.word}">Hear word ♫</button></article>`;
 }
 function renderActivity() {
  const c = content(), body = $('activity-body');
@@ -75,7 +88,11 @@ function renderActivity() {
   const ready = state.storyDone;
   body.innerHTML = `<p class="eyebrow">JELLY'S MAILBOX</p><div class="mail-art">${art.svg('letter')}</div><h2 id="activity-title">${ready ? 'You’re invited!' : 'A little patience…'}</h2>` +
    (ready ? `<p class="invitation-to">Dear Jelly & friend,</p><p>Come celebrate <strong>${c.festival}</strong> at ${c.place}! Bring your curiosity and your favourite festival outfit.</p><p class="invitation-sign">With love, your festival friends ♡</p><button class="primary" id="accept-invite">${state.invited ? 'Visit the wardrobe →' : 'Accept invitation →'}</button>` : `<p>Finish a cultural story to receive your festival invitation.</p><div class="checklist"><span>${state.storyDone ? '✓' : '○'} Cultural story</span></div>`);
-  $('accept-invite')?.addEventListener('click', () => { send('journey-invitation'); closeActivity(); window.OceanRoom?.walkTo('wardrobe'); });
+  $('accept-invite')?.addEventListener('click', () => {
+   closeActivity();
+   if (wardrobeReady()) window.OceanRoom?.walkTo('wardrobe');
+   else { invitationWalkPending=true; send('journey-invitation'); }
+  });
  } else if (activity === 'wardrobe') {
   const selected = outfit();
   body.innerHTML = `<p class="eyebrow">THE PEARL WARDROBE</p><h2 id="activity-title">Dress for ${c.festival}</h2>` +
@@ -94,7 +111,7 @@ function renderActivity() {
   body.innerHTML = `<p class="eyebrow">WHAT A BEAUTIFUL ADVENTURE</p><div class="wardrobe-preview">${art.jelly(outfit())}</div><h2 id="activity-title">Let’s take our memories home.</h2><p>You found all three festival keepsakes! Jelly will carry ${state.bag.length} discoveries to the aquarium.</p><button class="primary" id="take-home">Swim home to the aquarium →</button>`;
   $('take-home').addEventListener('click', () => { closeActivity(); send('journey-return'); });
  } else if (activity === 'exit') {
-  body.innerHTML = `<p class="eyebrow">HOME, SWEET OCEAN</p><h2 id="activity-title">Bring Jelly home?</h2><p>Jelly will keep the outfit and bring ${state.bag.length} discoveries into the aquarium. Starting a new adventure will clear them and begin from the start.</p><button class="primary" id="exit-confirm">Bring Jelly home →</button><button class="secondary" id="keep-playing">Keep exploring</button>`;
+  body.innerHTML = `<p class="eyebrow">HOME, SWEET OCEAN</p><h2 id="activity-title">Bring Jelly home?</h2><p>Jelly will keep the outfit and bring ${state.bag.length} discoveries into the aquarium. Choose Continue adventure to keep this language’s discoveries, or Start new adventure for a clean beginning.</p><button class="primary" id="exit-confirm">Bring Jelly home →</button><button class="secondary" id="keep-playing">Keep exploring</button>`;
   $('exit-confirm').addEventListener('click', () => { closeActivity(); send('journey-exit'); });
   $('keep-playing').addEventListener('click', closeActivity);
  }
@@ -119,8 +136,8 @@ function updateMission() {
  } else if(learning) {
   const levels=learning.levels||state.vocabularyLevels||[];
   const first=levels[0];
-  const unlocked=learning.storyUnlocked===true||state.storyUnlocked===true||first?.completed===true||first?.status==='completed';
-  const view=learning.presentation||learning.currentQuestion||state.vocabularyPresentation;
+  const unlocked=learning.storybookUnlocked===true||learning.storyUnlocked===true||state.storyUnlocked===true||first?.completed===true||first?.status==='completed';
+  const view=window.JourneyLearning?.presentation(state,c)||learning.presentation||learning.currentQuestion||state.vocabularyPresentation;
   if(view) {
    goal=`Learn ${view.question?.word || 'the new word'}.`;
    detail=`Level ${view.level} · Question ${(view.index ?? 0)+1} of 5 · Move Jelly to the matching object.`;
@@ -137,7 +154,7 @@ function updateMission() {
  $('mission-step').textContent=`MISSION ${step} OF 5`;
  $('objective').textContent=goal;$('mission-detail').textContent=detail;
  $('mission-progress').innerHTML=Array.from({length:5},(_,i)=>`<i class="${i+1<step?'complete':i+1===step?'current':''}"></i>`).join('');
- const mailReady=state.phase==='room'&&state.storyDone;
+ const mailReady=state.phase==='room'&&state.storyDone&&!state.learning?.active;
  $('mailbox-button').disabled=!mailReady;
  $('mailbox-button').hidden=state.phase==='festival';
  $('mailbox-button').classList.toggle('has-mail',mailReady&&!state.invited);
@@ -146,33 +163,24 @@ function updateMission() {
  $('festival-home').hidden=!(state.phase==='festival'&&(state.festivalFeedback||state.festivalMission===c.festivalItems.length));
  $('festival-home').textContent=state.festivalFeedback?'Read Jelly’s thank-you →':'All done! Swim home →';
 }
-function learningRequest(name,payload) {
- const bridge=window.JellyLearningBackend;
- if(typeof bridge?.[name]==='function')return Promise.resolve(bridge[name](payload,state));
- const contract=state?.learning?.events||state?.vocabularyLearning?.events;
- const eventName=contract?.[name];
- if(!eventName)return Promise.reject(new Error('This learning action is waiting for the backend connection.'));
- return new Promise((resolve,reject)=>{
-  if(!socket.connected){reject(new Error('The ocean is reconnecting. Please try again.'));return;}
-  let settled=false;
-  const timer=window.setTimeout(()=>{if(!settled){settled=true;reject(new Error('The learning activity took too long to respond.'));}},8000);
-  socket.emit(eventName,payload,result=>{
-   if(settled)return;settled=true;window.clearTimeout(timer);
-   if(result?.ok===false)reject(new Error(result.message||'That action was not accepted.'));
-   else resolve(result||{ok:true});
-  });
- });
+const learningBackend = window.JourneyLearning?.create({socket,
+ onError: message => { invitationWalkPending=false; window.OceanRoom?.feedback(message); }
+});
+function learningRequest(name, payload) {
+ return learningBackend ? learningBackend.request(name, payload) : Promise.reject(new Error('Learning could not load. Please reload.'));
 }
 learningInterface=window.JellyLearningInterface?.create({
  action:learningRequest,
  getContent:value=>window.JOURNEYS[value?.language||selectedLanguage||'indonesian'],
  room:()=>window.OceanRoom
 });
-socket.on('connect', () => { $('connection-status').textContent='Ocean connected'; $('connection-status').classList.add('online'); $('start-adventure').disabled=!selectedLanguage; });
-socket.on('disconnect', () => { stopAudio(); learningInterface?.stop(); $('connection-status').textContent='Reconnecting…'; $('connection-status').classList.remove('online'); $('start-adventure').disabled=true; });
+socket.on('connect', () => { updateContinue(); $('connection-status').textContent='Ocean connected'; $('connection-status').classList.add('online'); $('start-adventure').disabled=!selectedLanguage; });
+socket.on('disconnect', () => { awaitingSnapshot=true; stopAudio(); learningInterface?.stop(); $('connection-status').textContent='Reconnecting…'; $('connection-status').classList.remove('online'); $('start-adventure').disabled=true; updateContinue(); });
+socket.on('connect_error', () => { awaitingSnapshot=true; stopAudio(); learningInterface?.stop(); });
 socket.on('journey-hint', message => { window.OceanRoom?.feedback(message); });
 socket.on('journey-state', next => {
- const prev = state; state=next;
+ if (!awaitingSnapshot && state && next.revision < state.revision) return;
+ const prev = awaitingSnapshot ? null : state; awaitingSnapshot=false; state=next;
  if(next.language===null || (next.phase==='aquarium' && prev?.phase!=='aquarium')) {
   selectedLanguage=null;
   document.querySelectorAll('[data-language]').forEach(button=>button.setAttribute('aria-pressed','false'));
@@ -181,6 +189,15 @@ socket.on('journey-state', next => {
  collectedMemories = [...new Map([...next.memories, ...next.bag].map(item => [JSON.stringify([item.language,item.id]),item])).values()];
  if (!prev || prev.trip !== next.trip) outfitChoice=null;
  const c=content();
+ if (!prev || prev.trip !== next.trip || prev.language !== next.language) {
+  invitationWalkPending=false;art.clearMemoryCache();
+  if (activity) closeActivity();
+  window.OceanRoom?.closeStory();
+ }
+ if (activity === 'wardrobe' && !wardrobeReady()) closeActivity();
+ updateContinue();
+ if (activity === 'festival-feedback' && !next.festivalFeedback) closeActivity();
+ if (next.learning?.active && activity && activity !== 'exit') closeActivity();
  $('language-screen').hidden=next.phase!=='aquarium';
  const travelling=['departing','travelling','returning'].includes(next.phase);
  $('travel-screen').hidden=!travelling;
@@ -192,12 +209,20 @@ socket.on('journey-state', next => {
  if (!['room','festival'].includes(next.phase)) { if (activity) closeActivity(); window.OceanRoom?.closeStory(); }
  window.OceanRoom?.sync(next,prev);
  learningInterface?.sync(next,prev);
+ if (invitationWalkPending && wardrobeReady()) { invitationWalkPending=false; window.OceanRoom?.walkTo('wardrobe'); }
  updateMission();
  if (activity) renderActivity();
  if (prev && !prev.storyDone && next.storyDone) window.OceanRoom?.feedback('Story complete! You have mail in the top-left corner.',8000);
  if(next.phase==='festival'&&next.festivalFeedback&&activity!=='festival-feedback')openActivity('festival-feedback');
  if(next.phase==='festival'&&next.festivalMission===c.festivalItems.length&&(!prev||prev.festivalMission!==next.festivalMission))openActivity('festival-complete');
 });
-window.JellyJourney={get state(){return state;},get content(){return content();},get memories(){return collectedMemories;},get outfit(){return outfit();},get locked(){return !socket.connected||Boolean(activity)||Boolean(learningInterface?.activePopup)||Boolean(state?.festivalFeedback)||!state||!['room','festival'].includes(state.phase);},openActivity,send,speak,trapFocus,openLearning:id=>learningInterface?.approach(id)};
+window.JellyJourney={get state(){return state;},get content(){return content();},get memories(){return collectedMemories;},get outfit(){return outfit();},get locked(){return !socket.connected||Boolean(activity)||Boolean(learningInterface?.activePopup)||Boolean(state?.festivalFeedback)||!state||!['room','festival'].includes(state.phase);},openActivity,send,speak,trapFocus,get wardrobeReady(){return wardrobeReady();},
+ completeStoryPage(page) {
+  if (learningBackend) return learningBackend.request('storyPage',{page});
+  // Compatibility with older embedders that synchronously supply snapshots.
+  send('journey-story-page',page);
+  return state?.storyPage > page ? Promise.resolve() : Promise.reject(new Error('The page was not confirmed. Please try again.'));
+ },
+ openLearning:id=>learningInterface?.approach(id)};
 window.addEventListener('ocean-room-ready', () => { if (state) { window.OceanRoom.sync(state,null); learningInterface?.sync(state,null); } updateMission(); });
 })();
