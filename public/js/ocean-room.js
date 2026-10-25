@@ -8,6 +8,37 @@ let memoryProximityArmed = true;
 let wardrobeProximityArmed = true;
 let storyVoiceTimer = null, storyVoiceListener = null;
 const art = window.OceanArt;
+const wornJellyImages = new Map();
+const festivalImages = new Map();
+function festivalImage(path) {
+ let image = festivalImages.get(path);
+ if (!image) {
+  image = new Image();
+  image.src = path;
+  festivalImages.set(path, image);
+ }
+ return image;
+}
+function drawFestivalImage(path,x,y,maxWidth,maxHeight) {
+ const image=festivalImage(path);
+ if(!image.complete||!image.naturalWidth||!image.naturalHeight)return false;
+ const scale=Math.min(maxWidth/image.naturalWidth,maxHeight/image.naturalHeight);
+ const width=image.naturalWidth*scale,height=image.naturalHeight*scale;
+ context.drawImage(image,x-width/2,y-height/2,width,height);
+ return true;
+}
+function preloadFestivalArea(area) {
+ const content=journey.content,zone=content?.festivalAreas?.[area];
+ if(!zone?.background)return;
+ for(const path of [zone.background,...(content.festivalItems||[]).filter(item=>item.area===area).map(item=>item.festivalImage),
+  ...zone.distractors.map(item=>item.festivalImage),...Object.values(content.festivalNavigation||{})])
+  if(path)festivalImage(path);
+}
+function wornJellyImage(outfit) {
+ let image=wornJellyImages.get(outfit.id);
+ if(!image){image=new Image();image.src=art.jellyDataUrl(outfit);wornJellyImages.set(outfit.id,image);}
+ return image;
+}
 let learning = null, learningOptions = null, learningApproach = null;
 let learningStoryUnlocked = false;
 const learningBusy = () => Boolean(learning?.blocked);
@@ -187,7 +218,7 @@ function stations() {
  if (journey.state?.phase === 'festival') {
   const area=journey.state.festivalArea||0, c=journey.content;
   const objects=[...c.festivalItems.filter(x=>x.area===area&&!journey.state.festivalFound.includes(x.id)),...c.festivalAreas[area].distractors];
-  return [...objects.map(x=>({...x,kind:'treasure',label:x.word||'Explore this object',radius:65})),
+  return [...objects.map(x=>({...x,kind:'treasure',label:x.festivalImage?'Explore this object':x.word||'Explore this object',radius:x.festivalImage?110:65})),
    ...(area>0?[{id:'area-left',kind:'portal',area:area-1,label:c.festivalAreas[area-1].name,x:80,y:450,radius:34}]:[]),
    ...(area<c.festivalAreas.length-1?[{id:'area-right',kind:'portal',area:area+1,label:c.festivalAreas[area+1].name,x:880,y:450,radius:34}]:[])];
  }
@@ -659,6 +690,7 @@ function storySpeechParts(line) {
 }
 function storyVoice(lang) {
   const voices=window.speechSynthesis.getVoices?.() || [];
+  if (window.VocabularySpeech?.voiceFor) return window.VocabularySpeech.voiceFor(voices,lang);
   const normalize=voice=>voice.lang.toLowerCase().replaceAll('_','-');
   if(lang==='id-ID') return voices.find(voice=>normalize(voice)==='id-id') || voices.find(voice=>/^id(-|$)/.test(normalize(voice)));
   if(lang==='zh-CN') {
@@ -943,7 +975,7 @@ function applyIntroVisual() {
     introElement("nyale-school").setAttribute("opacity", String(beat < 2 ? 0 : Math.min(1, beat === 2 ? t / 1.3 : 1)));
     put("nyale-school", Math.sin(worldTime * 1.9) * 9, Math.sin(worldTime * 2.6) * 7);
     put("nyale-target", Math.sin(worldTime * 2.4) * 13, Math.sin(worldTime * 3.3) * 7 - (state.interactionDone ? Math.abs(Math.sin((worldTime - state.reactionTime) * 10)) * 13 : 0));
-    introElement("nyale-target-body").setAttribute("d", `M648 423 Q666 ${383 + Math.sin(worldTime * 9) * 9} 688 411 T734 404`);
+    introElement("nyale-target-body").setAttribute("transform", `translate(0 ${Math.sin(worldTime * 9) * 5})`);
   } else {
     leftX = beat === 0 ? -90 + 395 * introEase(t / 3.5) : 305;
     rightX = beat === 0 ? 1070 - 410 * introEase(t / 3.5) : 660;
@@ -1200,6 +1232,20 @@ function drawJellyfish(time) {
   const bob = Math.sin(time / 420) * (player.moving ? 5 : 3);
   const pulse = 1 + Math.sin(time / (player.moving ? 190 : 400)) * .045;
   ellipse(player.x, player.y + 17, 24, 8, "#2c789661");
+  const outfit=journey.outfit;
+  if(outfit?.id.startsWith('sasak-')){
+    const image=wornJellyImage(outfit);
+    if(image.complete&&image.naturalWidth){
+      const scale=art.screenScale(canvas);
+      context.save();context.translate(player.x,player.y-25+bob);
+      context.scale(scale.unit/scale.x,scale.unit/scale.y);context.scale(pulse,1/pulse);
+      const festival=journey.state?.phase==='festival';
+      context.drawImage(image,festival?-58:-44,festival?-69:-55,festival?116:88,festival?133:101);
+      if(learning?.speaking)ellipse(0,-7,2.6,3+Math.sin(time/85)**2*2,'#544770');
+      context.restore();
+      return;
+    }
+  }
   const scale=art.screenScale(canvas);
   context.save(); context.translate(player.x, player.y - 25 + bob); context.scale(1.17*scale.unit/scale.x, 1.17*scale.unit/scale.y);
   for (let i = -2; i <= 2; i += 1) {
@@ -1279,7 +1325,7 @@ function drawStations(time) {
  stationLabel('MEMORY SHELF',179,347);
 }
 function drawWornOutfit(time) {
- const o=journey.outfit; if(!o) return;
+ const o=journey.outfit; if(!o||o.id.startsWith('sasak-')) return;
  const x=0,y=9,scale=art.screenScale(canvas);
  context.save();
  context.translate(player.x,player.y-25+Math.sin(time/420)*3);context.scale(scale.unit/scale.x,scale.unit/scale.y);
@@ -1287,11 +1333,43 @@ function drawWornOutfit(time) {
  context.beginPath();context.moveTo(x-26,y);context.lineTo(x-31,y+28);context.quadraticCurveTo(x,y+41,x+31,y+28);context.lineTo(x+26,y);context.closePath();context.fill();context.stroke();
  line([x-24,y+25,x+24,y+25],o.accent,5);
  line([x-15,y+1,x+7,y+23],o.accent,3);line([x+15,y+1,x-7,y+23],o.accent,3);
- if(o.id.startsWith('sasak')) {roundedRect(x-33,y-48,66,10,4,o.colour,'#875baa');line([x-28,y-43,x+28,y-43],o.accent,3);}
  context.restore();
+}
+function drawFestivalNavigation(zone) {
+ for(const portal of stations().filter(s=>s.kind==='portal')) {
+  const path=journey.content.festivalNavigation?.[portal.id==='area-right'?'right':'left'];
+  if(path) {
+   if(!drawFestivalImage(path,portal.x,portal.y,86,80))
+    stationLabel(portal.id==='area-right'?'→':'←',portal.x,portal.y+4);
+  }
+  else {
+   roundedRect(portal.x-27,portal.y-32,54,62,12,'#fff0cd','#b394b8');
+   stationLabel(portal.id==='area-right'?'→':'←',portal.x,portal.y+4);
+  }
+  stationLabel(portal.label,portal.x,portal.y+(path?62:53));
+ }
+ stationLabel(`${journey.content.festival.toUpperCase()} · ${zone.name}`,480,185);
 }
 function drawFestival(time) {
  const chinese=journey.state.language==='chinese', area=journey.state.festivalArea||0, zone=journey.content.festivalAreas[area];
+ if(zone.background) {
+  const image=festivalImage(zone.background);
+  if(image.complete&&image.naturalWidth>0) {
+   const sourceRatio=image.naturalWidth/image.naturalHeight, canvasRatio=960/620;
+   if(sourceRatio>canvasRatio) {
+    const width=image.naturalHeight*canvasRatio;
+    context.drawImage(image,(image.naturalWidth-width)/2,0,width,image.naturalHeight,0,0,960,620);
+   } else {
+    const height=image.naturalWidth/canvasRatio;
+    context.drawImage(image,0,(image.naturalHeight-height)/2,image.naturalWidth,height,0,0,960,620);
+   }
+   drawFestivalNavigation(zone);
+   return;
+  }
+  context.fillStyle='#fceacb';context.fillRect(0,0,960,620);
+  drawFestivalNavigation(zone);
+  return;
+ }
  const g=context.createLinearGradient(0,0,0,620);g.addColorStop(0,chinese?'#7179b3':'#ffc6c1');g.addColorStop(1,chinese?'#d7c6e4':'#ffebce');context.fillStyle=g;context.fillRect(0,0,960,620);
  ellipse(780,95,48,48,'#fff3c8');
  for(let i=0;i<20;i++)ellipse(50+(i*157)%880,30+(i*71)%160,2,2,'#fff6cd');
@@ -1313,14 +1391,9 @@ function drawFestival(time) {
   for(let i=0;i<3;i++)art.canvasIcon(context,'rabbit',570+i*65,315,45);
   drawSeaweed(500,365,.5,time);
  }
- for(const portal of stations().filter(s=>s.kind==='portal')) {
-  roundedRect(portal.x-27,portal.y-32,54,62,12,'#fff0cd','#b394b8');
-  stationLabel(portal.id==='area-right'?'→':'←',portal.x,portal.y+4);
-  stationLabel(portal.label,portal.x,portal.y+53);
- }
  line([55,116,470,146,905,112],'#ae83b1',3);
  for(let i=0;i<7;i++) {const x=90+i*130;art.canvasIcon(context,chinese?'lantern':'star',x,150+Math.sin(time/900+i)*3,chinese?63:39);}
- stationLabel(`${journey.content.festival.toUpperCase()} · ${zone.name}`,480,185);
+ drawFestivalNavigation(zone);
  drawSeaweed(75,560,.6,time);drawSeaweed(888,565,.5,time);
  for(const [x,y] of [[140,320],[845,340],[400,530]]) {
   ellipse(x,y,18,18,'#ffddb9','#c58f9e',2);roundedRect(x-20,y+18,40,44,15,'#c89ccf','#a57bac');
@@ -1328,6 +1401,18 @@ function drawFestival(time) {
 }
 function drawFestivalItem(item,time) {
  const bob=Math.sin(time/400+item.x)*4;
+ if(item.festivalImage) {
+  const x=item.x,y=item.y-8+bob;
+  context.save();
+  context.beginPath();context.arc(x,y,48,0,Math.PI*2);
+  context.fillStyle='#fff8dfb8';
+  context.shadowColor='#fff4b8';context.shadowBlur=22;
+  context.fill();
+  context.shadowBlur=0;context.strokeStyle='#ffffffeb';context.lineWidth=3;
+  context.stroke();context.restore();
+  drawFestivalImage(item.festivalImage,x,y,82,78);
+  return;
+ }
  ellipse(item.x,item.y+26,27,8,'#7274a133');
  ellipse(item.x,item.y-8+bob,41,41,'#fff8df66','#ffffffaa',2);
  art.canvasIcon(context,item.icon,item.x,item.y-8+bob,64);
@@ -1343,7 +1428,7 @@ function configureChineseStage() {
  const icon=(id,x,y,size)=>`<svg x="${x}" y="${y}" width="${size}" height="${size}" viewBox="0 0 100 100" aria-hidden="true">${art.svg(id).split('>').slice(1).join('>').replace(/<\/svg>$/,'')}</svg>`;
  const choice=(name,label,artwork)=>`<g class="chinese-scene-choice" data-chinese-choice="${name}" role="button" tabindex="-1" aria-disabled="true" aria-label="${label}">${artwork}</g>`;
  const family=(name,x,colour,label)=>`<g data-family="${name}" transform="translate(${x} 0)">${choice(name,label,`<ellipse cx="0" cy="445" rx="44" ry="12" fill="#75979d33"/><path d="M-33 354Q0 333 33 354L43 439H-43Z" fill="${colour}" stroke="#a382ac" stroke-width="3"/><circle cx="0" cy="328" r="30" fill="#f1c3a6" stroke="#b88a9e" stroke-width="3"/><path d="M-29 326Q-37 283 3 291Q34 290 29 319Q11 304-3 313Z" fill="#7b668f"/><circle cx="-10" cy="328" r="3" fill="#62517b"/><circle cx="10" cy="328" r="3" fill="#62517b"/><path d="M-7 342Q0 348 7 342" fill="none" stroke="#b27d98" stroke-width="2"/><path d="M-30 369L-46 395M30 369L46 395" stroke="#edbaa1" stroke-width="10" stroke-linecap="round"/><g data-delivered="${name}" hidden>${icon('letter',14,372,45)}</g>`)}</g>`;
- const moon='<circle cx="750" cy="109" r="62" fill="#fff1c2"/><circle cx="730" cy="95" r="10" fill="#efdcae"/><circle cx="766" cy="126" r="13" fill="#efdcae"/>';
+ const moon=icon('moon',688,47,124);
  const stars=`<g fill="#fff7d9">${Array.from({length:17},(_,i)=>`<circle cx="${40+i*53}" cy="${35+i*41%160}" r="${2+i%3}"/>`).join('')}</g>`;
  const starsTarget=pageIndex===0||pageIndex===3?choice('story-fish','Stars in the sky',stars):stars;
  const moonTarget=pageIndex===0?choice('story-shell','Moon',moon):moon;
@@ -1429,6 +1514,8 @@ window.OceanRoom={
  startStory(){openStory(true);},learningGeometry,
  lock(value){roomLocked=value;clearMovement();if(value)learning?.cancelNarration();},clearMovement,walkTo,closeStory,feedback:showFeedback,
  sync(next,prev){
+  if(next.phase==='travelling'||next.phase==='festival')preloadFestivalArea(next.festivalArea||0);
+  if(next.phase==='festival')preloadFestivalArea((next.festivalArea||0)+1);
   if(learning && (next.phase!=='room'||next.trip!==activeTrip)){canvas.style.cursor='';learning.stop();learningApproach=null;learningStoryUnlocked=false;}
   chapters=journey.content.chapters;storyChapterCount=chapters.length;
   if (storyOpen && (next.activeStoryId !== prev?.activeStoryId || next.storyPage < (prev?.storyPage || 0) || next.learning?.active)) closeStory();

@@ -75,7 +75,7 @@ function create({ root, adapter, room, colouring = window.VocabularyColouring })
  let view = null, objects = [], generation = 0, pending = false, speaking = false, disposed = false, paint = null, paintedKey = null;
  let feedbackParts = null, cancelledKey = null, hoveredId=null,targetId=null,characterBubble=null,bubbleSize=null,layoutDirty=false;
  const reducedMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)');
- const speech = window.VocabularySpeech.create({onSpeaking(value){speaking=value;},onStatus(message){const node=root.querySelector('.vocabulary-audio-status');if(node)node.textContent=message;}});
+ const speech = window.VocabularySpeech.create({onSpeaking(value){speaking=value;},onStatus(message){const node=root.querySelector('.vocabulary-audio-status');if(node){node.textContent=message;node.hidden=!message;}}});
  function stopPresentation() {
   generation++; speech.cancel(); paint?.close(); paint=null; paintedKey=null; pending=false; objects=[]; feedbackParts=null; cancelledKey=null;
   room.clearMovement(); root.replaceChildren(); root.hidden=true;
@@ -83,7 +83,13 @@ function create({ root, adapter, room, colouring = window.VocabularyColouring })
  }
  function parts(question) {
   const lang = view.language === 'chinese' ? 'zh-CN' : 'id-ID';
-  return [{text:question.before,lang:'en-US',audio:question.beforeAudio},{text:question.word,lang,audio:question.wordAudio},{text:question.after,lang:'en-US',audio:question.afterAudio}];
+  const before=question.before.replace(/[“"'‘\s]+$/u,'').trim();
+  const after=question.after.replace(/^[”"'’\s]+/u,'').trim();
+  return [
+   {text:before,lang:'en-US',audio:question.beforeAudio},
+   {text:question.word,lang,audio:question.wordAudio},
+   ...(/[\p{L}\p{N}]/u.test(after)?[{text:after,lang:'en-US',audio:question.afterAudio}]:[])
+  ];
  }
  function replay() { if (view?.question && !paint && !disposed) speech.play(feedbackParts || parts(view.question)); }
  function relayout() {
@@ -101,12 +107,14 @@ function create({ root, adapter, room, colouring = window.VocabularyColouring })
   if(canvas)canvas.parentElement.append(root);
   const bubble=document.createElement('section');bubble.className='vocabulary-overlay';bubble.setAttribute('aria-label','Vocabulary controls');
   const progress=document.createElement('small');progress.textContent=`Level ${view.level} · Question ${view.index + 1} of 5`;
-  const text=document.createElement('p');text.className='vocabulary-prompt';text.setAttribute('aria-live','polite');
+  const text=document.createElement('p');text.className='vocabulary-prompt';text.lang='en-US';
   const word=document.createElement('mark');word.lang=view.language==='chinese'?'zh-CN':'id-ID';word.textContent=view.question.word;
-  text.append(document.createTextNode(view.question.before+' '),word,document.createTextNode(' '+view.question.after));
+  const lead=/[“"'‘]\s*$/u.test(view.question.before)?view.question.before:view.question.before+' ';
+  const tail=/^\s*[”"'’.,!?]/u.test(view.question.after)?view.question.after:' '+view.question.after;
+  text.append(document.createTextNode(lead),word,document.createTextNode(tail));
   const pronunciation=document.createElement('small');pronunciation.className='vocabulary-pronunciation';pronunciation.textContent=view.question.pronunciation || '';
   const hint=document.createElement('p');hint.className='vocabulary-hint';hint.setAttribute('role','status');
-  const status=document.createElement('small');status.className='vocabulary-audio-status sr-only';status.setAttribute('role','status');
+  const status=document.createElement('small');status.className='vocabulary-audio-status';status.setAttribute('role','status');status.hidden=true;
   const replayButton=document.createElement('button');replayButton.type='button';replayButton.className='vocabulary-replay secondary';replayButton.textContent='Replay narration';replayButton.addEventListener('click',replay);
   const exit=document.createElement('button');exit.type='button';exit.className='vocabulary-exit secondary';exit.textContent='Exit level';
   exit.addEventListener('click',async()=>{
@@ -225,7 +233,7 @@ function create({ root, adapter, room, colouring = window.VocabularyColouring })
    ctx.beginPath();ctx.ellipse(0,0,42,42,0,0,Math.PI*2);ctx.strokeStyle=focused?'#ffffff':'#e5fff5';ctx.lineWidth=2;ctx.stroke();
    ctx.beginPath();ctx.ellipse(0,34,9,9,0,0,Math.PI*2);ctx.fillStyle='#76558e';ctx.fill();
    ctx.fillStyle='#ffffff';ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(String(item.choice),0,34);ctx.restore();
-   window.OceanArt.canvasIcon(ctx,item.icon,item.x,item.y+bob,58);
+   window.OceanArt.canvasIcon(ctx,item.icon,item.x,item.y+bob,68);
   }
   updateCharacterBubble(player);
  }

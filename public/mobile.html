@@ -50,7 +50,7 @@
     <div class="welcome-jelly" id="welcome-jelly"></div><p class="eyebrow">A LITTLE FRIEND. A BIG ADVENTURE.</p><h1>Let's explore together.</h1>
     <p>Jelly is waiting in the aquarium. Choose your adventure language and invite Jelly into your ocean home.</p>
     <div class="language-choices"><button type="button" data-language="indonesian" aria-pressed="false"><span>🌺</span><strong>Bahasa Indonesia</strong><small>Stories from Lombok</small></button><button type="button" data-language="chinese" aria-pressed="false"><span>🏮</span><strong>中文 · Chinese</strong><small>A moonlit adventure</small></button></div>
-    <button class="primary" id="start-adventure" type="button" disabled>Start new adventure →</button><button class="secondary" id="continue-adventure" type="button" hidden disabled>Continue adventure →</button><p class="welcome-note">Keep the <a href="/pet.html" target="_blank" rel="noopener">aquarium screen ↗</a> open to watch Jelly swim between worlds.</p><p id="welcome-return" role="status"></p>
+    <button class="primary" id="start-adventure" type="button" disabled>Start new adventure →</button><button class="secondary" id="continue-adventure" type="button" hidden disabled>Continue adventure →</button><p class="welcome-note">Keep the <a href="/pet.html" target="_blank" rel="noopener">aquarium screen ↗</a> open to watch Jelly swim between worlds.</p><p class="welcome-note">Selected sticker art by <a href="https://openmoji.org" target="_blank" rel="noopener">OpenMoji</a> · <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a>.</p><p id="welcome-return" role="status"></p>
   </div></section>
   <div class="travel-backdrop" id="travel-screen" hidden><div class="travel-jelly" id="travel-jelly"></div><p class="eyebrow">OFF WE GO</p><h2 id="travel-title">Jelly is swimming over…</h2><p id="travel-copy">Follow the bubbles to your ocean home.</p><div class="loading-dots"><i></i><i></i><i></i></div></div>
   <div class="activity-backdrop" id="activity-screen" hidden><section class="activity-panel" role="dialog" aria-modal="true" aria-labelledby="activity-title"><button class="close-activity" id="close-activity" type="button" aria-label="Close activity">×</button><div id="activity-body"></div></section></div>
@@ -140,7 +140,7 @@
                 <circle cx="854" cy="390" r="10" fill="#e1b4f5"/><circle cx="914" cy="401" r="10" fill="#f7a8d4"/>
                 <path d="M369 470 Q342 447 345 427 M369 470 Q388 435 394 420 M756 456 Q735 425 741 409 M756 456 Q778 428 787 416" fill="none" stroke="#50bda7" stroke-width="8"/>
               </g>
-              <g id="scene-boat" class="chapter-4-choice" role="button" tabindex="-1" aria-label="Launch the festival boat"><circle cx="690" cy="328" r="66" fill="transparent"/><path d="M625 348 H760 L740 371 H650Z" fill="#b27cb9"/><path d="M690 347 V287 L748 339Z" fill="#fff1d5" stroke="#99699d" stroke-width="4"/></g>
+              <g id="scene-boat" class="chapter-4-choice" role="button" tabindex="-1" aria-label="Launch the festival boat"><circle cx="690" cy="328" r="66" fill="transparent"/><image href="/assets/learning/project/color/boat.svg" x="624" y="262" width="132" height="132"/></g>
             </g>
             <g id="coast-flags" hidden>
               <path d="M130 409 V279 M835 411 V285" stroke="#8c649f" stroke-width="8"/>
@@ -233,20 +233,18 @@
               <g id="princess-right-arm"><path d="M27-96 Q49-69 45-46" fill="none" stroke="#d99570" stroke-width="12" stroke-linecap="round"/></g>
               <circle cx="0" cy="-145" r="34" fill="#dda176"/>
               <path d="M-33-154 Q-28-199 12-193 Q37-185 35-152 Q19-169-2-166 Q-23-165-33-154Z" fill="#574066"/>
-              <path d="M-22-188 L-12-207 L0-191 L13-211 L25-187Z" fill="#ffe489" stroke="#c28b91" stroke-width="3"/>
+              <path d="M-30-13 Q0-3 30-13 M-35-22 Q0-12 35-22" fill="none" stroke="#f6dba3" stroke-width="4"/>
               <ellipse cx="-12" cy="-138" rx="5" ry="3" fill="#f4a0a5"/><ellipse cx="13" cy="-138" rx="5" ry="3" fill="#f4a0a5"/>
               <ellipse id="princess-eye-a" cx="-11" cy="-149" rx="2.5" ry="3.5" fill="#554064"/><ellipse id="princess-eye-b" cx="11" cy="-149" rx="2.5" ry="3.5" fill="#554064"/>
               <path id="princess-mouth" d="M-7-135 Q0-128 7-135" fill="none" stroke="#8b526e" stroke-width="2.5" stroke-linecap="round"/>
             </g>
             <g id="nyale-target" class="scene-choice chapter-3-choice" role="button" tabindex="-1" aria-label="Choose the colourful nyale">
               <circle cx="690" cy="412" r="51" fill="transparent"/>
-              <path id="nyale-target-body" d="M648 423 Q666 383 688 411 T734 404" fill="none" stroke="#e994ea" stroke-width="21" stroke-linecap="round"/>
-              <circle cx="726" cy="399" r="3" fill="#59466d"/>
+              <image id="nyale-target-body" href="/assets/learning/project/color/nyale.svg" x="645" y="365" width="90" height="90"/>
             </g>
             <g id="story-shell" class="scene-choice chapter-0-choice" role="button" tabindex="-1" aria-label="Choose the seashell">
               <circle cx="684" cy="443" r="45" fill="transparent"/>
-              <path d="M659 461 Q648 422 682 412 Q720 420 709 461 Q684 475 659 461Z" fill="#ffbfdc" stroke="#a86aa5" stroke-width="5"/>
-              <path d="M682 416 L682 466 M669 422 L675 466 M697 423 L689 466" stroke="#fff1e9" stroke-width="4"/>
+              <image href="/assets/learning/project/color/shell.svg" x="648" y="407" width="72" height="72"/>
             </g>
             <g id="story-fish" class="scene-choice chapter-0-choice chapter-3-choice" role="button" tabindex="-1" aria-label="Choose the fish">
               <circle cx="563" cy="319" r="42" fill="transparent"/>
@@ -279,14 +277,14 @@
     </section>
   </div>
   <script src="/socket.io/socket.io.js"></script>
-  <script src="/js/journey-content.js?v=20261025-three-levels"></script>
-  <script src="/js/ocean-art.js?v=20261025-integration"></script>
-  <script src="/js/vocabulary-speech.js?v=20261025-integration"></script>
-  <script src="/js/vocabulary-colouring.js?v=20261025-integration"></script>
-  <script src="/js/vocabulary-gameplay.js?v=20261025-integration"></script>
-  <script src="/js/learning-backend.js?v=20261025-three-levels"></script>
+  <script src="/js/journey-content.js?v=20261025-retry-copy"></script>
+  <script src="/js/ocean-art.js?v=20261025-shared-outfit"></script>
+  <script src="/js/vocabulary-speech.js?v=20261025-language-voices"></script>
+  <script src="/js/vocabulary-colouring.js?v=20261025-mandalika-ocean"></script>
+  <script src="/js/vocabulary-gameplay.js?v=20261025-language-voices"></script>
+  <script src="/js/learning-backend.js?v=20261025-retry-copy"></script>
   <script src="/js/learning-interface.js?v=20261025-three-levels"></script>
-  <script src="/js/journey-mobile.js?v=20261025-three-levels"></script>
+  <script src="/js/journey-mobile.js?v=20261025-bau-nyale-items"></script>
   <script>
     const gameScript = document.createElement("script");
     gameScript.src = "/js/ocean-room.js?v=" + window.gameAssetVersion;

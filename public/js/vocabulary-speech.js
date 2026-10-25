@@ -2,10 +2,24 @@
 'use strict';
 // UI-only speech service. Audio URLs must be verified, same-origin recordings.
 function voiceFor(voices, lang) {
- const code = v => v.lang.toLowerCase().replaceAll('_', '-');
- if (lang === 'zh-CN') return voices.find(v => /^(zh|cmn)-(cn|hans|sg)(-|$)/.test(code(v)) && !/canton|yue|粤|粵/i.test(v.name));
- if (lang === 'id-ID') return voices.find(v => /^id(-|$)/.test(code(v)));
- return voices.find(v => /^en(-|$)/.test(code(v)));
+ const code = v => String(v.lang || '').toLowerCase().replaceAll('_', '-');
+ const name = v => String(v.name || '');
+ if (lang === 'id-ID') {
+  const candidates = voices.filter(v => /^(id|in)(-|$)/.test(code(v)));
+  return candidates.find(v => /damayanti/i.test(name(v))) ||
+   candidates.find(v => code(v) === 'id-id') || candidates[0];
+ }
+ if (lang === 'zh-CN') {
+  const candidates = voices.filter(v => /^(zh|cmn)(-|$)/.test(code(v)) &&
+   !/-(hk|mo)(-|$)/.test(code(v)) && !/canton|yue|粤|粵/i.test(name(v)));
+  // macOS lists several English-persona multilingual voices before Tingting.
+  // Prefer its dedicated Mandarin voice when it is installed.
+  return candidates.find(v => /tingting/i.test(name(v))) ||
+   candidates.find(v => /meijia/i.test(name(v))) ||
+   candidates.find(v => /mandarin|putonghua|普通话|普通話/i.test(name(v))) ||
+   candidates.find(v => code(v) === 'zh-cn') || candidates[0];
+ }
+ return voices.find(v => code(v) === 'en-us') || voices.find(v => /^en(-|$)/.test(code(v)));
 }
 function create({ onSpeaking = () => {}, onStatus = () => {} } = {}) {
  let generation = 0, audio = null, utterance = null, timer = null, listener = null;
@@ -30,10 +44,13 @@ function create({ onSpeaking = () => {}, onStatus = () => {} } = {}) {
    clearWait(); onSpeaking(false);
    if (index >= parts.length) { if (!unavailable) onStatus(''); return; }
    const part = parts[index++];
-   if (!part.text.trim()) { next(); return; }
+   // A punctuation-only segment (for example, the visible closing ”?) must
+   // never become a spoken "question mark" on some platform voices.
+   if (!/[\p{L}\p{N}]/u.test(part.text)) { next(); return; }
    function missing() {
     unavailable = true;
-    onStatus(`${part.lang === 'zh-CN' ? 'Mandarin' : part.lang === 'id-ID' ? 'Indonesian' : 'Narration'} playback unavailable. Read the word and pronunciation guidance.`);
+    const language = part.lang === 'zh-CN' ? 'Mandarin' : part.lang === 'id-ID' ? 'Indonesian' : 'English';
+    onStatus(`${language} playback unavailable. Install a ${language} voice in your device speech settings, then tap Replay narration.`);
     next();
    }
    function synthetic(waited = false) {

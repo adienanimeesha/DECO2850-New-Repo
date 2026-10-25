@@ -155,7 +155,7 @@ function createJourney(io, { transitionMs = 2200 } = {}) {
       if (payload.itemId !== item.correctItemId) {
         socket.emit('journey-learning-result', {
           correct: false, questionId: item.id, attemptId: active.attemptId,
-          hint: `That’s not ${item.targetWord}, but it’s okay! ${item.hint} Try again!`,
+          hint: content().learningRetryMessage,
         });
         return;
       }
@@ -238,7 +238,10 @@ function createJourney(io, { transitionMs = 2200 } = {}) {
       const item = festival()?.items[state.festivalMission];
       if (!item) return invalid(socket, 'journey-find');
       if (item.id !== id || item.area !== state.festivalArea) {
-        socket.emit('journey-hint', `Jelly is looking for ${item.word}. Keep exploring!`);
+        const selected = festival()?.areas[state.festivalArea]?.distractors.find(choice => choice.id === id);
+        socket.emit('journey-hint', selected?.word && selected?.meaning
+          ? `That's not ${item.word}. That's ${selected.word} (${selected.meaning})! Let's try again.`
+          : `Jelly is looking for ${item.word}. Keep exploring!`);
         return;
       }
       state.festivalFound.push(id);

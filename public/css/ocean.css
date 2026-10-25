@@ -255,6 +255,9 @@ body.immersive-page{display:block;width:100%;height:100dvh;min-height:0;margin:0
 .mobile-page .journey-tools button{width:44px;height:44px;border:2px solid #fff7fb;background:#fff9edb8;border-radius:13px;padding:7px;color:#976aa3;font-size:1.2rem;position:relative}.journey-tools svg{width:100%;height:100%}.mobile-page .journey-tools #bag-count{position:absolute;right:-6px;top:-6px;padding:2px 5px;min-width:18px;border:2px solid #fff;font-size:.6rem;margin:0}
 .mobile-page .festival-home{position:absolute;bottom:28px;left:50%;transform:translateX(-50%);z-index:5;font-size:.85rem}
 .outfit-thumbnail{display:block;width:98px;height:108px}.outfit-thumbnail svg{width:100%;height:100%}
+.wardrobe-preview svg{display:block;width:100%;height:100%}
+.wardrobe-preview.bau-nyale-preview{width:190px;height:215px}
+@media(max-width:680px){.wardrobe-preview.bau-nyale-preview{width:155px;height:178px}}
 .song-video{overflow:hidden;border:3px solid #fff;border-radius:17px;background:#e2d5ee;box-shadow:0 4px 13px #7f79a333}
 .song-video iframe{display:block;width:100%;aspect-ratio:16/9;min-height:200px;border:0}
 .song-instruction{font-size:.82rem!important;line-height:1.6}.song-status{font-size:.78rem!important;margin:12px 0 5px}.song-source{font-size:.68rem!important;color:#9985a1!important;margin:0 0 20px}.rhyme-question{font-size:1.1rem!important;color:#76548e!important}.rhyme-question strong{font-size:1.25rem}.rhyme-choices button{min-height:100px}.outfit-choices button{padding:14px 12px}
@@ -269,6 +272,7 @@ body.immersive-page{display:block;width:100%;height:100dvh;min-height:0;margin:0
 .rhyme-paper canvas{padding:0;inset:22px;width:calc(100% - 44px);height:calc(100% - 44px)}
 
 .festival-discovery{display:flex;justify-content:center;align-items:center;gap:24px;margin:12px auto}.festival-discovery svg{width:110px;height:126px}.festival-discovery svg+svg{width:85px;height:85px}
+.festival-discovery img{display:block;width:85px;height:85px;object-fit:contain}
 
 .memory-grid > .memory-empty{grid-column:1 / -1;justify-self:stretch;width:100%;margin:0;padding:24px 12px;text-align:center;box-sizing:border-box}
 

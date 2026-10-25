@@ -7,8 +7,8 @@ const journeys=require('../public/js/journey-content');
 function page(t,name='mobile.html') {
  const source=fs.readFileSync(path.join(__dirname,'../public',name),'utf8').replace(/<script[\s\S]*?<\/script>/g,'');
  const dom=new JSDOM(source,{runScripts:'outside-only',url:'http://localhost:3000/'+name});t.after(()=>dom.window.close());
- const w=dom.window;let now=0,sequence=0;const frames=new Map(),timers=new Map(),events=[],handlers={};
- const context=new Proxy({createLinearGradient:()=>({addColorStop(){}})}, {get:(o,k)=>o[k]||(()=>{}),set:(o,k,v)=>(o[k]=v,true)});
+ const w=dom.window;let now=0,sequence=0;const frames=new Map(),timers=new Map(),events=[],handlers={},draws=[];
+ const context=new Proxy({createLinearGradient:()=>({addColorStop(){}}),drawImage(...args){draws.push(args);}}, {get:(o,k)=>o[k]||(()=>{}),set:(o,k,v)=>(o[k]=v,true)});
  w.HTMLCanvasElement.prototype.getContext=()=>context;
  w.HTMLCanvasElement.prototype.toDataURL=()=> 'data:image/png;base64,Y29sb3Vy';
  w.HTMLImageElement.prototype.decode=()=>Promise.resolve();
@@ -46,7 +46,7 @@ function page(t,name='mobile.html') {
   assert.ok(item,'Unknown world station '+id);
   w.document.getElementById('game').dispatchEvent(new w.MouseEvent('pointerup',{bubbles:true,clientX:item.x,clientY:item.y*520/620}));
  }
- return {w,events,advance,click,walk,get state(){return state;},update(data){Object.assign(state,data);publish();}};
+ return {w,events,draws,advance,click,walk,get state(){return state;},update(data){Object.assign(state,data);publish();}};
 }
 for(const language of ['indonesian','chinese'])test(`${language}: mobile completes a cultural story, accepts an invitation, dresses, and explores the festival`,async t=>{
  const p=page(t),d=p.w.document;
@@ -80,7 +80,19 @@ for(const language of ['indonesian','chinese'])test(`${language}: mobile complet
  p.click(`[data-outfit="${journeys[language].outfits[0].id}"]`);
  p.click(`[data-outfit="${journeys[language].outfits[1].id}"]`);
  assert.equal(p.state.outfit,journeys[language].outfits[1].id);
+ const preview=d.querySelector('.wardrobe-preview svg');
+ assert.equal(preview.classList.contains('bau-nyale-outfit'),language==='indonesian');
+ if(language==='indonesian'){
+  const chosen=d.querySelector(`[data-outfit="${p.state.outfit}"] .outfit-thumbnail svg`);
+  assert.equal(preview.outerHTML,chosen.outerHTML,'wardrobe preview and choice use the same Bau Nyale artwork');
+  assert.equal(d.querySelectorAll('.outfit-thumbnail svg.bau-nyale-outfit').length,2);
+ }
  p.click('#outfit-done');assert.equal(p.state.phase,'travelling');p.update({phase:'festival'});
+ if(language==='indonesian'){
+  p.draws.length=0;await p.advance(50);
+  assert.ok(p.draws.some(([image])=>image?.src?.includes('bau-nyale-outfit')&&image.src.includes(encodeURIComponent(journeys.indonesian.outfits[1].colour))),
+   'the rose Bau Nyale outfit is drawn on the festival Jelly');
+ }
  assert.equal(d.querySelector('#mission-step').textContent,'MISSION 5 OF 5');
  for(const item of journeys[language].festivalItems){
   assert.equal(d.querySelector('#objective').textContent,item.request);
@@ -113,6 +125,25 @@ test('refresh restores completed activity and memory book; aquarium displays ret
  assert.equal(a.w.document.querySelector('header'),null,'aquarium has no header');
  assert.match(a.w.document.querySelector('#aquarium').getAttribute('aria-label'),/1 collected memories/);
  a.update({phase:'room'});assert.match(a.w.document.querySelector('#aquarium-status').textContent,/common room/);
+});
+
+for (const [language, voice] of [
+ ['indonesian',{name:'Damayanti',lang:'id_ID'}],
+ ['chinese',{name:'Tingting',lang:'zh_CN'}]
+]) test(`${language} memory replay selects the target-language voice`,async t=>{
+ const p=page(t),spoken=[],english={name:'English',lang:'en-US'};
+ p.w.SpeechSynthesisUtterance=class { constructor(text){this.text=text;} };
+ p.w.speechSynthesis={getVoices:()=>[english,voice],cancel(){},speak(line){spoken.push(line);},
+  addEventListener(){},removeEventListener(){}};
+ p.w.eval(fs.readFileSync(path.join(__dirname,'../public/js/vocabulary-speech.js'),'utf8'));
+ const item={...journeys[language].storyRewards[0],language,source:'story'};
+ p.update({phase:'room',language,trip:1,memories:[item]});
+ p.walk('memories');await p.advance(6500);
+ p.click('.word-replay');
+ assert.equal(spoken.length,1);
+ assert.equal(spoken[0].text,item.word);
+ assert.equal(spoken[0].voice,voice);
+ assert.equal(spoken[0].lang,language==='chinese'?'zh-CN':'id-ID');
 });
 test('switching from a Chinese trip to Indonesian restores the reference story illustration',async t=>{
  const p=page(t),d=p.w.document;

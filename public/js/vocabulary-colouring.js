@@ -3,13 +3,22 @@
 // Instance-scoped colouring; no rewards or correctness decisions live here.
 function mount(root, item, onDone, onCancel = () => {}) {
  if (!window.OceanArt.hasIcon(item.icon)) throw new Error('Missing vocabulary outline: ' + item.icon);
- const art=window.OceanArt,outline=art.outline(item.icon);
+ const art=window.OceanArt,outline=art.outline(item.icon),sticker=art.asset?.(item.icon);
  let active=true,drawing=false,painted=false,busy=false,revision=0,colour='#e98faf';
  const focusBefore=document.activeElement;
  root.innerHTML=`<section class="vocabulary-colouring activity-panel" role="dialog" aria-modal="true" aria-label="Colour your cultural object"><p>Colour your object, then press Done.</p><div class="rhyme-paper"><div class="colour-base">${outline}</div><canvas class="vocabulary-paint" width="400" height="400" aria-label="Draw colours on your object"></canvas><div class="colour-lines">${outline}</div></div><div class="rhyme-palette">${['#e98faf','#a991d4','#73bdc7','#f2c66e','#86bc96'].map((c,i)=>`<button type="button" data-paint="${c}" aria-label="${['Pink','Purple','Blue','Yellow','Green'][i]}" aria-pressed="${i===0}" style="background:${c}"></button>`).join('')}</div><div class="paint-tools"><button type="button" class="secondary" data-tool="fill">Fill object</button><button type="button" class="secondary" data-tool="clear">Clear</button><button type="button" class="primary" data-tool="done" disabled>Done →</button><button type="button" class="secondary" data-tool="cancel">Back to room</button></div><p class="small-note vocabulary-paint-status" role="status">Choose a colour and draw, or use Fill object.</p></section>`;
  const panel=root.querySelector('section'),canvas=root.querySelector('canvas'),ctx=canvas.getContext('2d'),done=root.querySelector('[data-tool="done"]'),status=root.querySelector('[role="status"]');
  const paintedState=value=>{painted=value;done.disabled=!value||busy;};
- const imageFor=svg=>new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=reject;image.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);});
+ const imageFor=(source,isUrl=false)=>new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=reject;image.src=isUrl?source:'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(source);});
+ const drawSticker=(context,image)=>{
+  if(!sticker?.raster){context.drawImage(image,0,0,400,400);return;}
+  // Match the 4–96 viewBox inset in OceanArt.outline without stretching the
+  // supplied portrait into a square or cropping its line drawing.
+  const naturalWidth=image.naturalWidth||400,naturalHeight=image.naturalHeight||naturalWidth;
+  const side=368,ratio=Math.min(side/naturalWidth,side/naturalHeight);
+  const width=naturalWidth*ratio,height=naturalHeight*ratio;
+  context.drawImage(image,(400-width)/2,(400-height)/2,width,height);
+ };
  const point=e=>{const rect=canvas.getBoundingClientRect();return{x:(e.clientX-rect.left)*400/rect.width,y:(e.clientY-rect.top)*400/rect.height};};
  function down(e){if(!active||busy)return;e.preventDefault();canvas.setPointerCapture?.(e.pointerId);drawing=true;revision++;const p=point(e);ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x+.1,p.y+.1);ctx.strokeStyle=colour;ctx.lineWidth=13;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke();paintedState(true);}
  function move(e){if(!drawing||busy)return;e.preventDefault();const p=point(e);ctx.lineTo(p.x,p.y);ctx.strokeStyle=colour;ctx.stroke();}
@@ -18,15 +27,36 @@ function mount(root, item, onDone, onCancel = () => {}) {
  root.querySelectorAll('[data-paint]').forEach(button=>button.addEventListener('click',()=>{if(!active||busy)return;colour=button.dataset.paint;root.querySelectorAll('[data-paint]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));}));
  root.querySelector('[data-tool="fill"]').addEventListener('click',async()=>{
   if(!active||busy)return;const stamp=++revision;status.textContent='Colouring…';
-  try{const image=await imageFor(art.outline(item.icon,colour));if(!active||busy||stamp!==revision)return;ctx.clearRect(0,0,400,400);ctx.drawImage(image,0,0,400,400);paintedState(true);status.textContent='Ready when you are. Press Done to save.';}catch{if(active)status.textContent='Try drawing with the brush instead.';}
+  try{
+   ctx.clearRect(0,0,400,400);
+   if(sticker){
+    const [colourShape,lines]=await Promise.all([imageFor(sticker.color,true),imageFor(sticker.outline,true)]);
+    if(!active||busy||stamp!==revision)return;
+    drawSticker(ctx,colourShape);
+    ctx.globalCompositeOperation='source-in';ctx.fillStyle=colour;ctx.fillRect(0,0,400,400);
+    ctx.globalCompositeOperation='source-over';drawSticker(ctx,lines);
+   } else {
+    const image=await imageFor(art.outline(item.icon,colour));
+    if(!active||busy||stamp!==revision)return;
+    ctx.drawImage(image,0,0,400,400);
+   }
+   paintedState(true);status.textContent='Ready when you are. Press Done to save.';
+  }catch{ctx.globalCompositeOperation='source-over';if(active)status.textContent='Try drawing with the brush instead.';}
  });
  root.querySelector('[data-tool="clear"]').addEventListener('click',()=>{if(!active||busy)return;revision++;ctx.clearRect(0,0,400,400);paintedState(false);});
  done.addEventListener('click',async()=>{
   if(!active||busy||!painted)return;busy=true;revision++;drawing=false;done.disabled=true;status.textContent='Saving your coloured object…';
   try{
-   const base=await imageFor(outline);if(!active)return;
+   const base=await imageFor(sticker?.outline||outline,Boolean(sticker));if(!active)return;
    const snapshot=document.createElement('canvas');snapshot.width=snapshot.height=400;const out=snapshot.getContext('2d');
-   out.drawImage(base,0,0,400,400);out.globalCompositeOperation='multiply';out.drawImage(canvas,0,0);out.globalCompositeOperation='destination-in';out.drawImage(base,0,0,400,400);out.globalCompositeOperation='multiply';out.drawImage(base,0,0,400,400);
+   if(sticker){
+    const silhouette=await imageFor(sticker.color,true);if(!active)return;
+    out.drawImage(canvas,0,0);out.globalCompositeOperation='destination-in';
+    drawSticker(out,silhouette);out.globalCompositeOperation='source-over';
+    drawSticker(out,base);
+   } else {
+    out.drawImage(base,0,0,400,400);out.globalCompositeOperation='multiply';out.drawImage(canvas,0,0);out.globalCompositeOperation='destination-in';out.drawImage(base,0,0,400,400);out.globalCompositeOperation='multiply';out.drawImage(base,0,0,400,400);
+   }
    await onDone(snapshot.toDataURL('image/png'));
   }catch{if(active){busy=false;done.disabled=false;status.textContent='Your drawing could not be saved. Press Done to retry.';}}
  });

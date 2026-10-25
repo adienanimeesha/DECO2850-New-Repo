@@ -12,7 +12,7 @@ function presentation(state, content) {
   colouringItemId: question.correctItemId, colouringAsset: question.colouringAsset,
   question: {
    before: question.sentenceBefore, word: question.targetWord, after: question.sentenceAfter,
-   pronunciation: question.pinyin || '', hint: question.hint,
+   pronunciation: question.pinyin || '', hint: content.learningRetryMessage,
    objects: question.options.map(option => ({id: option.itemId, icon: option.asset}))
   }
  };

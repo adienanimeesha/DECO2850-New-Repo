@@ -20,13 +20,27 @@ test('all 30 real curriculum questions map to supported, parseable illustrations
     const state = {phase:'room',language,trip:1,learning:{active:{level:level.level,questionIndex:index,questionId:q.id,attemptId:++count,stage:'select'}}};
     const view = bridge.presentation(state, track);
     assert.equal(view.question.word, q.targetWord);
-    assert.equal(view.question.hint, q.hint);
+    assert.equal(view.question.hint, track.learningRetryMessage);
     assert.deepEqual(view.question.objects.map(x=>x.id), q.options.map(x=>x.itemId));
     for (const asset of [...q.options.map(x=>x.asset),q.colouringAsset]) {
      assert.ok(w.OceanArt.hasIcon(asset), `Missing ${language} ${q.id}: ${asset}`);
-     const svg = new w.DOMParser().parseFromString(w.OceanArt.outline(asset), 'image/svg+xml');
-     assert.equal(svg.querySelector('parsererror'), null);
-     assert.ok(svg.querySelectorAll('path,rect,circle,ellipse').length > 0, asset);
+     const files = w.OceanArt.asset(asset);
+     assert.ok(files, `Missing local sticker mapping: ${asset}`);
+     for (const variant of ['color','outline']) {
+      assert.match(files[variant], /^\/(?:assets\/learning|assetNEW)\//);
+      const local = 'public' + files[variant];
+      assert.ok(fs.existsSync(local), `Broken ${variant} asset path: ${local}`);
+      if(files.raster){
+       assert.match(local,/\.jpe?g$/);
+       assert.equal(fs.readFileSync(local).subarray(0,3).toString('hex'),'ffd8ff',`Invalid JPEG: ${local}`);
+       assert.ok(fs.statSync(local).size < 300000,`Oversized lesson picture: ${local}`);
+      } else {
+       const svg = new w.DOMParser().parseFromString(fs.readFileSync(local,'utf8'), 'image/svg+xml');
+       assert.equal(svg.querySelector('parsererror'), null, local);
+       assert.ok(svg.querySelectorAll('path,rect,circle,ellipse').length > 0, local);
+       assert.ok(fs.statSync(local).size < 40000, `Oversized sticker: ${local}`);
+      }
+     }
     }
     const objects = w.VocabularyGameplay.placeObjects(view.question.objects, {
      bounds:{left:49,right:911,top:127,bottom:567},player:{x:486,y:408,radius:21},
@@ -38,6 +52,79 @@ test('all 30 real curriculum questions map to supported, parseable illustrations
   }
  }
  assert.equal(count,30);
+ const princess=w.OceanArt.asset('princess'),sea=w.OceanArt.asset('sea');
+ assert.deepEqual(w.OceanArt.asset('wave'),sea,'sea and wave reuse the supplied ocean picture');
+ assert.equal(princess.outline,'/assetNEW/mandalika.jpeg');
+ assert.equal(sea.outline,'/assetNEW/ocean.jpeg');
+ for(const picture of [princess,sea]){
+  assert.equal(picture.round,true);
+  assert.notEqual(picture.color,picture.outline,'floating art is coloured; popup art is black and white');
+ }
+ // The same identities resolve to the same files in the story/festival scenes.
+ for(const [language,track] of Object.entries(content))for(const item of track.festivalItems){
+  const match=track.learningLevels.flatMap(level=>level.questions).find(q=>q.targetWord===item.word);
+  if(match)assert.deepEqual(w.OceanArt.asset(item.icon),w.OceanArt.asset(match.colouringAsset),`${language}: ${item.word}`);
+ }
+ const storyMarkup=fs.readFileSync('public/mobile.html','utf8');
+ for(const key of ['shell','nyale','boat'])
+  assert.ok(storyMarkup.includes(`href="${w.OceanArt.asset(key).color}"`),`storybook does not reuse ${key}`);
+});
+
+test('Bau Nyale areas use the supplied local backgrounds in story order', () => {
+ const paths = [
+  '/assetNEW/foodcourtyard(baunyale).jpeg',
+  '/assetNEW/musicgathering(baunyale).jpeg',
+  '/assetNEW/seasideharbour(baunyale).jpeg'
+ ];
+ assert.deepEqual(content.indonesian.festivalAreas.map(area=>area.background),paths);
+ for(const path of paths) {
+  const file='public'+path;
+  assert.ok(fs.existsSync(file),`Missing festival background: ${file}`);
+  assert.equal(fs.readFileSync(file).subarray(0,3).toString('hex'),'ffd8ff',`Invalid JPEG: ${file}`);
+ }
+ assert.ok(content.chinese.festivalAreas.every(area=>!area.background),'Chinese festival keeps its own artwork');
+});
+
+test('each Bau Nyale mission has four spaced transparent PNG choices with named distractors', () => {
+ const track=content.indonesian,seen=new Set();
+ assert.deepEqual(track.festivalNavigation,{
+  left:'/assetNEW/ArrowPointingToTheLeft.png',right:'/assetNEW/ArrowPointingRight.png'
+ });
+ for(const [area,zone] of track.festivalAreas.entries()) {
+  const choices=[track.festivalItems.find(item=>item.area===area),...zone.distractors];
+  assert.equal(choices.length,4);
+  assert.equal(zone.distractors.length,3);
+  assert.equal(new Set(choices.map(item=>item.festivalImage)).size,4);
+  for(const choice of choices) {
+   assert.ok(choice.id&&choice.word&&choice.meaning&&choice.festivalImage);
+   assert.ok(!seen.has(choice.id),`Repeated selection ID: ${choice.id}`);seen.add(choice.id);
+   for(const other of choices)if(other!==choice)
+    assert.ok(Math.hypot(choice.x-other.x,choice.y-other.y)>220,`${choice.id} overlaps ${other.id}`);
+  }
+ }
+ for(const path of [...track.festivalItems,...track.festivalAreas.flatMap(area=>area.distractors)].map(item=>item.festivalImage).concat(Object.values(track.festivalNavigation))) {
+  const file='public'+path,bytes=fs.readFileSync(file);
+  assert.equal(bytes.subarray(0,8).toString('hex'),'89504e470d0a1a0a',`Invalid PNG: ${file}`);
+  assert.equal(bytes[25],6,`PNG must have transparency: ${file}`);
+ }
+});
+
+test('supplied tutorial pictures render as circular coloured choices without stretching',t=>{
+ const dom=new JSDOM('<!doctype html>',{runScripts:'outside-only'});t.after(()=>dom.window.close());
+ const w=dom.window,calls=[];
+ w.Image=class {constructor(){this.complete=true;this.naturalWidth=1156;this.naturalHeight=1388;}set src(value){this._src=value;}};
+ w.eval(fs.readFileSync('public/js/ocean-art.js','utf8'));
+ const ctx={canvas:{getBoundingClientRect:()=>({width:960,height:620})},
+  save(){calls.push('save');},beginPath(){calls.push('path');},ellipse(...args){calls.push(['ellipse',...args]);},
+  clip(){calls.push('clip');},drawImage(...args){calls.push(['image',...args]);},restore(){calls.push('restore');}};
+ for(const icon of ['princess','sea','wave']){
+  calls.length=0;w.OceanArt.canvasIcon(ctx,icon,100,100,68);
+  assert.equal(calls[0],'save');assert.equal(calls[2][0],'ellipse');
+  assert.equal(calls[3],'clip');assert.equal(calls[4][0],'image');
+  assert.equal(calls[4].length,10,'source and destination crop preserve image proportions');
+  assert.equal(calls[4][4],calls[4][5],'the source crop is square');
+  assert.equal(calls.at(-1),'restore');
+ }
 });
 
 // Real backend handlers with asynchronously delivered socket events. No fixture
@@ -67,7 +154,8 @@ test('adapter uses real backend events, waits for state, rejects errors and dupl
  const start=adapter.request('startLevel',{level:1});
  await assert.rejects(adapter.request('startLevel',{level:1}),/wait/);await start;
  const q=content.indonesian.learningLevels[0].questions[0], key=bridge.keyOf(api.journey.snapshot());
- const wrong=await adapter.request('selectObject',{key,objectId:q.distractorItemIds[0]});assert.equal(wrong.correct,false);assert.match(wrong.hint,/putri/);
+ const wrong=await adapter.request('selectObject',{key,objectId:q.distractorItemIds[0]});
+ assert.equal(wrong.correct,false);assert.equal(wrong.hint,content.indonesian.learningRetryMessage);
  const right=await adapter.request('selectObject',{key,objectId:q.correctItemId});assert.equal(right.colouringAllowed,true);assert.equal(api.journey.snapshot().learning.active.stage,'colouring');
  await adapter.request('completeQuestion',{key,artwork:'data:image/png;base64,YQ=='});assert.equal(api.journey.snapshot().learning.active.questionIndex,1);
  await assert.rejects(adapter.request('completeQuestion',{key}),/no longer active/);
@@ -144,7 +232,9 @@ for(const language of ['indonesian','chinese'])test(`${language}: real sockets a
   assert.equal(p.d.querySelector('.vocabulary-prompt mark').textContent,q.targetWord);
   let object=p.controller.objects.find(o=>o.id===q.distractorItemIds[0]);
   await p.walk(object.x,object.y);
-  await waitFor(()=>p.d.querySelector('.vocabulary-hint').textContent.includes(q.hint));
+  await waitFor(()=>p.d.querySelector('.vocabulary-hint').textContent===content[language].learningRetryMessage);
+  assert.ok(!p.d.querySelector('.vocabulary-hint').textContent.includes(q.targetWord));
+  assert.ok(!p.d.querySelector('.vocabulary-hint').textContent.includes(q.translation));
   assert.equal(api.journey.snapshot().learning.active.stage,'select');
   object=p.controller.objects.find(o=>o.id===q.correctItemId);await p.walk(object.x,object.y);
   await waitFor(()=>p.d.querySelector('.vocabulary-colouring'));
@@ -200,9 +290,34 @@ for(const language of ['indonesian','chinese'])test(`${language}: real sockets a
  p.click(`[data-outfit="${content[language].outfits[0].id}"]`);
  await waitFor(()=>p.w.JellyJourney.state.outfit);p.click('#outfit-done');
  await waitFor(()=>p.w.JellyJourney.state.phase==='festival');
+ if(language==='indonesian'){
+  p.draws.length=0;await p.advance(50);
+  assert.ok(p.draws.some(([image])=>image?.src===content.indonesian.festivalAreas[0].background),
+   'food courtyard uses the supplied background');
+  assert.ok(p.draws.some(([image])=>image?.src?.includes('bau-nyale-outfit')),
+   'festival Jelly uses the same new Bau Nyale artwork as the wardrobe');
+ }
  for(const [index,item] of content[language].festivalItems.entries()) {
   if(p.w.JellyJourney.state.festivalArea!==item.area){await p.walk(880,450);await waitFor(()=>p.w.JellyJourney.state.festivalArea===item.area);}
+  if(language==='indonesian'){
+   p.draws.length=0;await p.advance(50);
+   assert.ok(p.draws.some(([image])=>image?.src===content.indonesian.festivalAreas[item.area].background),
+    `festival area ${item.area} draws its matching background`);
+   for(const choice of [item,...content.indonesian.festivalAreas[item.area].distractors])
+    assert.ok(p.draws.some(([image])=>image?.src===choice.festivalImage),`missing floating PNG for ${choice.word}`);
+   const direction=item.area===0?'right':item.area===2?'left':null;
+   if(direction)assert.ok(p.draws.some(([image])=>image?.src===content.indonesian.festivalNavigation[direction]),
+    `missing ${direction} navigation PNG`);
+   const selected=content.indonesian.festivalAreas[item.area].distractors[0];
+   await p.walk(selected.x,selected.y);
+   await waitFor(()=>p.d.querySelector('#feedback').textContent.includes(`That's not ${item.word}. That's ${selected.word}`));
+   assert.equal(p.w.JellyJourney.state.festivalFeedback,false,'a distractor cannot finish the mission');
+  }
   await p.walk(item.x,item.y);await waitFor(()=>p.w.JellyJourney.state.festivalFeedback&&p.w.JellyJourney.state.festivalMission===index&&!p.d.querySelector('#activity-screen').hidden);
+  if(language==='indonesian'){
+   assert.equal(p.d.querySelector('.festival-discovery img')?.getAttribute('src'),item.festivalImage);
+   assert.equal(p.d.querySelector('#activity-title').textContent,item.thanks);
+  }
   p.click('#festival-next');await waitFor(()=>p.w.JellyJourney.state.festivalMission===index+1);
  }
  p.click('#take-home');await waitFor(()=>p.w.JellyJourney.state.phase==='aquarium');
@@ -211,6 +326,12 @@ for(const language of ['indonesian','chinese'])test(`${language}: real sockets a
  assert.equal(api.journey.snapshot().learning.levels[1].unlocked,true);
  assert.match(p.d.querySelector('#welcome-return').textContent,/unlocked Level 2/);
  await waitFor(()=>/13 collected memories/.test(aquarium.d.querySelector('#aquarium-status').textContent));
+ if(language==='indonesian'){
+  assert.equal(api.journey.snapshot().outfit,content.indonesian.outfits[0].id);
+  aquarium.draws.length=0;await aquarium.advance(50);
+  assert.ok(aquarium.draws.some(([image])=>image?.src?.includes('bau-nyale-outfit')),
+   'the pet aquarium draws the selected new Bau Nyale outfit after returning');
+ }
  assert.equal(p.d.querySelector(`[data-language="${language}"]`).getAttribute('aria-pressed'),'true');
  p.click('#continue-adventure');await waitFor(()=>p.w.JellyJourney.state.phase==='room');
  assert.equal(p.w.JellyJourney.state.learning.levels[0].completed,true);
@@ -422,7 +543,7 @@ test('all choices have matching affordances, stable hitboxes, pointer feedback a
  p.click(`[data-vocabulary-choice="${item.id}"]`);assert.equal(p.sent.filter(([event])=>event==='journey-learning-select-item').length,selections);
  await p.advance(7000);await waitFor(()=>p.sent.filter(([event])=>event==='journey-learning-select-item').length>selections);
  // The first question's second picture is a distractor, so the caption persists.
- await waitFor(()=>p.d.querySelector('.vocabulary-hint').textContent.includes(question.hint));
+ await waitFor(()=>p.d.querySelector('.vocabulary-hint').textContent===content.chinese.learningRetryMessage);
  assert.equal(bubble.hidden,false);
  const right=p.controller.objects.find(o=>o.id===question.correctItemId);await p.walk(right.x,right.y);await waitFor(()=>p.d.querySelector('.vocabulary-colouring'));
  assert.equal(bubble.hidden,true);p.click('[data-tool="cancel"]');assert.equal(bubble.hidden,true);

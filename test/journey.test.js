@@ -58,7 +58,9 @@ async function answerCurrent(api, client, { wrong = false, artwork } = {}) {
   if (wrong) {
     await api.send(client, 'journey-learning-select-item', { ...key, itemId: item.distractorItemIds[0] });
     assert.equal(api.journey.snapshot().learning.active.stage, 'select');
-    assert.match(client.results.at(-1).hint, new RegExp(item.targetWord));
+    assert.equal(client.results.at(-1).hint, content[api.journey.snapshot().language].learningRetryMessage);
+    assert.ok(!client.results.at(-1).hint.includes(item.targetWord));
+    assert.ok(!client.results.at(-1).hint.includes(item.translation));
   }
   await api.send(client, 'journey-learning-colouring-complete', key);
   assert.equal(api.journey.snapshot().learning.active.stage, 'select', 'cannot colour before correct selection');
@@ -154,6 +156,14 @@ for (const language of ['indonesian', 'chinese']) {
         await api.send(mobile, 'journey-area', item.area);
       await api.send(mobile, 'journey-find', 'wrong');
       assert.equal(api.journey.snapshot().festivalFeedback, false);
+      if(language==='indonesian') {
+        for(const selected of content.indonesian.festivalAreas[item.area].distractors) {
+          await api.send(mobile, 'journey-find', selected.id);
+          assert.equal(mobile.hints.at(-1),`That's not ${item.word}. That's ${selected.word} (${selected.meaning})! Let's try again.`);
+          assert.equal(api.journey.snapshot().festivalMission,item.area);
+          assert.equal(api.journey.snapshot().festivalFeedback,false);
+        }
+      }
       await api.send(mobile, 'journey-find', item.id);
       await api.send(mobile, 'journey-find', item.id);
       assert.equal(api.journey.snapshot().festivalFeedback, true);

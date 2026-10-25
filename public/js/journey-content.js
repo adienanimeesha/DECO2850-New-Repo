@@ -93,9 +93,24 @@ const moonStory = [
   "Wonderful! 团圆, tuán yuán, means reunion. Our story ends with people coming together."
  ])
 ];
+// One name and one transparent illustration per Bau Nyale object, reused in
+// the festival scene and in the response to a child's selection.
+const bauNyaleFestivalArt = {
+ ayam: {word:'ayam Taliwang',meaning:"Lombok's traditional grilled chicken",festivalImage:'/assetNEW/ayam_taliwang.png'},
+ gendang: {word:'gendang',meaning:'a drum',festivalImage:'/assetNEW/gendang.png'},
+ perahu: {word:'perahu',meaning:'a boat',festivalImage:'/assetNEW/perahu.png'},
+ kerang: {word:'kerang',meaning:'a seashell',festivalImage:'/assetNEW/seashell.png'},
+ guci: {word:'guci',meaning:'a pottery jar',festivalImage:'/assetNEW/pottery_jar.png'},
+ keranjang: {word:'keranjang tanaman',meaning:'a basket of plants',festivalImage:'/assetNEW/plant_basket.png'},
+ bintangLaut: {word:'bintang laut',meaning:'a starfish',festivalImage:'/assetNEW/starfish.png'},
+ peti: {word:'peti kayu',meaning:'a wooden crate',festivalImage:'/assetNEW/crate.png'},
+ tong: {word:'tong kayu',meaning:'a wooden barrel',festivalImage:'/assetNEW/barrel.png'}
+};
+const bauNyaleChoice = (area, key, x, y) => ({id:`${area}-${key}`,...bauNyaleFestivalArt[key],x,y});
+const learningRetryMessage = 'Good try! Look closely at the pictures and try again.';
 const journeys = {
  indonesian: {
-  label: "Bahasa Indonesia", shortLabel: "Indonesian", speech: "id-ID", storyTitle: "Putri Mandalika", storyLabel: "A Sasak legend from Lombok, Indonesia", chapters: mandalika,
+  label: "Bahasa Indonesia", shortLabel: "Indonesian", speech: "id-ID", learningRetryMessage, storyTitle: "Putri Mandalika", storyLabel: "A Sasak legend from Lombok, Indonesia", chapters: mandalika,
   festival: "Bau Nyale", place: "Lombok's shore", festivalIntro: "Follow Jelly to a colourful seaside celebration. Help Jelly with three requests across the food courtyard, music gathering, and harbour.",
   storyRewards: [
    {id:"kerang", word:"kerang", meaning:"seashell", icon:"shell"}, {id:"undangan",word:"undangan",meaning:"invitation",icon:"letter"},
@@ -108,15 +123,26 @@ const journeys = {
    {word:"terbang",meaning:"fly",icon:"fly"}
   ]},
   outfits:[{id:"sasak-lilac",name:"Lilac woven wrap",description:"A stylised Sasak-inspired woven wrap and headcloth.",colour:"#aa7cce",accent:"#ffe3a0"},{id:"sasak-rose",name:"Rose woven wrap",description:"The same festival outfit in warm rose and gold.",colour:"#e392b7",accent:"#fff0bb"}],
-  festivalAreas:[{name:'Food courtyard',decor:'food',distractors:[{id:'food-shell',icon:'shell',x:310,y:440}]},{name:'Music gathering',decor:'music',distractors:[{id:'music-lantern',icon:'lantern',x:710,y:500}]},{name:'Seaside harbour',decor:'harbour',distractors:[{id:'harbour-drum',icon:'drum',x:320,y:430}]}],
+  festivalNavigation:{left:'/assetNEW/ArrowPointingToTheLeft.png',right:'/assetNEW/ArrowPointingRight.png'},
+  festivalAreas:[
+   {name:'Food courtyard',decor:'food',background:'/assetNEW/foodcourtyard(baunyale).jpeg',distractors:[
+    bauNyaleChoice('food','kerang',220,315),bauNyaleChoice('food','guci',350,520),bauNyaleChoice('food','keranjang',630,520)
+   ]},
+   {name:'Music gathering',decor:'music',background:'/assetNEW/musicgathering(baunyale).jpeg',distractors:[
+    bauNyaleChoice('music','kerang',760,315),bauNyaleChoice('music','guci',350,520),bauNyaleChoice('music','bintangLaut',630,520)
+   ]},
+   {name:'Seaside harbour',decor:'harbour',background:'/assetNEW/seasideharbour(baunyale).jpeg',distractors:[
+    bauNyaleChoice('harbour','bintangLaut',220,315),bauNyaleChoice('harbour','peti',350,520),bauNyaleChoice('harbour','tong',630,520)
+   ]}
+  ],
   festivalItems:[
-   {id:'ayam-taliwang',word:'ayam Taliwang',meaning:'Taliwang grilled chicken',icon:'chicken',area:0,x:660,y:420,request:"I'm hungry! Can you find ayam Taliwang and bring it to me?",thanks:'Thank you for feeding me ayam Taliwang!',fact:'Ayam Taliwang is a grilled chicken dish from Lombok, usually prepared with a spicy seasoning. Families often enjoy it with rice and vegetables.'},
-   {id:'gendang',word:'gendang',meaning:'drum',icon:'drum',area:1,x:300,y:370,request:"I'd love to hear the music! Find me a gendang at the music gathering.",thanks:'Thank you for finding a gendang!',fact:'Gendang means drum. In Lombok, Sasak musicians play large drums together in the Gendang Beleq ensemble during celebrations.'},
-   {id:'perahu',word:'perahu',meaning:'boat',icon:'boat',area:2,x:660,y:400,request:"Let's explore the shore! Find me a perahu at the harbour.",thanks:'Thank you for finding a perahu!',fact:'Perahu means boat. Boats help coastal communities travel and fish. This little boat keepsake will remind us of our seaside adventure.'}
+   {id:'ayam-taliwang',...bauNyaleFestivalArt.ayam,icon:'chicken',area:0,x:760,y:315,request:"Find ayam Taliwang, Lombok's traditional grilled chicken, in the Food courtyard.",thanks:'You found ayam Taliwang!',fact:"This is Lombok's traditional grilled chicken."},
+   {id:'gendang',...bauNyaleFestivalArt.gendang,icon:'drum',area:1,x:220,y:315,request:'Find gendang in the Music gathering.',thanks:'You found gendang!',fact:'A gendang is a drum played at celebrations.'},
+   {id:'perahu',...bauNyaleFestivalArt.perahu,icon:'boat',area:2,x:760,y:315,request:'Find perahu in the Seaside harbour.',thanks:'You found perahu!',fact:'A perahu is a boat used by coastal communities.'}
   ]
  },
  chinese: {
-  label:"中文 · Chinese",shortLabel:"Chinese",speech:"zh-CN",storyTitle:"The Moon Rabbit",storyLabel:"An imagined journey inspired by Chinese moon folklore",chapters:moonStory,
+  label:"中文 · Chinese",shortLabel:"Chinese",speech:"zh-CN",learningRetryMessage,storyTitle:"The Moon Rabbit",storyLabel:"An imagined journey inspired by Chinese moon folklore",chapters:moonStory,
   festival:"Mid-Autumn Festival",place:"the moonlit garden",festivalIntro:"Follow Jelly to a lantern-lit garden. Help Jelly with three requests across the mooncake courtyard, lantern walk, and moon garden.",
   storyRewards:[{id:"moon-story",word:"月亮",pronunciation:"yuè liang",meaning:"moon",icon:"moon"},{id:"family",word:"家人",pronunciation:"jiā rén",meaning:"family members",icon:"letter"},{id:"mooncake-story",word:"月饼",pronunciation:"yuè bǐng",meaning:"mooncake",icon:"mooncake"},{id:"lantern-story",word:"灯笼",pronunciation:"dēng long",meaning:"lantern",icon:"lantern"},{id:"reunion",word:"团圆",pronunciation:"tuán yuán",meaning:"reunion",icon:"rabbit"}],
   rhyme:{title:"小星星",subtitle:"Sing along with BabyBus",videoId:"GxtknJ9KFKY",channel:"BabyBus",lines:[
@@ -215,7 +241,7 @@ for (const [language, levels] of Object.entries(vocabulary)) {
     language, level: levelIndex + 1, targetWord, translation,
     ...(chinese ? { pinyin: pronunciationOrMeaning } : {}),
     pronunciationLocale: chinese ? 'zh-CN' : 'id-ID',
-    sentenceBefore: `${hint} Can you find the picture for “`,
+    sentenceBefore: 'Can you find the picture for “',
     sentenceAfter: '”?', hint,
     correctItemId: itemId(questionIndex),
     distractorItemIds: distractors.map(itemId), colouringAsset,

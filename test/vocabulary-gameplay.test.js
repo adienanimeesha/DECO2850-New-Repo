@@ -127,12 +127,73 @@ test('segmented narration uses target-language voices and Hanzi, with mouth call
  s=p.utterances.at(-1);assert.equal(s.voice,voices[1]);s.onstart();assert.equal(mouth.at(-1),true);speech.cancel();assert.equal(mouth.at(-1),false);s.onstart();assert.equal(mouth.at(-1),false);
 });
 
+test('dedicated Indonesian and Mandarin voices take priority over English-persona multilingual voices',t=>{
+ const p=setup(t),choose=p.w.VocabularySpeech.voiceFor;
+ const english={name:'Samantha',lang:'en-US'};
+ const genericChinese={name:'Eddy (Chinese (China mainland))',lang:'zh-CN'};
+ const mandarin={name:'Tingting',lang:'zh_CN'};
+ const indonesian={name:'Damayanti',lang:'id_ID'};
+ assert.equal(choose([english,genericChinese,mandarin,indonesian],'zh-CN'),mandarin);
+ assert.equal(choose([english,indonesian],'id-ID'),indonesian);
+ assert.equal(choose([english,{name:'Cantonese',lang:'zh-HK'}],'zh-CN'),undefined);
+ assert.equal(choose([english],'id-ID'),undefined);
+});
+
+for(const [language,targetWord,targetLocale] of [['indonesian','perahu','id-ID'],['chinese','月饼','zh-CN']])
+ test(`${language} question speaks only the target word in ${targetLocale} and never says punctuation`,t=>{
+  const voices=[{lang:'en-US',name:'English'},{lang:'id-ID',name:'Indonesian'},{lang:'zh-CN',name:'Mandarin'}];
+  const p=setup(t,{voices}),level=content[language].learningLevels[0];
+  const index=level.questions.findIndex(item=>item.targetWord===targetWord),item=level.questions[index];
+  assert.ok(index>=0);
+  const controller=p.w.VocabularyGameplay.create({
+   root:p.root,room:{geometry:()=>geometry,clearMovement(){}},
+   adapter:{select(){},complete(){},exit(){}}
+  });
+  controller.sync({
+   key:`spoken-${language}`,language,level:1,index,
+   question:{before:item.sentenceBefore,word:item.targetWord,after:item.sentenceAfter,
+    pronunciation:item.pinyin||'',hint:item.hint,
+    objects:item.options.map(option=>({id:option.itemId,icon:option.asset}))}
+  });
+  assert.equal(p.root.querySelector('.vocabulary-prompt').textContent,
+   item.sentenceBefore+item.targetWord+item.sentenceAfter);
+  assert.equal(p.utterances.length,1);
+  assert.equal(p.utterances[0].lang,'en-US');
+  assert.doesNotMatch(p.utterances[0].text,new RegExp(targetWord));
+  assert.doesNotMatch(p.utterances[0].text,/[“”]/);
+  p.utterances[0].onend();
+  assert.equal(p.utterances.length,2);
+  assert.equal(p.utterances[1].lang,targetLocale);
+  assert.equal(p.utterances[1].text,targetWord);
+  p.utterances[1].onend();
+  assert.equal(p.utterances.length,2,'the visible question mark has no speech segment');
+  assert.match(p.root.textContent,/\?/,'the question mark remains visible');
+  controller.destroy();
+ });
+
 test('missing and late voices never substitute English/Cantonese for Mandarin or Indonesian',async t=>{
  const voices=[{lang:'en-US',name:'English'},{lang:'zh-HK',name:'Cantonese'}],p=setup(t,{voices}),statuses=[];
  const speech=p.w.VocabularySpeech.create({onStatus:value=>statuses.push(value)});
  speech.play([{text:'月饼',lang:'zh-CN'}]);await p.advance(1100);assert.equal(p.utterances.length,0);assert.match(statuses.at(-1),/Mandarin playback unavailable/);assert.equal(p.voiceListeners.size,0);
  speech.play([{text:'gendang',lang:'id-ID'}]);voices.push({lang:'id-ID',name:'Indonesian'});[...p.voiceListeners].forEach(fn=>fn());assert.equal(p.utterances.at(-1).lang,'id-ID');assert.equal(p.voiceListeners.size,0);
  speech.cancel();speech.play([{text:'月饼',lang:'zh-CN'}]);speech.cancel();await p.advance(2000);assert.equal(p.utterances.length,1);
+});
+
+test('missing target-language voice is shown beside the vocabulary controls',async t=>{
+ const p=setup(t,{voices:[{name:'English',lang:'en-US'}]});
+ const controller=p.w.VocabularyGameplay.create({
+  root:p.root,room:{geometry:()=>geometry,clearMovement(){}},
+  adapter:{select(){},complete(){},exit(){}}
+ });
+ controller.sync(question());
+ p.utterances[0].onend();
+ await p.advance(1100);
+ const status=p.root.querySelector('.vocabulary-audio-status');
+ assert.equal(status.hidden,false);
+ assert.match(status.textContent,/Indonesian playback unavailable/);
+ assert.equal(p.utterances.some(line=>line.text===question().question.word),false,
+  'the target word must not use the English voice');
+ controller.destroy();
 });
 
 test('actual room bookshelf callback, click-to-walk, physical selection, gated storybook, and phase cleanup',async t=>{

@@ -4,6 +4,7 @@ const socket = io({ auth: { journey: true } });
 let state = null, selectedLanguage = null, activity = null, outfitChoice = null, activityFocus = null;
 let collectedMemories = [];
 let learningInterface = null, awaitingSnapshot = true, invitationWalkPending = false;
+let wordSpeech = null, wordAudioStatus = null;
 
 const $ = id => document.getElementById(id);
 const art = window.OceanArt;
@@ -45,14 +46,28 @@ function trapFocus(e, root) {
  else if (!e.shiftKey && (document.activeElement === last || !root.contains(document.activeElement))) { e.preventDefault(); first.focus(); }
 }
 function stopAudio() {
+ wordSpeech?.cancel();
+ wordAudioStatus = null;
  window.speechSynthesis?.cancel();
 }
-function speak(text, language = 'en-US') {
- window.speechSynthesis?.cancel();
- if (!('speechSynthesis' in window)) return;
- const speech = new SpeechSynthesisUtterance(text);
- speech.lang = language; speech.rate = .85;
- window.speechSynthesis.speak(speech);
+function speak(text, language = 'en-US', button = null) {
+ if (button) {
+  wordAudioStatus = button.parentElement.querySelector('.word-audio-status');
+  if (!wordAudioStatus) {
+   wordAudioStatus = document.createElement('small');
+   wordAudioStatus.className = 'word-audio-status';
+   wordAudioStatus.setAttribute('role', 'status');
+   button.after(wordAudioStatus);
+  }
+ }
+ if (!window.VocabularySpeech) {
+  if (wordAudioStatus) wordAudioStatus.textContent = 'Language audio is unavailable. Reload the page and try again.';
+  return;
+ }
+ wordSpeech ||= window.VocabularySpeech.create({onStatus(message) {
+  if (wordAudioStatus) { wordAudioStatus.textContent = message; wordAudioStatus.hidden = !message; }
+ }});
+ wordSpeech.play([{text, lang:language}]);
 }
 function closeActivity() {
  const was = activity;
@@ -78,7 +93,7 @@ function openActivity(type) {
  $('activity-screen').hidden = false; renderActivity(); $('close-activity').focus();
 }
 function card(item) {
- return `<article class="memory-card"><div>${item.artwork ? `<img src="${item.artwork}" alt="${item.word}">` : art.svg(item.icon)}</div><strong>${item.word}</strong>${item.pronunciation ? `<small>${item.pronunciation}</small>` : ''}<span>${item.meaning}</span><small>${{story:'Storybook',learning:'Vocabulary',vocabulary:'Vocabulary',festival:'Festival'}[item.source] || 'Memory'} · ${window.JOURNEYS[item.language]?.shortLabel || ''}</small><button type="button" class="word-replay" data-word="${item.word}" data-lang="${item.language}" aria-label="Hear ${item.word}">Hear word ♫</button></article>`;
+ return `<article class="memory-card"><div>${item.artwork ? `<img src="${item.artwork}" alt="${item.word}">` : item.festivalImage ? `<img src="${item.festivalImage}" alt="${item.word}">` : art.svg(item.icon)}</div><strong>${item.word}</strong>${item.pronunciation ? `<small>${item.pronunciation}</small>` : ''}<span>${item.meaning}</span><small>${{story:'Storybook',learning:'Vocabulary',vocabulary:'Vocabulary',festival:'Festival'}[item.source] || 'Memory'} · ${window.JOURNEYS[item.language]?.shortLabel || ''}</small><button type="button" class="word-replay" data-word="${item.word}" data-lang="${item.language}" aria-label="Hear ${item.word}">Hear word ♫</button></article>`;
 }
 function renderActivity() {
  const c = content(), body = $('activity-body');
@@ -95,17 +110,18 @@ function renderActivity() {
   });
  } else if (activity === 'wardrobe') {
   const selected = outfit();
+  const previewClass = state.language === 'indonesian' ? 'wardrobe-preview bau-nyale-preview' : 'wardrobe-preview';
   body.innerHTML = `<p class="eyebrow">THE PEARL WARDROBE</p><h2 id="activity-title">Dress for ${c.festival}</h2>` +
-   (!state.invited ? `<div class="wardrobe-preview">${art.jelly()}</div><p>Your festival outfits unlock after you accept the invitation in the mailbox.</p>` :
-   `<p>Try a colour on Jelly, then choose Done when you're ready.</p><div class="wardrobe-preview">${art.jelly(selected)}</div><div class="outfit-choices">${c.outfits.map(o => `<button type="button" data-outfit="${o.id}" aria-pressed="${selected?.id === o.id}"><span class="outfit-thumbnail">${art.clothing(o)}</span><strong>${o.name}</strong><small>${o.description}</small></button>`).join('')}</div><p class="small-note">Playful illustrations inspired by traditional clothing.</p><button class="primary" id="outfit-done" ${!state.outfit ? 'disabled' : ''}>Done · go to the festival →</button>`);
+   (!state.invited ? `<div class="${previewClass}">${art.jelly()}</div><p>Your festival outfits unlock after you accept the invitation in the mailbox.</p>` :
+   `<p>Try a colour on Jelly, then choose Done when you're ready.</p><div class="${previewClass}">${art.jelly(selected)}</div><div class="outfit-choices">${c.outfits.map(o => `<button type="button" data-outfit="${o.id}" aria-pressed="${selected?.id === o.id}"><span class="outfit-thumbnail">${art.clothing(o)}</span><strong>${o.name}</strong><small>${o.description}</small></button>`).join('')}</div><p class="small-note">Playful illustrations inspired by traditional clothing.</p><button class="primary" id="outfit-done" ${!state.outfit ? 'disabled' : ''}>Done · go to the festival →</button>`);
   body.querySelectorAll('[data-outfit]').forEach(b => b.addEventListener('click', () => { outfitChoice = b.dataset.outfit; send('journey-try-outfit', outfitChoice); renderActivity(); body.querySelector(`[data-outfit="${outfitChoice}"]`)?.focus(); }));
   $('outfit-done')?.addEventListener('click', () => { closeActivity(); send('journey-festival'); });
  } else if (activity === 'memories') {
   body.innerHTML = `<p class="eyebrow">LITTLE DISCOVERIES, BIG MEMORIES</p><h2 id="activity-title">My memory book</h2><p>Your learned words and collected items travel home with Jelly.</p><div class="memory-grid">${collectedMemories.map(card).join('') || '<p class="memory-empty">No discoveries yet. Words and items appear here after you earn them in vocabulary levels, stories, or festivals.</p>'}</div>`;
-  body.querySelectorAll('.word-replay').forEach(b => b.addEventListener('click', () => speak(b.dataset.word,window.JOURNEYS[b.dataset.lang].speech)));
+  body.querySelectorAll('.word-replay').forEach(b => b.addEventListener('click', () => speak(b.dataset.word,window.JOURNEYS[b.dataset.lang].speech,b)));
  } else if (activity === 'festival-feedback') {
   const item=c.festivalItems[state.festivalMission||0];
-  body.innerHTML=`<p class="eyebrow">A LITTLE FESTIVAL DISCOVERY</p><div class="festival-discovery">${art.jelly(outfit())}${art.svg(item.icon)}</div><h2 id="activity-title">${item.thanks}</h2><p>${item.fact}</p><p class="small-note">${item.word} is now in your memory book.</p><button class="primary" id="festival-next">${state.festivalMission===c.festivalItems.length-1?'Finish our festival adventure':'Next mission →'}</button>`;
+  body.innerHTML=`<p class="eyebrow">A LITTLE FESTIVAL DISCOVERY</p><div class="festival-discovery">${art.jelly(outfit())}${item.festivalImage?`<img src="${item.festivalImage}" alt="${item.word}">`:art.svg(item.icon)}</div><h2 id="activity-title">${item.thanks}</h2><p>${item.fact}</p><p class="small-note">${item.word} is now in your memory book.</p><button class="primary" id="festival-next">${state.festivalMission===c.festivalItems.length-1?'Finish our festival adventure':'Next mission →'}</button>`;
   $('festival-next').addEventListener('click',()=>{closeActivity();send('journey-next-festival');});
  } else if (activity === 'festival-complete') {
   body.innerHTML = `<p class="eyebrow">WHAT A BEAUTIFUL ADVENTURE</p><div class="wardrobe-preview">${art.jelly(outfit())}</div><h2 id="activity-title">Let’s take our memories home.</h2><p>You found all three festival keepsakes! Jelly will carry ${state.bag.length} discoveries to the aquarium.</p><button class="primary" id="take-home">Swim home to the aquarium →</button>`;
