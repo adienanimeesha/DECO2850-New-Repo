@@ -1,6 +1,7 @@
 (function () {
 'use strict';
 const icons = {
+ bookshelf:'<rect x="9" y="10" width="82" height="80" rx="8" fill="#c6a5dc" stroke="#8866a5" stroke-width="4"/><path d="M13 48H87M13 82H87" stroke="#8866a5" stroke-width="5"/><path d="M23 18V43M36 20V43M50 17L59 42M70 19V42M25 56V77M39 54V77M54 57V77M68 54L77 77" stroke="#fff0bc" stroke-width="9"/><path d="M20 93V87M80 93V87" stroke="#8866a5" stroke-width="5"/>',
  chicken:'<ellipse cx="50" cy="78" rx="43" ry="13" fill="#fff0d7" stroke="#b699bf" stroke-width="3"/><path d="M20 66Q13 27 51 28Q78 23 82 62Q68 81 20 66Z" fill="#dca174" stroke="#a97972" stroke-width="4"/><path d="M46 51Q60 31 75 43Q84 52 66 64L82 77" fill="#e8b282" stroke="#a97972" stroke-width="4"/><path d="M82 77L91 79M82 77L85 86" stroke="#fff4dc" stroke-width="7" stroke-linecap="round"/><path d="M26 51Q37 35 44 41M28 61L39 55" fill="none" stroke="#bc856b" stroke-width="3"/><path d="M12 75L22 70M14 82L28 76" stroke="#8ebf8a" stroke-width="4"/>', 
  sky:'<rect x="8" y="8" width="84" height="84" rx="23" fill="#a9ddf3"/><path d="M20 61Q14 43 31 40Q37 21 55 32Q72 23 77 45Q91 49 81 62Z" fill="#fffaf5" stroke="#9bbccf" stroke-width="3"/><circle cx="72" cy="23" r="10" fill="#ffe5a3"/>',
  eyes:'<ellipse cx="31" cy="51" rx="22" ry="28" fill="#fffcf5" stroke="#b99ec8" stroke-width="4"/><ellipse cx="70" cy="51" rx="22" ry="28" fill="#fffcf5" stroke="#b99ec8" stroke-width="4"/><ellipse cx="36" cy="52" rx="11" ry="16" fill="#836897"/><ellipse cx="66" cy="52" rx="11" ry="16" fill="#836897"/><circle cx="40" cy="45" r="4" fill="#fff"/><circle cx="70" cy="45" r="4" fill="#fff"/>',
@@ -73,5 +74,5 @@ function roomBubble(index, seconds) {
  const alpha=Math.max(0,Math.min(1,(560-y)/32,(y-126)/32));
  return {x:74+(index*127)%810+Math.sin(seconds*.6+index)*4,y,radius:3+index%4,alpha};
 }
-window.OceanArt = { roomBubble, svg, outline, jelly, clothing, canvasIcon, canvasMemory, screenScale };
+window.OceanArt = { hasIcon: icon => Object.prototype.hasOwnProperty.call(icons,icon), roomBubble, svg, outline, jelly, clothing, canvasIcon, canvasMemory, screenScale };
 })();
