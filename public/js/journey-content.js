@@ -58,24 +58,24 @@ function chapter(title, prompt, lines) {
 }
 const moonStory = [
  chapter("The Moon Rabbit", "Tap the bright moon 月亮", [
-  "Look up at the night sky. In Chinese folklore, a rabbit lives on the moon. This is an imagined journey inspired by that legend.",
-  "Jelly follows a silver path toward a bright round moon. What might we discover there?",
+  "Look up at the moon. In some Chinese stories, a rabbit lives there. Let's follow Jelly into a moon story.",
+  "The bright moon helps Jelly find a silver path. Who might be waiting there?",
   "A little rabbit waves hello from a moonlit garden. Its long ears bounce as it welcomes us.",
   "Can you point to the moon? Tap the round moon shining above the garden.",
   "You found it! 月亮, yuè liang, means moon. The moon lights our story tonight."
  ]),
  chapter("A Family Invitation", "Tap both family members to invite them", [
-  "Back on Earth, a family is getting ready for the Mid-Autumn Festival.",
-  "They think about people they love, near and far. They want to celebrate together.",
+  "A family is getting ready for the Mid-Autumn Festival.",
+  "Some loved ones are nearby. Others are far away. They can all look up at the same moon.",
   "Jelly has two invitations to share. The moon will shine above the gathering.",
   "Tap both family members to give each one an invitation.",
   "Both are invited! 家人, jiā rén, means family members. Everyone has a place at our table."
  ]),
- chapter("A Mooncake to Share", "Tap the mooncake 月饼", [
+ chapter("A Mooncake to Share", "Tap 月饼 or drag it to the family table", [
   "The family gathers around a table in the moonlit garden.",
-  "A round mooncake sits in the middle. Mooncakes are shared during the Mid-Autumn Festival.",
-  "Sharing a treat gives everyone a chance to enjoy it together.",
-  "Tap the mooncake on the table to help us share it.",
+  "A round mooncake waits on a tray beside the table. Families share mooncakes during the Mid-Autumn Festival.",
+  "Everyone gets a piece. Sharing a treat is one way to celebrate together.",
+  "Tap the mooncake, or drag it to the middle of the table, to share it.",
   "Lovely! 月饼, yuè bǐng, means mooncake. Sharing makes our celebration warmer."
  ]),
  chapter("Light the Lantern", "Tap the lantern 灯笼, not the star", [
@@ -86,11 +86,11 @@ const moonStory = [
   "You found it! 灯笼, dēng long, means lantern. Look at its warm glow."
  ]),
  chapter("Together Under the Moon", "Tap the rabbit lantern to join the celebration", [
-  "Our imagined moon rabbit joins a real celebration: the Mid-Autumn Festival.",
-  "Families admire the moon, share mooncakes, and enjoy the evening together.",
+  "Jelly's story rabbit joins a Mid-Autumn Festival celebration.",
+  "Families look at the same full moon, even when some loved ones are far away. They share mooncakes when they meet.",
   "A rabbit lantern bobs along the garden path. Jelly is ready to join in.",
   "Tap the rabbit lantern to send it into the celebration.",
-  "Wonderful! 团圆, tuán yuán, means reunion. Our story ends with people coming together."
+  "Wonderful! 团圆, tuán yuán, means reunion: people coming together again. Our story ends with family around the same table."
  ])
 ];
 // One name and one transparent illustration per Bau Nyale object, reused in
@@ -107,7 +107,24 @@ const bauNyaleFestivalArt = {
  tong: {word:'tong kayu',meaning:'a wooden barrel',festivalImage:'/assetNEW/barrel.png'}
 };
 const bauNyaleChoice = (area, key, x, y) => ({id:`${area}-${key}`,...bauNyaleFestivalArt[key],x,y});
+// Crops describe the visible artwork inside the supplied 1254px transparent PNGs.
+// They only affect drawing; all festival item IDs and world positions stay fixed.
+const midAutumnPicture = (file, crop) => ({
+ festivalImage:`/assetNEW/${file}`,festivalCrop:crop,festivalSize:64,festivalRadius:65,festivalCenterOffset:0
+});
+const midAutumnFestivalArt = {
+ mooncake:midAutumnPicture('mission-01-mooncake.png',[132,196,991,887]),
+ lantern:midAutumnPicture('mission-02-lantern.png',[256,62,742,1141]),
+ rabbit:midAutumnPicture('mission-03-rabbit-decoration.png',[289,60,677,1134]),
+ star:midAutumnPicture('distractor-01-star.png',[157,163,940,912]),
+ extraMooncake:midAutumnPicture('distractor-02-mooncake.png',[132,196,991,887]),
+ moon:midAutumnPicture('distractor-03-moon.png',[169,177,914,899])
+};
 const learningRetryMessage = 'Good try! Look closely at the pictures and try again.';
+const festivalNavigationArt = {
+ left:'/assetNEW/ArrowPointingToTheLeft.png',
+ right:'/assetNEW/ArrowPointingRight.png'
+};
 const journeys = {
  indonesian: {
   label: "Bahasa Indonesia", shortLabel: "Indonesian", speech: "id-ID", learningRetryMessage, storyTitle: "Putri Mandalika", storyLabel: "A Sasak legend from Lombok, Indonesia", chapters: mandalika,
@@ -123,7 +140,7 @@ const journeys = {
    {word:"terbang",meaning:"fly",icon:"fly"}
   ]},
   outfits:[{id:"sasak-lilac",name:"Lilac woven wrap",description:"A stylised Sasak-inspired woven wrap and headcloth.",colour:"#aa7cce",accent:"#ffe3a0"},{id:"sasak-rose",name:"Rose woven wrap",description:"The same festival outfit in warm rose and gold.",colour:"#e392b7",accent:"#fff0bb"}],
-  festivalNavigation:{left:'/assetNEW/ArrowPointingToTheLeft.png',right:'/assetNEW/ArrowPointingRight.png'},
+  festivalNavigation:festivalNavigationArt,
   festivalAreas:[
    {name:'Food courtyard',decor:'food',background:'/assetNEW/foodcourtyard(baunyale).jpeg',distractors:[
     bauNyaleChoice('food','kerang',220,315),bauNyaleChoice('food','guci',350,520),bauNyaleChoice('food','keranjang',630,520)
@@ -151,11 +168,16 @@ const journeys = {
    {word:"眼睛",pronunciation:"yǎn jing",meaning:"eyes",icon:"eyes"}
   ]},
   outfits:[{id:"hanfu-lilac",name:"Lilac hanfu",description:"A playful hanfu-inspired robe for our moonlit gathering.",colour:"#a889cf",accent:"#fff0b8"},{id:"hanfu-rose",name:"Rose hanfu",description:"A rose-coloured version with a golden sash.",colour:"#e799bd",accent:"#ffedac"}],
-  festivalAreas:[{name:'Mooncake courtyard',decor:'food',distractors:[{id:'food-star',icon:'star',x:310,y:440}]},{name:'Lantern walk',decor:'lanterns',distractors:[{id:'walk-mooncake',icon:'mooncake',x:710,y:500}]},{name:'Moon garden',decor:'garden',distractors:[{id:'garden-moon',icon:'moon',x:320,y:430}]}],
+  festivalNavigation:festivalNavigationArt,
+  festivalAreas:[
+   {name:'Mooncake courtyard',decor:'food',background:'/assetNEW/mooncakecourtyard.png',distractors:[{id:'food-star',word:'星星',pronunciation:'xīng xing',meaning:'stars',icon:'star',...midAutumnFestivalArt.star,x:310,y:440}]},
+   {name:'Lantern walk',decor:'lanterns',background:'/assetNEW/lanternwalk.png',distractors:[{id:'walk-mooncake',word:'月饼',pronunciation:'yuè bǐng',meaning:'mooncake',icon:'mooncake',...midAutumnFestivalArt.extraMooncake,x:710,y:500}]},
+   {name:'Moon garden',decor:'garden',background:'/assetNEW/moongarden.png',distractors:[{id:'garden-moon',word:'月亮',pronunciation:'yuè liang',meaning:'moon',icon:'moon',...midAutumnFestivalArt.moon,x:320,y:430}]}
+  ],
   festivalItems:[
-   {id:'mooncake-festival',word:'月饼',pronunciation:'yuè bǐng',meaning:'mooncake',icon:'mooncake',area:0,x:660,y:420,request:"I'm hungry! Can you find 月饼 and bring it to me?",thanks:'Thank you for feeding me 月饼!',fact:'月饼 is a mooncake, a pastry enjoyed during the Mid-Autumn Festival. Sharing mooncakes is part of celebrating together with family.'},
-   {id:'lantern-festival',word:'灯笼',pronunciation:'dēng long',meaning:'lantern',icon:'lantern',area:1,x:300,y:370,request:"I'd love to light up our evening! Find me a 灯笼 on the lantern walk.",thanks:'Thank you for finding a 灯笼!',fact:'灯笼 means lantern. Children carry colourful lanterns during Mid-Autumn celebrations, lighting up the evening together.'},
-   {id:'rabbit-festival',word:'兔子',pronunciation:'tù zi',meaning:'rabbit',icon:'rabbit',area:2,x:660,y:400,request:"Let's remember our story! Find me the 兔子 decoration in the moon garden.",thanks:'Thank you for finding the 兔子!',fact:'兔子 means rabbit. This decoration reminds us of the Moon Rabbit from our storybook and the bright moon above our festival.'}
+   {id:'mooncake-festival',word:'月饼',pronunciation:'yuè bǐng',meaning:'mooncake',icon:'mooncake',...midAutumnFestivalArt.mooncake,area:0,x:660,y:420,request:"I'm hungry! Can you find 月饼 and bring it to me?",thanks:'Thank you for feeding me 月饼!',fact:'月饼 is a mooncake, a pastry enjoyed during the Mid-Autumn Festival. Sharing mooncakes is part of celebrating together with family.'},
+   {id:'lantern-festival',word:'灯笼',pronunciation:'dēng long',meaning:'lantern',icon:'lantern',...midAutumnFestivalArt.lantern,area:1,x:300,y:370,request:"I'd love to light up our evening! Find me a 灯笼 on the lantern walk.",thanks:'Thank you for finding a 灯笼!',fact:'灯笼 means lantern. Children carry colourful lanterns during Mid-Autumn celebrations, lighting up the evening together.'},
+   {id:'rabbit-festival',word:'兔子',pronunciation:'tù zi',meaning:'rabbit',icon:'rabbit',...midAutumnFestivalArt.rabbit,area:2,x:660,y:400,request:"Let's remember our story! Find me the 兔子 decoration in the moon garden.",thanks:'Thank you for finding the 兔子!',fact:'兔子 means rabbit. This decoration reminds us of the Moon Rabbit from our storybook and the bright moon above our festival.'}
   ]
  }
 };
@@ -179,48 +201,48 @@ for (const [language, entry] of Object.entries(journeys)) {
 const vocabulary = {
  indonesian: [
   { title: 'Meet Mandalika', words: [
-   ['putri','princess','princess','Mandalika is the princess in our story.'],
-   ['kerang','seashell','shell','A kerang is a shell you might find beside the shore.'],
-   ['laut','sea','sea','Laut is the sea beside Lombok.'],
-   ['nyale','sea worm','nyale','Nyale are the colourful sea worms in the Sasak legend.'],
-   ['perahu','boat','boat','A perahu is a boat that sails by the shore.'],
+   ['putri','princess','princess','Mandalika is the princess in our story.','Mandalika is waiting by the sea. Can you find'],
+   ['kerang','seashell','shell','A kerang is a shell you might find beside the shore.','Look along the shore for a seashell. Can you find'],
+   ['laut','sea','sea','Laut is the sea beside Lombok.','Boats float on the wide blue water. Can you find'],
+   ['nyale','sea worm','nyale','Nyale are the colourful sea worms in the Sasak legend.','Colourful sea creatures appear in our legend. Find'],
+   ['perahu','boat','boat','A perahu is a boat that sails by the shore.','Let’s sail along Lombok’s coast. Can you find'],
   ]},
   { title: "Explore Lombok's Coast", words: [
-   ['pantai','beach','beach','Pantai is the beach where people gather.'],
-   ['ombak','wave','wave','Ombak are the waves moving across the sea.'],
-   ['pasir','sand','sand','Pasir is the sand beneath your feet at the beach.'],
-   ['pesisir','coast','coast','Pesisir is the land along the sea.'],
-   ['air','water','water','Air is the water around the colourful nyale.'],
+   ['pantai','beach','beach','Pantai is the beach where people gather.','Let’s visit the sandy place where sea meets land. Find'],
+   ['ombak','wave','wave','Ombak are the waves moving across the sea.','The sea is rolling toward the shore. Can you find'],
+   ['pasir','sand','sand','Pasir is the sand beneath your feet at the beach.','Feel the soft ground beneath your feet at the beach. Find'],
+   ['pesisir','coast','coast','Pesisir is the land along the sea.','Follow the edge of Lombok’s sea. Can you find'],
+   ['air','water','water','Air is the water around the colourful nyale.','The nyale swim in it. Can you find'],
   ]},
   { title: 'Celebrate Bau Nyale', words: [
-   ['ayam Taliwang','Taliwang grilled chicken','chicken','Ayam Taliwang is the grilled chicken dish in our festival.'],
-   ['gendang','drum','drum','A gendang is the drum you find at the music gathering.'],
-   ['kain tenun','woven cloth','woven-cloth','Kain tenun is the woven cloth in the Sasak-inspired outfit.'],
-   ['ikat kepala','headcloth','headcloth','An ikat kepala is cloth worn around the head.'],
-   ['perayaan','celebration','celebration','A perayaan is a celebration shared by people together.'],
+   ['ayam Taliwang','Taliwang grilled chicken','chicken','Ayam Taliwang is the grilled chicken dish in our festival.','I’m hungry! Can you find',' for our festival meal?'],
+   ['gendang','drum','drum','A gendang is the drum you find at the music gathering.','Let’s make music at the festival. Can you find'],
+   ['kain tenun','woven cloth','woven-cloth','Kain tenun is the woven cloth in the Sasak-inspired outfit.','Jelly needs a woven wrap for the festival. Find'],
+   ['ikat kepala','headcloth','headcloth','An ikat kepala is cloth worn around the head.','Jelly needs a cloth to wear on their head. Find'],
+   ['perayaan','celebration','celebration','A perayaan is a celebration shared by people together.','Everyone is gathering for Bau Nyale. Can you find'],
   ]},
  ],
  chinese: [
   { title: 'Discover the Moon Story', words: [
-   ['月亮','yuè liang','moon','moon','月亮 is the bright moon above the garden.'],
-   ['兔子','tù zi','rabbit','rabbit','兔子 is the rabbit in our moon story.'],
-   ['月饼','yuè bǐng','mooncake','mooncake','月饼 is a round cake shared at Mid-Autumn Festival.'],
-   ['灯笼','dēng long','lantern','lantern','灯笼 is a lantern glowing along the garden path.'],
-   ['家人','jiā rén','family members','family','家人 are the family members gathering together.'],
+   ['月亮','yuè liang','moon','moon','月亮 is the bright moon above the garden.','Look up at the bright night sky. Can you find'],
+   ['兔子','tù zi','rabbit','rabbit','兔子 is the rabbit in our moon story.','A little friend from our moon story is nearby. Find'],
+   ['月饼','yuè bǐng','mooncake','mooncake','月饼 is a round cake shared at Mid-Autumn Festival.','I’m hungry! Can you find',' for our festival snack?'],
+   ['灯笼','dēng long','lantern','lantern','灯笼 is a lantern glowing along the garden path.','Our path needs a warm glow. Can you find'],
+   ['家人','jiā rén','family members','family','家人 are the family members gathering together.','Let’s bring everyone together for the festival. Find'],
   ]},
   { title: 'Under the Moonlight', words: [
-   ['花园','huā yuán','garden','garden','花园 is the garden where the family celebrates.'],
-   ['夜晚','yè wǎn','evening','evening','夜晚 is the evening when the moon shines.'],
-   ['星星','xīng xing','stars','stars','星星 are the stars twinkling near the moon.'],
-   ['小路','xiǎo lù','path','path','小路 is the path lined with lanterns.'],
-   ['光','guāng','light','light','光 is the warm light coming from a lantern.'],
+   ['花园','huā yuán','garden','garden','花园 is the garden where the family celebrates.','The lantern walk leads to a place full of plants. Find'],
+   ['夜晚','yè wǎn','evening','evening','夜晚 is the evening when the moon shines.','The sky grows dark and the moon shines. Find'],
+   ['星星','xīng xing','stars','stars','星星 are the stars twinkling near the moon.','Tiny lights twinkle beside the moon. Find'],
+   ['小路','xiǎo lù','path','path','小路 is the path lined with lanterns.','Follow the walkway between the lanterns. Find'],
+   ['光','guāng','light','light','光 is the warm light coming from a lantern.','A lantern shines with a warm glow. Find'],
   ]},
   { title: 'Celebrate the Moon Festival', words: [
-   ['糕点','gāo diǎn','pastry','pastry','糕点 is a pastry; a mooncake is one kind.'],
-   ['汉服','hàn fú','hanfu clothing','hanfu','汉服 is the clothing that inspired our festival outfit.'],
-   ['团圆','tuán yuán','reunion','reunion','团圆 is family coming together again.'],
-   ['赏月','shǎng yuè','admire the moon','moon-viewing','赏月 means to enjoy looking at the moon.'],
-   ['中秋节','zhōng qiū jié','Mid-Autumn Festival','mid-autumn','中秋节 is the festival in our moonlit garden.'],
+   ['糕点','gāo diǎn','pastry','pastry','糕点 is a pastry; a mooncake is one kind.','I’m hungry! Can you find',' for a sweet festival treat?'],
+   ['汉服','hàn fú','hanfu clothing','hanfu','汉服 is the clothing that inspired our festival outfit.','Jelly wants to dress for the Moon Festival. Find'],
+   ['团圆','tuán yuán','reunion','reunion','团圆 is family coming together again.','The whole family is together again. Find'],
+   ['赏月','shǎng yuè','admire the moon','moon-viewing','赏月 means to enjoy looking at the moon.','Let’s enjoy looking up at the full moon. Find'],
+   ['中秋节','zhōng qiū jié','Mid-Autumn Festival','mid-autumn','中秋节 is the festival in our moonlit garden.','Let’s celebrate together beneath the full moon. Find'],
   ]},
  ],
 };
@@ -234,6 +256,8 @@ for (const [language, levels] of Object.entries(vocabulary)) {
    const translation = chinese ? meaningOrAsset : pronunciationOrMeaning;
    const colouringAsset = chinese ? assetOrHint : meaningOrAsset;
    const hint = chinese ? maybeHint : assetOrHint;
+   const [promptBefore, sentenceAfter = '?'] = row.slice(chinese ? 5 : 4);
+   const sentenceBefore = `${promptBefore} `;
    const itemId = index => `${language}-level-${levelIndex + 1}-item-${index + 1}`;
    const distractors = [1, 2].map(offset => (questionIndex + offset) % 5);
    return {
@@ -241,8 +265,7 @@ for (const [language, levels] of Object.entries(vocabulary)) {
     language, level: levelIndex + 1, targetWord, translation,
     ...(chinese ? { pinyin: pronunciationOrMeaning } : {}),
     pronunciationLocale: chinese ? 'zh-CN' : 'id-ID',
-    sentenceBefore: 'Can you find the picture for “',
-    sentenceAfter: '”?', hint,
+    sentenceBefore, sentenceAfter, hint,
     correctItemId: itemId(questionIndex),
     distractorItemIds: distractors.map(itemId), colouringAsset,
     options: [questionIndex, ...distractors].map(index => ({

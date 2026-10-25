@@ -5,11 +5,12 @@ const $ = id => document.getElementById(id);
 
 function create({ action, getContent, room = () => window.OceanRoom }) {
  let state = null, previous = null, learningRoom = null, activePopup = null;
- let restoreFocus = null, unlockShown = false, pending = false;
+ let restoreFocus = null, unlockShown = false, pending = false, storybookCuePending = false;
  const levelScreen = $('learning-level-screen');
  const storyScreen = $('learning-story-screen');
  const unlockScreen = $('storybook-unlock-screen');
  const guidance = $('learning-guidance');
+ const storybookGuidance = $('storybook-guidance');
  const gameplayRoot = $('vocabulary-gameplay');
 
  const learning = value => value?.learning || value?.vocabularyLearning || null;
@@ -165,9 +166,12 @@ function create({ action, getContent, room = () => window.OceanRoom }) {
  }
  function openStories() {
   if (!state || state.phase !== 'room' || !levelOneComplete(state) || presentation(state)) return;
+  storybookCuePending = false; storybookGuidance.hidden = true;
   renderStories(); show(storyScreen, 'stories');
  }
  function showUnlock() {
+  storybookCuePending = true;
+  storybookGuidance.hidden = true;
   unlockShown = true; show(unlockScreen, 'unlock');
  }
  async function gameplayAction(name, payload) {
@@ -186,7 +190,9 @@ function create({ action, getContent, room = () => window.OceanRoom }) {
   });
  }
  function sync(next, prior) {
-  if (!next?.language || learning(next)?.storybookUnlockVersion === 0 || (prior && next.language !== prior.language)) unlockShown = false;
+  if (!next?.language || learning(next)?.storybookUnlockVersion === 0 || (prior && next.language !== prior.language)) {
+   unlockShown = false; storybookCuePending = false;
+  }
   previous = prior; state = next;
   configureRoom();
   const hasLearning = enabled(next), inRoom = next?.phase === 'room';
@@ -207,18 +213,20 @@ function create({ action, getContent, room = () => window.OceanRoom }) {
    ? prior?.language === next.language && oldModel?.storybookUnlockVersion === 0 && model.storybookUnlockVersion > 0
    : model?.showStoryUnlockCelebration === true || (prior && !wasUnlocked);
   if (inRoom && unlocked && !unlockShown && firstUnlock) showUnlock();
+  storybookGuidance.hidden = !(storybookCuePending && inRoom && unlocked && !activePopup);
  }
  function approach(id) {
   if (id === 'learning-bookshelf') openLevels();
   if (['learning-storybook','storybook','book'].includes(id)) openStories();
  }
- function stop() { closePopup(false); learningRoom?.stop(); document.body.classList.remove('is-vocabulary-active'); gameplayRoot.hidden = true; }
+ function stop() { closePopup(false); storybookCuePending = false; storybookGuidance.hidden = true; learningRoom?.stop(); document.body.classList.remove('is-vocabulary-active'); gameplayRoot.hidden = true; }
 
  $('close-level-select').addEventListener('click', closePopup);
  $('close-story-select').addEventListener('click', closePopup);
  $('explore-storybook').addEventListener('click', async () => {
   closePopup();
   // The unlock is permanent backend state; dismissing it is a local UI action.
+  storybookGuidance.hidden = !storybookCuePending;
  });
  [levelScreen, storyScreen].forEach(screen => screen.addEventListener('pointerdown', event => { if (event.target === screen) closePopup(); }));
  window.addEventListener('ocean-room-ready', configureRoom);

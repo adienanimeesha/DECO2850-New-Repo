@@ -31,7 +31,12 @@
         <strong>Let’s learn some new words!</strong>
         <span>Move your jellyfish towards the bookshelf to begin.</span>
       </aside>
-      <button class="mailbox-button" id="mailbox-button" type="button" aria-label="Mailbox" disabled><span id="mailbox-icon"></span><span class="mail-badge" id="mail-badge" hidden>1</span></button>
+      <aside class="storybook-guidance" id="storybook-guidance" aria-live="polite" hidden>
+        <strong>Your storybook is ready!</strong>
+        <span>Swim toward the book to read it.</span>
+        <span class="storybook-guidance-arrow" aria-hidden="true">↓</span>
+      </aside>
+      <button class="mailbox-button" id="mailbox-button" type="button" aria-label="Mailbox" disabled hidden><span id="mailbox-icon"></span><span class="mail-badge" id="mail-badge" hidden>1</span></button>
       <div class="interaction" id="interaction" hidden><span id="interaction-text"></span><button id="interact-button" type="button">Open</button></div>
       <div class="d-pad" id="d-pad" aria-label="Touch movement controls">
         <button class="d-pad-button up" type="button" data-direction="up" aria-label="Swim up">↑</button>
@@ -48,7 +53,7 @@
   <div id="vocabulary-gameplay" hidden></div>
   <section class="language-backdrop" id="language-screen"><div class="welcome-panel">
     <div class="welcome-jelly" id="welcome-jelly"></div><p class="eyebrow">A LITTLE FRIEND. A BIG ADVENTURE.</p><h1>Let's explore together.</h1>
-    <p>Jelly is waiting in the aquarium. Choose your adventure language and invite Jelly into your ocean home.</p>
+    <p>Choose a language and swim with Jelly.</p>
     <div class="language-choices"><button type="button" data-language="indonesian" aria-pressed="false"><span>🌺</span><strong>Bahasa Indonesia</strong><small>Stories from Lombok</small></button><button type="button" data-language="chinese" aria-pressed="false"><span>🏮</span><strong>中文 · Chinese</strong><small>A moonlit adventure</small></button></div>
     <button class="primary" id="start-adventure" type="button" disabled>Start new adventure →</button><button class="secondary" id="continue-adventure" type="button" hidden disabled>Continue adventure →</button><p class="welcome-note">Keep the <a href="/pet.html" target="_blank" rel="noopener">aquarium screen ↗</a> open to watch Jelly swim between worlds.</p><p class="welcome-note">Selected sticker art by <a href="https://openmoji.org" target="_blank" rel="noopener">OpenMoji</a> · <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a>.</p><p id="welcome-return" role="status"></p>
   </div></section>
@@ -267,24 +272,23 @@
           <div class="subtitle-bubble"><span id="scene-subtitle" aria-live="polite">Once upon a time...</span><small id="scene-status">Jelly is telling the story</small></div>
         </div>
         <div class="scene-controls">
-          <button id="scene-play" type="button">⏸ Pause</button>
-          <button id="scene-replay" type="button">↺ Replay narration</button>
-          <span class="scene-spacer"></span>
-          <button id="scene-prev" type="button" disabled>← Previous page</button>
-          <button id="scene-next" type="button" disabled>Next page →</button>
+          <button id="scene-prev" type="button" disabled>← Back</button>
+          <details class="story-audio-options"><summary>Audio options</summary><button id="scene-play" type="button">⏸ Pause</button><button id="scene-replay" type="button">↺ Hear again</button></details>
+          <button id="scene-continue" type="button">Continue story →</button>
+          <button id="scene-next" type="button" hidden disabled>Next page →</button>
         </div>
       </div>
     </section>
   </div>
   <script src="/socket.io/socket.io.js"></script>
-  <script src="/js/journey-content.js?v=20261025-retry-copy"></script>
-  <script src="/js/ocean-art.js?v=20261025-shared-outfit"></script>
+  <script src="/js/journey-content.js?v=20261026-usability"></script>
+  <script src="/js/ocean-art.js?v=20261025-moon-outfit"></script>
   <script src="/js/vocabulary-speech.js?v=20261025-language-voices"></script>
-  <script src="/js/vocabulary-colouring.js?v=20261025-mandalika-ocean"></script>
-  <script src="/js/vocabulary-gameplay.js?v=20261025-language-voices"></script>
+  <script src="/js/vocabulary-colouring.js?v=20261026-usability"></script>
+  <script src="/js/vocabulary-gameplay.js?v=20261026-usability"></script>
   <script src="/js/learning-backend.js?v=20261025-retry-copy"></script>
   <script src="/js/learning-interface.js?v=20261025-three-levels"></script>
-  <script src="/js/journey-mobile.js?v=20261025-bau-nyale-items"></script>
+  <script src="/js/journey-mobile.js?v=20261026-usability"></script>
   <script>
     const gameScript = document.createElement("script");
     gameScript.src = "/js/ocean-room.js?v=" + window.gameAssetVersion;

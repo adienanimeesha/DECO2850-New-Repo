@@ -166,7 +166,13 @@ for(const [language,targetWord,targetLocale] of [['indonesian','perahu','id-ID']
   assert.equal(p.utterances[1].lang,targetLocale);
   assert.equal(p.utterances[1].text,targetWord);
   p.utterances[1].onend();
-  assert.equal(p.utterances.length,2,'the visible question mark has no speech segment');
+  const spokenAfter=item.sentenceAfter.replace(/[?.!\s]+$/u,'').trim();
+  if(spokenAfter){
+   assert.equal(p.utterances.length,3,'English resumes after the target-language word');
+   assert.equal(p.utterances[2].lang,'en-US');
+   assert.equal(p.utterances[2].text,spokenAfter);
+   p.utterances[2].onend();
+  }else assert.equal(p.utterances.length,2,'the visible question mark has no speech segment');
   assert.match(p.root.textContent,/\?/,'the question mark remains visible');
   controller.destroy();
  });

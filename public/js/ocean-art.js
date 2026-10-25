@@ -159,8 +159,38 @@ function sasakJelly(outfit,time) {
   <circle cx="79" cy="33" r="2.5" fill="${gold}"/>
  </g></svg>`;
 }
+function moonJelly(outfit,time) {
+ const rose=outfit.id==='hanfu-rose',cloth=outfit.colour,gold=outfit.accent;
+ const deep=rose?'#934b71':'#694895',light=rose?'#f5b9c9':'#c9a8e8';
+ const blossom=(x,y,size)=>`<g transform="translate(${x} ${y}) scale(${size})" fill="${gold}" stroke="${deep}" stroke-width=".55"><path d="M0-5Q3-7 3-3Q7-3 5 0Q7 3 3 3Q3 7 0 5Q-3 7-3 3Q-7 3-5 0Q-7-3-3-3Q-3-7 0-5Z"/><circle r="1.8" fill="#f7afc1" stroke="none"/></g>`;
+ return `<svg xmlns="http://www.w3.org/2000/svg" class="moon-festival-outfit" viewBox="0 0 100 115" aria-hidden="true"><g transform="translate(0 ${Math.sin(time)*2})" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M28 70Q17 91 29 102M43 72Q34 100 44 110M57 72Q66 101 56 110M72 70Q83 91 71 102" fill="none" stroke="#d998e5" stroke-width="7"/>
+  <path d="M31 59Q50 54 69 59Q80 70 77 97Q51 111 23 97Q19 80 31 59Z" fill="${light}" stroke="${deep}" stroke-width="2.5"/>
+  <path d="M30 73Q20 81 15 94Q21 102 34 99L40 78M70 73Q80 81 85 94Q79 102 66 99L60 78" fill="#fff1df" stroke="${deep}" stroke-width="2"/>
+  <path d="M34 72Q50 65 66 72L73 99Q50 108 27 99Z" fill="#fff2db" stroke="${deep}" stroke-width="2.2"/>
+  <path d="M32 69Q18 72 12 92Q15 102 27 101Q34 94 39 79Z" fill="${cloth}" stroke="${deep}" stroke-width="2.4"/>
+  <path d="M68 69Q82 72 88 92Q85 102 73 101Q66 94 61 79Z" fill="${cloth}" stroke="${deep}" stroke-width="2.4"/>
+  <path d="M16 93Q21 100 28 96M84 93Q79 100 72 96M35 95Q50 102 65 95" fill="none" stroke="${gold}" stroke-width="2.5"/>
+  <path d="M35 61L48 78L53 77L66 61L72 72L61 90Q50 84 39 90L28 72Z" fill="${cloth}" stroke="${deep}" stroke-width="2.4"/>
+  <path d="M40 64L50 77L60 64M36 70L47 82M64 70L53 82" fill="none" stroke="${gold}" stroke-width="3"/>
+  <path d="M34 83Q50 79 66 83L66 89Q50 85 34 89Z" fill="${deep}" stroke="${gold}" stroke-width="1.2"/>
+  <path d="M48 87L47 103L52 109L56 103L54 87Z" fill="${light}" stroke="${deep}" stroke-width="1.7"/>
+  <path d="M50 89L50 103M54 91L54 102" fill="none" stroke="${gold}" stroke-width="1.5"/>
+  <path d="M65 78Q60 73 65 68Q61 75 68 77Q67 78 65 78Z" fill="${gold}"/>
+  ${blossom(28,84,.55)}${blossom(72,84,.55)}${blossom(38,93,.45)}
+  <path d="M19 59C16 23 33 8 50 8S84 23 81 59Q77 70 67 62Q59 71 50 63Q41 71 33 62Q23 70 19 59Z" fill="#d59be9" stroke="#78539a" stroke-width="2.8"/>
+  <ellipse cx="33" cy="49" rx="6" ry="4" fill="#ffbadb"/><ellipse cx="68" cy="49" rx="6" ry="4" fill="#ffbadb"/>
+  <circle cx="38" cy="43" r="3" fill="#544770"/><circle cx="62" cy="43" r="3" fill="#544770"/>
+  <path d="M44 54Q50 61 56 54" fill="none" stroke="#544770" stroke-width="2.5"/>
+  <path d="M80 27Q91 30 93 40L86 41L88 56L82 57L78 38Z" fill="${cloth}" stroke="${deep}" stroke-width="2.2"/>
+  <path d="M84 36L87 52M89 34L90 39" fill="none" stroke="${gold}" stroke-width="1.6"/>
+  <path d="M78 26Q85 16 88 21Q91 25 83 31M82 28Q92 24 95 30Q96 34 84 34" fill="${cloth}" stroke="${deep}" stroke-width="1.5"/>
+  ${blossom(78,25,1.3)}${blossom(85,32,.75)}
+ </g></svg>`;
+}
 function jelly(outfit, time = 0) {
  if(outfit?.id?.startsWith('sasak-'))return sasakJelly(outfit,time);
+ if(outfit?.id?.startsWith('hanfu-'))return moonJelly(outfit,time);
  const c = outfit?.colour || '#d59be9', a = outfit?.accent || '#fff0bb';
  const robe = outfit ? `<path d="M30 58L23 90Q50 104 77 90L70 58Z" fill="${c}" stroke="#875baa" stroke-width="2"/><path d="M35 62L59 83M65 62L41 83" stroke="${a}" stroke-width="3"/><path d="M26 85H74" stroke="${a}" stroke-width="5"/>` : '';
  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 115" aria-hidden="true"><g transform="translate(0 ${Math.sin(time)*2})"><path d="M29 65Q18 88 30 99M43 67Q34 95 44 106M57 67Q66 95 57 106M70 65Q81 87 70 99" fill="none" stroke="#d998e5" stroke-width="6" stroke-linecap="round"/>${robe}<path d="M19 59C16 20 33 7 50 7S85 25 81 59Q73 72 66 62Q58 72 50 62Q41 72 34 62Q25 72 19 59Z" fill="#d59be9" stroke="#875baa" stroke-width="3"/><ellipse cx="33" cy="49" rx="6" ry="4" fill="#ffbadb"/><ellipse cx="68" cy="49" rx="6" ry="4" fill="#ffbadb"/><circle cx="38" cy="42" r="3" fill="#544770"/><circle cx="62" cy="42" r="3" fill="#544770"/><path d="M44 53Q50 61 56 53" stroke="#544770" stroke-width="2" fill="none"/><ellipse cx="34" cy="25" rx="12" ry="5" fill="#ffffff65"/>${outfit?.id.startsWith('sasak') ? `<path d="M21 24Q50 7 79 24L76 34Q50 20 24 34Z" fill="${c}" stroke="#875baa" stroke-width="2"/><path d="M25 27Q50 16 75 27" fill="none" stroke="${a}" stroke-width="3"/>` : ''}</g></svg>`;
@@ -171,6 +201,7 @@ function jellyDataUrl(outfit) {
 function clothing(outfit) {
  const c=outfit.colour,a=outfit.accent,sasak=outfit.id.startsWith('sasak');
  if(sasak)return sasakJelly(outfit,0);
+ if(outfit.id.startsWith('hanfu-'))return moonJelly(outfit,0);
  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 130" aria-hidden="true"><path d="M44 20L29 31L13 67L29 75L38 57L31 111Q60 123 89 111L82 57L91 75L107 67L91 31L76 20Z" fill="${c}" stroke="#88649f" stroke-width="3"/><path d="M44 21L65 63L77 21M47 36L58 60" fill="none" stroke="${a}" stroke-width="4"/><path d="M36 74H85M32 104Q60 114 88 104" fill="none" stroke="${a}" stroke-width="6"/>${sasak ? `<path d="M26 8Q60-1 94 8L90 18Q60 11 30 18Z" fill="${c}" stroke="#88649f" stroke-width="2"/><path d="M40 82L45 92L50 82M59 82L64 92L69 82M78 82L83 92" fill="none" stroke="${a}" stroke-width="2"/>` : `<path d="M41 77L36 111M80 77L87 111" fill="none" stroke="${a}" stroke-width="2"/>`}</svg>`;
 }
 function screenScale(canvas) {

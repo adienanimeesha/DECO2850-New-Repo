@@ -5,6 +5,7 @@ let state = null, selectedLanguage = null, activity = null, outfitChoice = null,
 let collectedMemories = [];
 let learningInterface = null, awaitingSnapshot = true, invitationWalkPending = false;
 let wordSpeech = null, wordAudioStatus = null;
+let lastFestivalWordHeard = null;
 
 const $ = id => document.getElementById(id);
 const art = window.OceanArt;
@@ -102,7 +103,7 @@ function renderActivity() {
  if (activity === 'mail') {
   const ready = state.storyDone;
   body.innerHTML = `<p class="eyebrow">JELLY'S MAILBOX</p><div class="mail-art">${art.svg('letter')}</div><h2 id="activity-title">${ready ? 'You’re invited!' : 'A little patience…'}</h2>` +
-   (ready ? `<p class="invitation-to">Dear Jelly & friend,</p><p>Come celebrate <strong>${c.festival}</strong> at ${c.place}! Bring your curiosity and your favourite festival outfit.</p><p class="invitation-sign">With love, your festival friends ♡</p><button class="primary" id="accept-invite">${state.invited ? 'Visit the wardrobe →' : 'Accept invitation →'}</button>` : `<p>Finish a cultural story to receive your festival invitation.</p><div class="checklist"><span>${state.storyDone ? '✓' : '○'} Cultural story</span></div>`);
+   (ready ? `<p class="invitation-to">Dear Jelly & friend,</p><p>Come celebrate <strong>${c.festival}</strong> at ${c.place}! Choose a festival outfit, then swim with Jelly to the celebration.</p><p class="invitation-sign">With love, your festival friends ♡</p><button class="primary" id="accept-invite">${state.invited ? 'Visit the wardrobe →' : 'Accept invitation →'}</button>` : `<p>Finish a cultural story to receive your festival invitation.</p><div class="checklist"><span>${state.storyDone ? '✓' : '○'} Cultural story</span></div>`);
   $('accept-invite')?.addEventListener('click', () => {
    closeActivity();
    if (wardrobeReady()) window.OceanRoom?.walkTo('wardrobe');
@@ -110,7 +111,7 @@ function renderActivity() {
   });
  } else if (activity === 'wardrobe') {
   const selected = outfit();
-  const previewClass = state.language === 'indonesian' ? 'wardrobe-preview bau-nyale-preview' : 'wardrobe-preview';
+  const previewClass = state.language === 'indonesian' ? 'wardrobe-preview bau-nyale-preview' : 'wardrobe-preview moon-festival-preview';
   body.innerHTML = `<p class="eyebrow">THE PEARL WARDROBE</p><h2 id="activity-title">Dress for ${c.festival}</h2>` +
    (!state.invited ? `<div class="${previewClass}">${art.jelly()}</div><p>Your festival outfits unlock after you accept the invitation in the mailbox.</p>` :
    `<p>Try a colour on Jelly, then choose Done when you're ready.</p><div class="${previewClass}">${art.jelly(selected)}</div><div class="outfit-choices">${c.outfits.map(o => `<button type="button" data-outfit="${o.id}" aria-pressed="${selected?.id === o.id}"><span class="outfit-thumbnail">${art.clothing(o)}</span><strong>${o.name}</strong><small>${o.description}</small></button>`).join('')}</div><p class="small-note">Playful illustrations inspired by traditional clothing.</p><button class="primary" id="outfit-done" ${!state.outfit ? 'disabled' : ''}>Done · go to the festival →</button>`);
@@ -121,7 +122,9 @@ function renderActivity() {
   body.querySelectorAll('.word-replay').forEach(b => b.addEventListener('click', () => speak(b.dataset.word,window.JOURNEYS[b.dataset.lang].speech,b)));
  } else if (activity === 'festival-feedback') {
   const item=c.festivalItems[state.festivalMission||0];
-  body.innerHTML=`<p class="eyebrow">A LITTLE FESTIVAL DISCOVERY</p><div class="festival-discovery">${art.jelly(outfit())}${item.festivalImage?`<img src="${item.festivalImage}" alt="${item.word}">`:art.svg(item.icon)}</div><h2 id="activity-title">${item.thanks}</h2><p>${item.fact}</p><p class="small-note">${item.word} is now in your memory book.</p><button class="primary" id="festival-next">${state.festivalMission===c.festivalItems.length-1?'Finish our festival adventure':'Next mission →'}</button>`;
+  const feeding=['ayam-taliwang','mooncake-festival'].includes(item.id);
+  body.innerHTML=`<p class="eyebrow">FESTIVAL DISCOVERY ${state.festivalMission+1} OF ${c.festivalItems.length}</p><div class="festival-discovery ${feeding?'is-feeding':''}">${art.jelly(outfit())}${item.festivalImage?`<img src="${item.festivalImage}" alt="${item.word}">`:art.svg(item.icon)}</div><h2 id="activity-title">${item.thanks}</h2>${item.pronunciation?`<p class="festival-pronunciation">${item.pronunciation}</p>`:''}<p>${item.fact}</p><button class="secondary" id="festival-hear-word" type="button">Hear ${item.word} ♫</button><p class="small-note">Saved to your memory book.</p><button class="primary" id="festival-next">${state.festivalMission===c.festivalItems.length-1?'Finish our festival adventure':'Next mission →'}</button>`;
+  $('festival-hear-word').addEventListener('click',()=>speak(item.word,c.speech,$('festival-hear-word')));
   $('festival-next').addEventListener('click',()=>{closeActivity();send('journey-next-festival');});
  } else if (activity === 'festival-complete') {
   body.innerHTML = `<p class="eyebrow">WHAT A BEAUTIFUL ADVENTURE</p><div class="wardrobe-preview">${art.jelly(outfit())}</div><h2 id="activity-title">Let’s take our memories home.</h2><p>You found all three festival keepsakes! Jelly will carry ${state.bag.length} discoveries to the aquarium.</p><button class="primary" id="take-home">Swim home to the aquarium →</button>`;
@@ -144,7 +147,7 @@ function updateMission() {
   step=5;
   const mission=state.festivalMission||0,item=c.festivalItems[mission],area=state.festivalArea||0;
   goal=item?item.request:'All festival missions complete! Swim home.';
-  detail=item?`Festival mission ${mission+1} / ${c.festivalItems.length} · ${c.festivalAreas[area].name} · ${state.festivalFeedback?'Read Jelly’s thank-you, then continue.':area===item.area?'Walk to the matching object.':`Walk ${area<item.area?'right →':'left ←'} to ${c.festivalAreas[item.area].name}.`}`:'Bring your discoveries back to the aquarium.';
+  detail=item?`Mission ${mission+1} of ${c.festivalItems.length} · Area ${area+1} of ${c.festivalAreas.length}: ${c.festivalAreas[area].name} · ${state.festivalFeedback?'Read Jelly’s thank-you, then continue.':area===item.area?'Swim to a glowing picture. Tap any picture to explore.':`Swim ${area<item.area?'right →':'left ←'} to ${c.festivalAreas[item.area].name}.`}`:'Bring your discoveries back to the aquarium.';
  } else if(state.invited) {
   step=4;goal=`Swim to the wardrobe and dress for ${c.festival}.`;detail='Try on an outfit, then press Done to travel.';
  } else if(state.storyDone) {
@@ -172,7 +175,7 @@ function updateMission() {
  $('mission-progress').innerHTML=Array.from({length:5},(_,i)=>`<i class="${i+1<step?'complete':i+1===step?'current':''}"></i>`).join('');
  const mailReady=state.phase==='room'&&state.storyDone&&!state.learning?.active;
  $('mailbox-button').disabled=!mailReady;
- $('mailbox-button').hidden=state.phase==='festival';
+ $('mailbox-button').hidden=!mailReady||state.phase==='festival';
  $('mailbox-button').classList.toggle('has-mail',mailReady&&!state.invited);
  $('mailbox-button').setAttribute('aria-label',mailReady?'Read your festival invitation':'Mailbox · finish a cultural story first');
  $('mail-badge').hidden=!mailReady||state.invited;
@@ -238,6 +241,11 @@ socket.on('journey-state', next => {
  if (activity) renderActivity();
  if (prev && !prev.storyDone && next.storyDone) window.OceanRoom?.feedback('Story complete! You have mail in the top-left corner.',8000);
  if(next.phase==='festival'&&next.festivalFeedback&&activity!=='festival-feedback')openActivity('festival-feedback');
+ if(next.phase==='festival'&&next.festivalFeedback){
+  const item=c.festivalItems[next.festivalMission],key=`${next.trip}:${next.festivalMission}:${item?.id}`;
+  if(item&&lastFestivalWordHeard!==key){lastFestivalWordHeard=key;speak(item.word,c.speech,$('festival-hear-word'));}
+ }
+ if(prev?.phase!=='festival'&&next.phase==='festival')speak('Swim to a glowing picture. Tap any picture to explore. Follow the arrows to visit more festival areas.','en-US');
  if(next.phase==='festival'&&next.festivalMission===c.festivalItems.length&&(!prev||prev.festivalMission!==next.festivalMission))openActivity('festival-complete');
 });
 window.JellyJourney={get state(){return state;},get content(){return content();},get memories(){return collectedMemories;},get outfit(){return outfit();},get locked(){return !socket.connected||Boolean(activity)||Boolean(learningInterface?.activePopup)||Boolean(state?.festivalFeedback)||!state||!['room','festival'].includes(state.phase);},openActivity,send,speak,trapFocus,get wardrobeReady(){return wardrobeReady();},

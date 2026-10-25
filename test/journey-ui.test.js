@@ -74,25 +74,23 @@ for(const language of ['indonesian','chinese'])test(`${language}: mobile complet
  assert.equal(p.state.storyDone,true);assert.equal(d.querySelector('#storybook-backdrop').hidden,true);
  assert.equal(d.querySelector('#mission-step').textContent,'MISSION 3 OF 5');
  assert.match(d.querySelector('#objective').textContent,/invitation/);assert.equal(d.querySelector('#mailbox-button').disabled,false);
- p.click('#mailbox-button');assert.match(d.querySelector('#activity-title').textContent,/invited/);
+ assert.equal(d.querySelector('#activity-screen').hidden,false,'the invitation opens when the story finishes');
+ assert.match(d.querySelector('#activity-title').textContent,/invited/);
  p.click('#accept-invite');await p.advance(6500);assert.match(d.querySelector('#activity-title').textContent,/Dress/);assert.equal(d.querySelectorAll('[data-outfit] .outfit-thumbnail svg').length,2);
  assert.equal(d.querySelector('#mission-step').textContent,'MISSION 4 OF 5');
  p.click(`[data-outfit="${journeys[language].outfits[0].id}"]`);
  p.click(`[data-outfit="${journeys[language].outfits[1].id}"]`);
  assert.equal(p.state.outfit,journeys[language].outfits[1].id);
  const preview=d.querySelector('.wardrobe-preview svg');
- assert.equal(preview.classList.contains('bau-nyale-outfit'),language==='indonesian');
- if(language==='indonesian'){
-  const chosen=d.querySelector(`[data-outfit="${p.state.outfit}"] .outfit-thumbnail svg`);
-  assert.equal(preview.outerHTML,chosen.outerHTML,'wardrobe preview and choice use the same Bau Nyale artwork');
-  assert.equal(d.querySelectorAll('.outfit-thumbnail svg.bau-nyale-outfit').length,2);
- }
+ const outfitClass=language==='indonesian'?'bau-nyale-outfit':'moon-festival-outfit';
+ assert.equal(preview.classList.contains(outfitClass),true);
+ const chosen=d.querySelector(`[data-outfit="${p.state.outfit}"] .outfit-thumbnail svg`);
+ assert.equal(preview.outerHTML,chosen.outerHTML,'wardrobe preview and choice use the same outfit artwork');
+ assert.equal(d.querySelectorAll(`.outfit-thumbnail svg.${outfitClass}`).length,2);
  p.click('#outfit-done');assert.equal(p.state.phase,'travelling');p.update({phase:'festival'});
- if(language==='indonesian'){
-  p.draws.length=0;await p.advance(50);
-  assert.ok(p.draws.some(([image])=>image?.src?.includes('bau-nyale-outfit')&&image.src.includes(encodeURIComponent(journeys.indonesian.outfits[1].colour))),
-   'the rose Bau Nyale outfit is drawn on the festival Jelly');
- }
+ p.draws.length=0;await p.advance(50);
+ assert.ok(p.draws.some(([image])=>image?.src?.includes(outfitClass)&&image.src.includes(encodeURIComponent(journeys[language].outfits[1].colour))),
+  `the selected ${language} outfit is drawn on the festival Jelly`);
  assert.equal(d.querySelector('#mission-step').textContent,'MISSION 5 OF 5');
  for(const item of journeys[language].festivalItems){
   assert.equal(d.querySelector('#objective').textContent,item.request);
@@ -102,6 +100,8 @@ for(const language of ['indonesian','chinese'])test(`${language}: mobile complet
   p.walk(item.id);await p.advance(6500);
   assert.equal(d.querySelector('#activity-title').textContent,item.thanks);
   assert.ok(d.querySelector('#activity-body').textContent.includes(item.fact));
+  assert.ok(d.querySelector('#festival-hear-word'),'the discovery can speak its word');
+  if(language==='chinese')assert.equal(d.querySelector('.festival-pronunciation').textContent,item.pronunciation);
   assert.equal(d.querySelector('#interaction').hidden,true,'no collect confirmation');
   p.click('#festival-next');
  }
@@ -111,8 +111,28 @@ for(const language of ['indonesian','chinese'])test(`${language}: mobile complet
  assert.match(d.querySelector('#welcome-return').textContent,/8 discoveries/);
  assert.ok(!d.querySelector('script[src*="robot.js"]'));
 });
+test('Moon Festival chapter three shows the family table and supports exploring and sharing by drag',async t=>{
+ const p=page(t),d=p.w.document;
+ p.update({phase:'room',language:'chinese',trip:1,storyPage:2});p.walk('book');await p.advance(6500);
+ const scene=d.querySelector('.chinese-scene');
+ assert.equal(d.querySelector('#scene-stage').dataset.chapter,'2');
+ assert.equal(scene.querySelectorAll('[data-family]').length,2,'the family appears with the table');
+ assert.ok(scene.querySelector('[data-story-explore="table"]'));
+ assert.ok(scene.querySelector('[data-chinese-choice="peace-ripple"]'));
+ assert.equal(d.querySelector('.story-audio-options').open,false,'audio controls are tucked away');
+ assert.equal(d.querySelector('#scene-next').hidden,true,'Back and Continue are the main reading controls');
+ for(let beat=0;beat<3;beat++){p.click('#scene-continue');await p.advance(100);}
+ p.click('[data-story-explore="table"]');
+ assert.match(d.querySelector('#scene-status').textContent,/shares mooncakes/);
+ scene.getBoundingClientRect=()=>({left:0,top:0,width:960,height:520});
+ const mooncake=scene.querySelector('[data-chinese-choice="peace-ripple"]');
+ mooncake.dispatchEvent(new p.w.MouseEvent('pointerdown',{bubbles:true,clientX:672,clientY:374}));
+ scene.dispatchEvent(new p.w.MouseEvent('pointermove',{bubbles:true,clientX:490,clientY:390}));
+ scene.dispatchEvent(new p.w.MouseEvent('pointerup',{bubbles:true,clientX:490,clientY:390}));
+ assert.equal(scene.querySelector('[data-chinese-success]').hasAttribute('hidden'),false);
+});
 test('refresh restores completed activity and memory book; aquarium displays returned collections',async t=>{
- const p=page(t);p.update({language:'chinese',phase:'room',trip:2,storyPage:5,storyDone:true,invited:true});
+ const p=page(t);p.update({language:'chinese',phase:'room',trip:2,storyPage:5,storyDone:true,invited:true,bag:[{...journeys.chinese.storyRewards[0],source:'story',language:'chinese'}]});
  p.walk('book');await p.advance(6500);
  // Reopening a completed story still lets the reader browse without earning duplicates.
  assert.equal(p.w.document.querySelector('#scene-next').disabled,false);
@@ -173,7 +193,7 @@ test('swimming toward the book opens it automatically; closing it does not reope
 });
 test('memory shelf opens on approach without a button and stays closed until approached again',async t=>{
  const p=page(t),d=p.w.document;
- p.update({phase:'room',language:'indonesian',trip:1});
+ p.update({phase:'room',language:'indonesian',trip:1,bag:[{...journeys.indonesian.storyRewards[0],language:'indonesian',source:'story'}]});
  assert.equal(d.querySelector('#open-memories'),null);
  p.w.dispatchEvent(new p.w.KeyboardEvent('keydown',{code:'ArrowLeft',key:'ArrowLeft'}));await p.advance(1000);
  assert.equal(d.querySelector('#activity-screen').hidden,false);
@@ -193,11 +213,11 @@ test('memory shelf and book show only earned items, with no future rewards or du
  p.update({phase:'room',language:'indonesian',trip:1});await p.advance(50);
  assert.deepEqual(drawn,[],'empty shelf must not show reward artwork');
  p.walk('memories');await p.advance(6500);
- assert.equal(d.querySelectorAll('.memory-card').length,0);
- assert.match(d.querySelector('.memory-grid').textContent,/No discoveries yet/);
+ assert.equal(d.querySelector('#activity-screen').hidden,true,'the memory shelf appears after a word is earned');
  const learned={...journeys.indonesian.storyRewards[0],language:'indonesian',source:'story'};
  drawn.length=0;p.update({storyPage:1,bag:[learned]});await p.advance(50);
  assert.deepEqual(drawn,['shell'],'only the learned reward is drawn');
+ p.walk('memories');await p.advance(6500);
  assert.equal(d.querySelectorAll('.memory-card').length,1);
  assert.match(d.querySelector('.memory-card').textContent,/kerang/);
  assert.doesNotMatch(d.querySelector('.memory-grid').textContent,/undangan|nyale|gendang/);
@@ -316,7 +336,7 @@ test('Bring Jelly home keeps its outfit and memories until starting a fresh adve
  assert.equal(p.state.memories.length,0);assert.equal(p.state.bag.length,0);assert.equal(p.state.outfit,null);assert.equal(p.state.storyPage,0);
  assert.equal(p.w.JellyJourney.memories.length,0);
  p.update({phase:'room'});p.walk('memories');await p.advance(6500);
- assert.equal(d.querySelectorAll('.memory-card').length,0);assert.match(d.querySelector('.memory-grid').textContent,/No discoveries yet/);
+ assert.equal(d.querySelector('#activity-screen').hidden,true,'a fresh adventure hides the empty memory shelf');
  const a=page(t,'pet.html'),paint=a.w.OceanArt.canvasIcon,drawn=[];
  a.w.OceanArt.canvasIcon=(ctx,icon,...args)=>{drawn.push(icon);paint(ctx,icon,...args);};
  await a.advance(50);assert.equal(drawn.includes('shell'),false,'no reward shells are displayed initially');
