@@ -1,6 +1,7 @@
 (function () {
 'use strict';
 const icons = {
+ bookshelf:'<rect x="9" y="10" width="82" height="80" rx="8" fill="#c6a5dc" stroke="#8866a5" stroke-width="4"/><path d="M13 48H87M13 82H87" stroke="#8866a5" stroke-width="5"/><path d="M23 18V43M36 20V43M50 17L59 42M70 19V42M25 56V77M39 54V77M54 57V77M68 54L77 77" stroke="#fff0bc" stroke-width="9"/><path d="M20 93V87M80 93V87" stroke="#8866a5" stroke-width="5"/>',
  chicken:'<ellipse cx="50" cy="78" rx="43" ry="13" fill="#fff0d7" stroke="#b699bf" stroke-width="3"/><path d="M20 66Q13 27 51 28Q78 23 82 62Q68 81 20 66Z" fill="#dca174" stroke="#a97972" stroke-width="4"/><path d="M46 51Q60 31 75 43Q84 52 66 64L82 77" fill="#e8b282" stroke="#a97972" stroke-width="4"/><path d="M82 77L91 79M82 77L85 86" stroke="#fff4dc" stroke-width="7" stroke-linecap="round"/><path d="M26 51Q37 35 44 41M28 61L39 55" fill="none" stroke="#bc856b" stroke-width="3"/><path d="M12 75L22 70M14 82L28 76" stroke="#8ebf8a" stroke-width="4"/>', 
  sky:'<rect x="8" y="8" width="84" height="84" rx="23" fill="#a9ddf3"/><path d="M20 61Q14 43 31 40Q37 21 55 32Q72 23 77 45Q91 49 81 62Z" fill="#fffaf5" stroke="#9bbccf" stroke-width="3"/><circle cx="72" cy="23" r="10" fill="#ffe5a3"/>',
  eyes:'<ellipse cx="31" cy="51" rx="22" ry="28" fill="#fffcf5" stroke="#b99ec8" stroke-width="4"/><ellipse cx="70" cy="51" rx="22" ry="28" fill="#fffcf5" stroke="#b99ec8" stroke-width="4"/><ellipse cx="36" cy="52" rx="11" ry="16" fill="#836897"/><ellipse cx="66" cy="52" rx="11" ry="16" fill="#836897"/><circle cx="40" cy="45" r="4" fill="#fff"/><circle cx="70" cy="45" r="4" fill="#fff"/>',
@@ -23,9 +24,64 @@ const icons = {
  wardrobe:'<rect x="19" y="9" width="62" height="83" rx="10" fill="#c6a5dc" stroke="#8866a5" stroke-width="4"/><path d="M50 13V87" stroke="#9572ad" stroke-width="3"/><circle cx="42" cy="54" r="3" fill="#ffedb6"/><circle cx="59" cy="54" r="3" fill="#ffedb6"/>',
  coral:'<path d="M50 85V25M50 52L25 28V13M50 66L78 40V25" stroke="#f29bbd" stroke-width="13" stroke-linecap="round" fill="none"/>',
 };
+// Vocabulary scenes share the aquarium's palette and outline primitives. Abstract
+// words use scenes from the stories (sharing food, family reunion, coastal catch).
+const shape = (d, fill = '#b1e9ef') => `<path d="${d}" fill="${fill}" stroke="#8866a5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`;
+const circle = (x,y,r,fill) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${fill}" stroke="#8866a5" stroke-width="2"/>`;
+const person = (x,y,scale=1,colour='#c6a5dc') => `<g transform="translate(${x} ${y}) scale(${scale})">${circle(0,0,10,'#f1c3a6')}${shape('M-11 13Q0 7 11 13L15 39H-15Z',colour)}${shape('M-6 39V48M6 39V48M-11 18L-22 30M11 18L22 30','none')}</g>`;
+const waves = shape('M7 46Q18 33 29 46T51 46T73 46T95 46M7 65Q18 52 29 65T51 65T73 65T95 65M7 84Q18 71 29 84T51 84T73 84T95 84','none');
+const shore = shape('M8 88V61Q34 43 55 57T94 45V88Z','#f8d9bd');
+const family = person(25,24,.85)+person(73,24,.85,'#f2a6ca')+person(49,48,.65,'#a9ddd2');
+const robe = shape('M35 14L18 27L6 53L22 62L31 43L23 91Q50 99 77 91L69 43L78 62L94 53L82 27L65 14Z','#c6a5dc')+shape('M35 14L58 47L65 14M31 57H70M29 64H71','none');
+const plate = shape('M8 64Q50 92 92 64L84 83Q50 99 16 83Z','#fff1c6');
+const garden = shape('M5 88Q50 54 95 88Z','#b7d3b4')+shape('M20 77V42M78 78V36M14 58L20 64L29 54M69 51L78 59L88 47','none')+circle(20,33,12,'#f2a6ca')+circle(78,28,12,'#e6b8ef')+circle(20,33,4,'#fff1c6')+circle(78,28,4,'#fff1c6');
+const lanternSmall = `<g transform="translate(26 10) scale(.55)">${icons.lantern}</g>`;
+Object.assign(icons, {
+ princess: person(50,36,.95,'#f2a6ca')+shape('M34 20L31 7L44 15L50 3L57 15L70 7L66 20Z','#fff1c6')+shape('M39 52L22 91H78L61 52Z','#f2a6ca'),
+ sea: circle(77,17,11,'#fff1c6')+waves,
+ beach: circle(78,18,11,'#fff1c6')+waves+shore+shape('M20 75V33M6 41Q20 14 36 41Z','#f2a6ca'),
+ wave: shape('M8 79Q26 75 34 48Q45 10 73 24Q93 35 77 52Q78 34 64 38Q56 42 62 53Q71 70 93 78V88H8Z'),
+ sand: shape('M6 80Q25 54 48 71Q73 47 94 76V91H6Z','#f8d9bd')+[18,34,48,62,78,86].map((x,i)=>circle(x,77+i%3*5,2,'#d5aac5')).join(''),
+ coast: shape('M6 8H94V91H6Z')+shape('M6 8H57Q37 28 61 46T48 91H6Z','#b7d3b4')+shape('M57 8Q37 28 61 46T48 91','none')+shape('M73 31H85M72 70H87','none'),
+ water: shape('M50 8Q19 46 20 63A30 30 0 0 0 80 63Q81 46 50 8Z')+shape('M31 61Q30 76 45 80','none'),
+ rice: plate+shape('M18 62Q21 25 50 25Q79 25 82 62Z','#fff9ed')+shape('M29 51L35 46M42 38L48 34M57 48L63 42M66 57L72 52M39 59L45 54','none'),
+ vegetables: plate+shape('M17 59Q5 33 23 29Q17 10 36 17Q49 7 56 23Q75 13 81 32Q98 36 82 61Z','#86bc96')+shape('M28 65L44 31M56 66L70 33','none'),
+ 'woven-cloth': shape('M15 12H85V88H15Z','#f2a6ca')+shape('M15 27H85M15 47H85M15 67H85M29 12V88M49 12V88M69 12V88','none')+shape('M15 88V96M29 88V96M43 88V96M57 88V96M71 88V96M85 88V96','none'),
+ headcloth: shape('M14 45Q50 18 86 45L81 64Q50 39 19 64Z','#c6a5dc')+shape('M15 45L48 52L68 40L58 24L74 15L80 39L86 45M48 52L70 80L78 64','none'),
+ 'drum-ensemble': `<g transform="translate(0 20) scale(.58)">${icons.drum}</g><g transform="translate(40 0) scale(.62)">${icons.drum}</g>`+shape('M13 16L32 32M49 9L63 19','none'),
+ music: shape('M31 69V23L78 12V61M31 37L78 26','none')+shape('M31 64Q9 58 10 75Q14 88 31 77Z','#c6a5dc')+shape('M78 56Q56 50 57 67Q61 80 78 69Z','#f2a6ca'),
+ storybook: icons.book,
+ tradition: `<g transform="translate(0 16) scale(.65)">${icons.drum}</g>`+person(76,23,.85)+shape('M59 71L72 60L85 71L72 82Z','#f2a6ca'),
+ invitation: icons.letter,
+ gathering: family+shape('M11 89Q50 99 89 89','none'),
+ catch: shape('M12 15L51 46M51 46L87 76Q48 100 31 68Z','none')+shape('M46 51L71 86M39 59L60 91M39 76L66 58M46 88L77 67','none')+`<g transform="translate(42 50) scale(.35)">${icons.nyale}</g>`,
+ peace: shape('M12 55Q36 51 43 28L57 49Q80 34 89 46L79 58Q64 82 43 67L24 76L29 60Z','#fff9ed')+shape('M76 59L91 76M83 66L91 62M86 70L80 77','none'),
+ celebration: shape('M15 87L30 44L58 72Z','#f2a6ca')+shape('M39 40L46 22M59 48L78 39M55 27L65 11M68 64L90 69','none')+circle(23,21,5,'#fff1c6')+circle(83,20,5,'#c6a5dc')+circle(76,86,4,'#b7d3b4'),
+ family,
+ garden,
+ evening: shape('M8 9H92V91H8Z','#989bce')+`<g transform="translate(36 9) scale(.48)">${icons.moon}</g>`+shape('M8 78Q28 62 48 78T92 78V91H8Z','#a9ddd2')+circle(23,28,3,'#fff1c6'),
+ stars: `<g transform="translate(7 0) scale(.6)">${icons.star}</g><g transform="translate(49 46) scale(.45)">${icons.star}</g><g transform="translate(5 60) scale(.3)">${icons.star}</g>`,
+ path: garden+shape('M30 94Q70 73 53 57Q38 44 59 19H68Q50 45 68 56Q91 78 69 94Z','#f8d9bd'),
+ light: lanternSmall+shape('M13 13L24 22M78 21L88 12M8 43H19M80 43H92M15 72L25 63M76 64L87 74','none'),
+ pastry: shape('M15 72Q5 49 24 43Q14 17 39 26Q51 3 65 27Q94 19 83 47Q102 63 81 78Q50 95 15 72Z','#f2c66e')+shape('M29 40Q49 25 72 43M27 57Q51 42 76 60M32 73Q50 63 68 73','none'),
+ table: shape('M10 34H90V48H10ZM17 48H28V91H17ZM72 48H83V91H72Z','#d5aac5')+shape('M27 62H73','none'),
+ hanfu: robe+shape('M33 27L20 57M67 27L80 57M47 61L38 85M54 61L63 85','none'),
+ robe,
+ sash: shape('M9 32Q50 46 91 32V56Q50 70 9 56Z','#f2a6ca')+shape('M46 42L66 36L64 58L46 51L28 58L28 36Z','#fff1c6')+shape('M47 53L36 91L53 85L61 92L58 54Z','#f2a6ca'),
+ reunion: family+shape('M9 17Q50-5 91 17M9 17L10 7M9 17L20 17M91 17L80 17M91 17L90 7','none'),
+ sharing: `<g transform="translate(30 24) scale(.42)">${icons.mooncake}</g>`+shape('M7 67L23 61L40 66L43 74H26M93 67L77 61L60 66L57 74H74M6 67L12 87L39 86L49 76M94 67L88 87L61 86L51 76','none'),
+ 'moon-viewing': `<g transform="translate(44 0) scale(.55)">${icons.moon}</g>`+person(25,41,.75)+shape('M39 58L58 40','none'),
+ 'lantern-carrying': person(28,22,1)+`<g transform="translate(58 37) scale(.4)">${icons.lantern}</g>`+shape('M48 52L78 29L78 39','none'),
+ 'mid-autumn': `<g transform="translate(47 0) scale(.5)">${icons.moon}</g><g transform="translate(0 35) scale(.6)">${icons.mooncake}</g><g transform="translate(55 48) scale(.42)">${icons.lantern}</g>`,
+ 'moon-rabbit': `<g transform="translate(23 0) scale(.77)">${icons.moon}</g><g transform="translate(3 40) scale(.56)">${icons.rabbit}</g>`,
+ 'rabbit-lantern': shape('M49 5V23M39 6H59','none')+`<g transform="translate(10 20) scale(.8)">${icons.rabbit}</g>`+shape('M47 84V95M40 95H54','none'),
+ 'family-gathering': family+shape('M15 82H85V91H15Z','#f8d9bd')
+});
 function svg(icon) { return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" aria-hidden="true">${icons[icon] || icons.shell}</svg>`; }
 function outline(icon,fill='#fff') {
- const document=new DOMParser().parseFromString(svg(icon),'image/svg+xml');
+ // A stroked worm needs an enclosed body for brush/fill colouring.
+ const source=icon==='nyale'?`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">${shape('M5 62Q21 6 46 39Q52 47 57 62Q66 91 80 32Q83 24 91 29Q98 32 95 40Q76 107 51 83Q43 75 38 57Q27 17 19 68Q15 80 7 75Q2 72 5 62Z','#cf94e5')}${circle(87,35,2,'#544770')}</svg>`:svg(icon);
+ const document=new DOMParser().parseFromString(source,'image/svg+xml');
  document.querySelectorAll('path,rect,circle,ellipse').forEach(node=>{
   if(node.getAttribute('fill')!=='none')node.setAttribute('fill',fill);
   node.setAttribute('stroke','#685775');
@@ -73,5 +129,5 @@ function roomBubble(index, seconds) {
  const alpha=Math.max(0,Math.min(1,(560-y)/32,(y-126)/32));
  return {x:74+(index*127)%810+Math.sin(seconds*.6+index)*4,y,radius:3+index%4,alpha};
 }
-window.OceanArt = { roomBubble, svg, outline, jelly, clothing, canvasIcon, canvasMemory, screenScale };
+window.OceanArt = { clearMemoryCache:()=>artworkImages.clear(), hasIcon: icon => Object.prototype.hasOwnProperty.call(icons,icon), roomBubble, svg, outline, jelly, clothing, canvasIcon, canvasMemory, screenScale };
 })();

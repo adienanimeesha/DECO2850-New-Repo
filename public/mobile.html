@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Explore Jelly’s underwater common room, stories, nursery rhymes, and cultural festivals.">
+  <meta name="description" content="Learn new words with Jelly, unlock cultural stories, and explore colourful festivals.">
   <title>Jelly's Ocean Home</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <script>
@@ -19,12 +19,17 @@
 <body class="mobile-page immersive-page">
   <main class="game-shell" id="phone-app">
     <section class="game-frame" aria-label="Jelly’s adventure world">
-      <canvas id="game" width="960" height="620" tabindex="0" aria-label="Underwater common room. Use the arrow keys or touch controls to swim toward the storybook, radio, wardrobe, and memory shelf."></canvas>
+      <canvas id="game" width="960" height="620" tabindex="0" aria-label="Underwater common room. Use the arrow keys or touch controls to swim toward the bookshelf, storybook, wardrobe, and memory shelf."></canvas>
       <aside class="mission-panel" id="mission-panel" aria-live="polite">
         <span class="mission-step" id="mission-step">MISSION 1 OF 5</span>
         <strong id="objective">Swim to the storybook to read a cultural story.</strong>
         <small id="mission-detail">The book opens when you swim close.</small>
         <div class="mission-progress" id="mission-progress" aria-hidden="true"></div>
+      </aside>
+      <aside class="learning-guidance" id="learning-guidance" aria-live="polite" hidden>
+        <span class="guidance-arrow" aria-hidden="true">➜</span>
+        <strong>Let’s learn some new words!</strong>
+        <span>Move your jellyfish towards the bookshelf to begin.</span>
       </aside>
       <button class="mailbox-button" id="mailbox-button" type="button" aria-label="Mailbox" disabled><span id="mailbox-icon"></span><span class="mail-badge" id="mail-badge" hidden>1</span></button>
       <div class="interaction" id="interaction" hidden><span id="interaction-text"></span><button id="interact-button" type="button">Open</button></div>
@@ -40,14 +45,47 @@
       <span class="connection sr-only" id="connection-status" role="status">Connecting…</span>
     </section>
   </main>
+  <div id="vocabulary-gameplay" hidden></div>
   <section class="language-backdrop" id="language-screen"><div class="welcome-panel">
     <div class="welcome-jelly" id="welcome-jelly"></div><p class="eyebrow">A LITTLE FRIEND. A BIG ADVENTURE.</p><h1>Let's explore together.</h1>
     <p>Jelly is waiting in the aquarium. Choose your adventure language and invite Jelly into your ocean home.</p>
     <div class="language-choices"><button type="button" data-language="indonesian" aria-pressed="false"><span>🌺</span><strong>Bahasa Indonesia</strong><small>Stories from Lombok</small></button><button type="button" data-language="chinese" aria-pressed="false"><span>🏮</span><strong>中文 · Chinese</strong><small>A moonlit adventure</small></button></div>
-    <button class="primary" id="start-adventure" type="button" disabled>Start adventure →</button><p class="welcome-note">Keep the <a href="/pet.html" target="_blank" rel="noopener">aquarium screen ↗</a> open to watch Jelly swim between worlds.</p><p id="welcome-return" role="status"></p>
+    <button class="primary" id="start-adventure" type="button" disabled>Start new adventure →</button><button class="secondary" id="continue-adventure" type="button" hidden disabled>Continue adventure →</button><p class="welcome-note">Keep the <a href="/pet.html" target="_blank" rel="noopener">aquarium screen ↗</a> open to watch Jelly swim between worlds.</p><p id="welcome-return" role="status"></p>
   </div></section>
   <div class="travel-backdrop" id="travel-screen" hidden><div class="travel-jelly" id="travel-jelly"></div><p class="eyebrow">OFF WE GO</p><h2 id="travel-title">Jelly is swimming over…</h2><p id="travel-copy">Follow the bubbles to your ocean home.</p><div class="loading-dots"><i></i><i></i><i></i></div></div>
   <div class="activity-backdrop" id="activity-screen" hidden><section class="activity-panel" role="dialog" aria-modal="true" aria-labelledby="activity-title"><button class="close-activity" id="close-activity" type="button" aria-label="Close activity">×</button><div id="activity-body"></div></section></div>
+  <div class="learning-backdrop" id="learning-level-screen" hidden>
+    <section class="learning-menu level-menu" role="dialog" aria-modal="true" aria-labelledby="learning-level-title">
+      <button class="learning-close" id="close-level-select" type="button" aria-label="Close vocabulary levels">×</button>
+      <p class="eyebrow">JELLY’S WORD SHELF</p>
+      <h2 id="learning-level-title">Choose a vocabulary level</h2>
+      <p class="learning-intro">Pick an unlocked shelf and learn five new cultural words.</p>
+      <div class="learning-list" id="learning-level-list"></div>
+      <p class="learning-menu-status" id="learning-level-status" role="status"></p>
+    </section>
+  </div>
+  <div class="learning-backdrop" id="learning-story-screen" hidden>
+    <section class="learning-menu story-menu" role="dialog" aria-modal="true" aria-labelledby="learning-story-title">
+      <button class="learning-close" id="close-story-select" type="button" aria-label="Close cultural stories">×</button>
+      <p class="eyebrow">THE CULTURAL STORYBOOK</p>
+      <h2 id="learning-story-title">Choose a story</h2>
+      <p class="learning-intro">Revisit a favourite adventure or discover a story that is ready to play.</p>
+      <div class="learning-list" id="learning-story-list"></div>
+      <p class="learning-menu-status" id="learning-story-status" role="status"></p>
+    </section>
+  </div>
+  <div class="unlock-backdrop" id="storybook-unlock-screen" hidden>
+    <section class="unlock-burst" role="dialog" aria-modal="true" aria-labelledby="storybook-unlock-title">
+      <span class="unlock-sparkles" aria-hidden="true">✦ ✧ ✦</span>
+      <div class="unlock-copy">
+        <span class="unlock-book" aria-hidden="true">📖</span>
+        <p class="eyebrow">AMAZING WORK!</p>
+        <h2 id="storybook-unlock-title">Storybook Unlocked!</h2>
+        <p>Your new words have opened a cultural adventure.</p>
+        <button class="primary" id="explore-storybook" type="button">Let’s Explore!</button>
+      </div>
+    </section>
+  </div>
   <div class="storybook-backdrop" id="storybook-backdrop" hidden>
     <section class="storybook" role="dialog" aria-modal="true" aria-label="Open cultural storybook" data-narrator-side="left">
       <div class="book-turn-still" id="book-turn-still" aria-hidden="true"></div>
@@ -241,11 +279,14 @@
     </section>
   </div>
   <script src="/socket.io/socket.io.js"></script>
-  <script src="/js/journey-content.js?v=20261015-rhyme-colour-4"></script>
-  <script src="/js/ocean-art.js?v=20261015-rhyme-colour-4"></script>
-  <script src="/js/song-player.js?v=20261015-rhyme-colour-4"></script>
-  <script src="/js/rhyme-colouring.js?v=20261015-rhyme-colour-4"></script>
-  <script src="/js/journey-mobile.js?v=20261015-rhyme-colour-4"></script>
+  <script src="/js/journey-content.js?v=20261025-integration"></script>
+  <script src="/js/ocean-art.js?v=20261025-integration"></script>
+  <script src="/js/vocabulary-speech.js?v=20261025-integration"></script>
+  <script src="/js/vocabulary-colouring.js?v=20261025-integration"></script>
+  <script src="/js/vocabulary-gameplay.js?v=20261025-integration"></script>
+  <script src="/js/learning-backend.js?v=20261025-integration"></script>
+  <script src="/js/learning-interface.js?v=20261025-integration"></script>
+  <script src="/js/journey-mobile.js?v=20261025-integration"></script>
   <script>
     const gameScript = document.createElement("script");
     gameScript.src = "/js/ocean-room.js?v=" + window.gameAssetVersion;
