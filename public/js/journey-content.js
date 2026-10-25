@@ -152,77 +152,49 @@ for (const [language, entry] of Object.entries(journeys)) {
 // frontend may render a richer asset but must keep the item IDs unchanged.
 const vocabulary = {
  indonesian: [
-  { title: 'Discover Mandalika', words: [
+  { title: 'Meet Mandalika', words: [
    ['putri','princess','princess','Mandalika is the princess in our story.'],
    ['kerang','seashell','shell','A kerang is a shell you might find beside the shore.'],
    ['laut','sea','sea','Laut is the sea beside Lombok.'],
    ['nyale','sea worm','nyale','Nyale are the colourful sea worms in the Sasak legend.'],
    ['perahu','boat','boat','A perahu is a boat that sails by the shore.'],
   ]},
-  { title: 'Lombok by the Sea', words: [
+  { title: "Explore Lombok's Coast", words: [
    ['pantai','beach','beach','Pantai is the beach where people gather.'],
    ['ombak','wave','wave','Ombak are the waves moving across the sea.'],
    ['pasir','sand','sand','Pasir is the sand beneath your feet at the beach.'],
    ['pesisir','coast','coast','Pesisir is the land along the sea.'],
    ['air','water','water','Air is the water around the colourful nyale.'],
   ]},
-  { title: 'Food and Festival Clothing', words: [
+  { title: 'Celebrate Bau Nyale', words: [
    ['ayam Taliwang','Taliwang grilled chicken','chicken','Ayam Taliwang is the grilled chicken dish in our festival.'],
-   ['nasi','rice','rice','Nasi is rice, which people may enjoy with ayam Taliwang.'],
-   ['sayur','vegetables','vegetables','Sayur are vegetables served with the meal.'],
+   ['gendang','drum','drum','A gendang is the drum you find at the music gathering.'],
    ['kain tenun','woven cloth','woven-cloth','Kain tenun is the woven cloth in the Sasak-inspired outfit.'],
    ['ikat kepala','headcloth','headcloth','An ikat kepala is cloth worn around the head.'],
-  ]},
-  { title: 'Music and Traditions', words: [
-   ['gendang','drum','drum','A gendang is the drum you find at the music gathering.'],
-   ['Gendang Beleq','large drum ensemble','drum-ensemble','Gendang Beleq is a Sasak ensemble of large drums.'],
-   ['musik','music','music','Musik is the sound you hear at the festival gathering.'],
-   ['legenda','legend','storybook','A legenda is a story passed down, like Mandalika’s.'],
-   ['tradisi','tradition','tradition','A tradisi is something a community continues to share.'],
-  ]},
-  { title: 'Bau Nyale Adventure', words: [
-   ['undangan','invitation','invitation','An undangan asks people to meet at the coast.'],
-   ['berkumpul','gather','gathering','Berkumpul means to come together, like the families at Bau Nyale.'],
-   ['menangkap','catch','catch','Menangkap means to catch; Bau Nyale includes looking for seasonal nyale.'],
-   ['damai','peace','peace','Damai is the peace Mandalika wished for her community.'],
    ['perayaan','celebration','celebration','A perayaan is a celebration shared by people together.'],
   ]},
  ],
  chinese: [
-  { title: 'Discover the Moon Rabbit', words: [
+  { title: 'Discover the Moon Story', words: [
    ['月亮','yuè liang','moon','moon','月亮 is the bright moon above the garden.'],
    ['兔子','tù zi','rabbit','rabbit','兔子 is the rabbit in our moon story.'],
    ['月饼','yuè bǐng','mooncake','mooncake','月饼 is a round cake shared at Mid-Autumn Festival.'],
    ['灯笼','dēng long','lantern','lantern','灯笼 is a lantern glowing along the garden path.'],
    ['家人','jiā rén','family members','family','家人 are the family members gathering together.'],
   ]},
-  { title: 'The Moonlit Garden', words: [
+  { title: 'Under the Moonlight', words: [
    ['花园','huā yuán','garden','garden','花园 is the garden where the family celebrates.'],
    ['夜晚','yè wǎn','evening','evening','夜晚 is the evening when the moon shines.'],
    ['星星','xīng xing','stars','stars','星星 are the stars twinkling near the moon.'],
    ['小路','xiǎo lù','path','path','小路 is the path lined with lanterns.'],
    ['光','guāng','light','light','光 is the warm light coming from a lantern.'],
   ]},
-  { title: 'Treats and Festival Clothes', words: [
+  { title: 'Celebrate the Moon Festival', words: [
    ['糕点','gāo diǎn','pastry','pastry','糕点 is a pastry; a mooncake is one kind.'],
-   ['桌子','zhuō zi','table','table','桌子 is the table where the family shares a mooncake.'],
    ['汉服','hàn fú','hanfu clothing','hanfu','汉服 is the clothing that inspired our festival outfit.'],
-   ['长袍','cháng páo','robe','robe','长袍 is the long robe in the festival outfit.'],
-   ['腰带','yāo dài','sash or belt','sash','腰带 is the sash around the robe.'],
-  ]},
-  { title: 'Sharing the Celebration', words: [
    ['团圆','tuán yuán','reunion','reunion','团圆 is family coming together again.'],
-   ['邀请','yāo qǐng','invite','invitation','邀请 means to invite someone to the gathering.'],
-   ['分享','fēn xiǎng','share','sharing','分享 means to share, like sharing a mooncake.'],
    ['赏月','shǎng yuè','admire the moon','moon-viewing','赏月 means to enjoy looking at the moon.'],
-   ['提灯笼','tí dēng long','carry a lantern','lantern-carrying','提灯笼 means to carry a lantern along the path.'],
-  ]},
-  { title: 'Mid-Autumn Adventure', words: [
    ['中秋节','zhōng qiū jié','Mid-Autumn Festival','mid-autumn','中秋节 is the festival in our moonlit garden.'],
-   ['月兔','yuè tù','moon rabbit','moon-rabbit','月兔 is the imagined rabbit from the moon story.'],
-   ['兔子灯笼','tù zi dēng long','rabbit lantern','rabbit-lantern','兔子灯笼 is the rabbit-shaped lantern on the garden path.'],
-   ['团聚','tuán jù','gather together','family-gathering','团聚 means for loved ones to gather together.'],
-   ['庆祝','qìng zhù','celebrate','celebration','庆祝 means to celebrate together.'],
   ]},
  ],
 };
@@ -243,7 +215,7 @@ for (const [language, levels] of Object.entries(vocabulary)) {
     language, level: levelIndex + 1, targetWord, translation,
     ...(chinese ? { pinyin: pronunciationOrMeaning } : {}),
     pronunciationLocale: chinese ? 'zh-CN' : 'id-ID',
-    sentenceBefore: 'Can you find the picture for “',
+    sentenceBefore: `${hint} Can you find the picture for “`,
     sentenceAfter: '”?', hint,
     correctItemId: itemId(questionIndex),
     distractorItemIds: distractors.map(itemId), colouringAsset,

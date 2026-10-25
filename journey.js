@@ -9,7 +9,7 @@ function createJourney(io, { transitionMs = 2200 } = {}) {
     learning: {
       tutorialCompleted: false, allCompleted: false, storybookUnlocked: false,
       storybookUnlockVersion: 0, storybookUnlockedAtTrip: null,
-      levels: Array.from({ length: 5 }, (_, index) => ({
+      levels: Array.from({ length: 3 }, (_, index) => ({
         level: index + 1, unlocked: index === 0, completed: false,
       })),
       active: null,
@@ -17,10 +17,30 @@ function createJourney(io, { transitionMs = 2200 } = {}) {
     stories: [], activeStoryId: null, storyPage: 0, storyDone: false,
     invited: false, outfit: null, festivalId: null,
     festivalArea: 0, festivalMission: 0, festivalFeedback: false,
-    festivalFound: [], bag: [], memories: [],
+    festivalFound: [], mainAdventureCompleted: false, bag: [], memories: [],
   });
   let state = fresh();
-  const snapshot = () => JSON.parse(JSON.stringify({...state, revision}));
+  function normaliseLearningState() {
+    const definitions = content()?.learningLevels;
+    if (!Array.isArray(definitions)) return;
+    const previous = Array.isArray(state.learning.levels) ? state.learning.levels : [];
+    const festivalCompleted = state.mainAdventureCompleted === true ||
+      state.memories.some(item => item.source === 'festival');
+    state.mainAdventureCompleted = festivalCompleted;
+    state.learning.levels = definitions.map((definition, index) => {
+      const progress = previous.find(item => item.level === definition.level) || {};
+      const completed = progress.completed === true;
+      const unlocked = index === 0 || completed ||
+        (definition.level === 2 && festivalCompleted) ||
+        (definition.level === 3 && previous.some(item => item.level === 2 && item.completed === true));
+      return { level: definition.level, unlocked, completed };
+    });
+    state.learning.allCompleted = state.learning.levels.every(entry => entry.completed);
+  }
+  const snapshot = () => {
+    normaliseLearningState();
+    return JSON.parse(JSON.stringify({...state, revision}));
+  };
   const publish = () => { revision++; io.to('journey-devices').emit('journey-state', snapshot()); };
   const content = () => journeys[state.language];
   const story = () => content()?.stories.find(item => item.id === state.activeStoryId);
@@ -80,13 +100,15 @@ function createJourney(io, { transitionMs = 2200 } = {}) {
       const level = active.level;
       state.learning.active = null;
       state.learning.levels[level - 1].completed = true;
-      if (level < 5) state.learning.levels[level].unlocked = true;
       if (level === 1 && !state.learning.tutorialCompleted) {
         state.learning.tutorialCompleted = true;
         state.learning.storybookUnlocked = true;
         state.learning.storybookUnlockVersion++;
         state.learning.storybookUnlockedAtTrip = state.trip;
       }
+      // Level 2 belongs to the post-festival continuation, so Level 1 only
+      // opens the storybook. The optional levels then unlock in sequence.
+      if (level === 2) state.learning.levels[2].unlocked = true;
       state.learning.allCompleted = state.learning.levels.every(entry => entry.completed);
     }
     publish();
@@ -115,9 +137,11 @@ function createJourney(io, { transitionMs = 2200 } = {}) {
     });
     socket.on('journey-learning-start', payload => {
       const level = payload?.level;
+      normaliseLearningState();
+      const definition = content()?.learningLevels.find(item => item.level === level);
       if (state.phase !== 'room' || state.learning.active ||
-          !Number.isInteger(level) || level < 1 || level > 5 ||
-          !state.learning.levels[level - 1].unlocked)
+          !Number.isInteger(level) || !definition ||
+          !state.learning.levels.find(item => item.level === level)?.unlocked)
         return invalid(socket, 'journey-learning-start');
       activate(level, 0); publish();
     });
@@ -230,6 +254,8 @@ function createJourney(io, { transitionMs = 2200 } = {}) {
     socket.on('journey-return', () => {
       if (state.phase !== 'festival' || state.festivalMission !== festival()?.items.length ||
           state.festivalFeedback) return invalid(socket, 'journey-return');
+      state.mainAdventureCompleted = true;
+      state.learning.levels[1].unlocked = true;
       returnHome();
     });
     socket.on('journey-exit', () => {

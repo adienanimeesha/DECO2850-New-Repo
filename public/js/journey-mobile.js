@@ -181,10 +181,16 @@ socket.on('journey-hint', message => { window.OceanRoom?.feedback(message); });
 socket.on('journey-state', next => {
  if (!awaitingSnapshot && state && next.revision < state.revision) return;
  const prev = awaitingSnapshot ? null : state; awaitingSnapshot=false; state=next;
- if(next.language===null || (next.phase==='aquarium' && prev?.phase!=='aquarium')) {
+ if(next.language===null) {
   selectedLanguage=null;
   document.querySelectorAll('[data-language]').forEach(button=>button.setAttribute('aria-pressed','false'));
   $('start-adventure').disabled=true;
+ } else if(next.phase==='aquarium') {
+  // Keep the completed track selected so returning players can continue to
+  // the optional levels without choosing their language again.
+  selectedLanguage=next.language;
+  document.querySelectorAll('[data-language]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.language===selectedLanguage)));
+  $('start-adventure').disabled=!socket.connected;
  }
  collectedMemories = [...new Map([...next.memories, ...next.bag].map(item => [JSON.stringify([item.language,item.id]),item])).values()];
  if (!prev || prev.trip !== next.trip) outfitChoice=null;
@@ -205,7 +211,9 @@ socket.on('journey-state', next => {
  $('travel-title').textContent=titles[next.phase] || '';
  $('travel-copy').textContent=next.phase==='travelling' ? c.festivalIntro : next.phase==='returning' ? 'Follow Jelly on the aquarium screen.' : 'From the aquarium to your little ocean home.';
  $('travel-jelly').innerHTML=art.jelly(outfit());
- $('welcome-return').textContent=next.memories.length ? `${next.memories.length} discoveries are waiting in your aquarium. Ready for another adventure?` : '';
+ $('welcome-return').textContent=next.mainAdventureCompleted && next.phase==='aquarium'
+  ? `Welcome home, Jelly! You've unlocked Level 2! Continue the adventure to return to the common room and visit the bookshelf.`
+  : next.memories.length ? `${next.memories.length} discoveries are waiting in your aquarium. Ready for another adventure?` : '';
  if (!['room','festival'].includes(next.phase)) { if (activity) closeActivity(); window.OceanRoom?.closeStory(); }
  window.OceanRoom?.sync(next,prev);
  learningInterface?.sync(next,prev);

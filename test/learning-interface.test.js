@@ -16,8 +16,8 @@ function setup(t) {
   getContent() { return {}; },
   room: () => window.OceanRoom
  });
- const levels = Array.from({ length: 5 }, (_, index) => ({
-  id: 'level-' + (index + 1), title: ['Discover the Culture', 'Festival Decorations', 'Traditional Food and Clothing', 'Cultural Performances and Traditions', 'Festival Adventure'][index],
+ const levels = Array.from({ length: 3 }, (_, index) => ({
+  id: 'level-' + (index + 1), title: ['Meet Mandalika', "Explore Lombok's Coast", 'Celebrate Bau Nyale'][index],
   status: index ? 'locked' : 'available'
  }));
  const stories = [
@@ -28,17 +28,17 @@ function setup(t) {
  return { window, document: window.document, api, actions, locks, base };
 }
 
-test('first room visit guides movement and bookshelf opens five authoritative level cards', t => {
+test('first room visit guides movement and bookshelf opens three authoritative level cards', t => {
  const p = setup(t);
  p.api.sync(p.base, null);
  assert.equal(p.document.querySelector('#learning-guidance').hidden, false);
  assert.match(p.document.querySelector('#learning-guidance').textContent, /Move your jellyfish towards the bookshelf/);
  p.api.approach('learning-bookshelf');
  assert.equal(p.document.querySelector('#learning-level-screen').hidden, false);
- assert.equal(p.document.querySelectorAll('#learning-level-list .learning-card').length, 5);
+ assert.equal(p.document.querySelectorAll('#learning-level-list .learning-card').length, 3);
  assert.equal(p.document.querySelectorAll('#learning-level-list .learning-card-action').length, 1);
- assert.equal(p.document.querySelector('#learning-level-list .learning-card h3').textContent, 'Discover the Culture');
- assert.equal(p.document.querySelectorAll('#learning-level-list .is-locked').length, 4);
+ assert.equal(p.document.querySelector('#learning-level-list .learning-card h3').textContent, 'Meet Mandalika');
+ assert.equal(p.document.querySelectorAll('#learning-level-list .is-locked').length, 2);
 });
 
 test('starting Level 1 closes the menu without starting from room entry', async t => {
@@ -86,6 +86,31 @@ test('completed levels and stories render Replay while locked content stays iner
  p.api.openStories();
  assert.equal(p.document.querySelector('#learning-story-list .learning-card-action').textContent, 'Replay');
  assert.equal(p.document.querySelectorAll('#learning-story-list .is-locked button').length, 0);
+});
+
+test('real curriculum ignores obsolete five-level progress and never unlocks unknown levels', t => {
+ const html = fs.readFileSync(path.join(__dirname, '../public/mobile.html'), 'utf8').replace(/<script[\s\S]*?<\/script>/g, '');
+ const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'http://localhost:3000/mobile.html' });
+ t.after(() => dom.window.close());
+ const { window } = dom;
+ window.OceanRoom = { clearMovement() {}, lock() {} };
+ window.eval(fs.readFileSync(path.join(__dirname, '../public/js/journey-content.js'), 'utf8'));
+ window.eval(fs.readFileSync(path.join(__dirname, '../public/js/learning-interface.js'), 'utf8'));
+ const state = {phase:'room', language:'indonesian', stories:[], learning:{active:null, storybookUnlocked:false,
+  levels:[
+   {level:1,unlocked:true,completed:false}, {level:2,unlocked:false,completed:false},
+   {level:3,unlocked:false,completed:false}, {level:4,unlocked:true,completed:false},
+   {level:5,unlocked:true,completed:false}
+  ]}};
+ const ui = window.JellyLearningInterface.create({action:()=>Promise.resolve(),
+  getContent:value=>window.JOURNEYS[value.language], room:()=>window.OceanRoom});
+ ui.sync(state, null); ui.openLevels();
+ const cards = [...window.document.querySelectorAll('#learning-level-list .learning-card')];
+ assert.equal(cards.length, 3);
+ assert.deepEqual(cards.map(card=>card.querySelector('h3').textContent),
+  ['Meet Mandalika', "Explore Lombok's Coast", 'Celebrate Bau Nyale']);
+ assert.equal(window.document.querySelectorAll('#learning-level-list .learning-card-action').length, 1);
+ assert.doesNotMatch(window.document.querySelector('#learning-level-list').textContent, /Music and Traditions|Bau Nyale Adventure/);
 });
 
 test('owned interface removes nursery-rhyme navigation and includes responsive layouts', () => {

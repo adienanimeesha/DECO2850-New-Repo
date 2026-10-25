@@ -38,9 +38,9 @@ function question(language='indonesian',level=1,index=0,attempt=0){
 const geometry={bounds:{left:49,right:911,top:127,bottom:567},player:{x:486,y:408,radius:21},furniture:[{x:83,y:348,width:179,height:81},{x:77,y:155,width:180,height:63},{x:731,y:164,width:152,height:76},{x:413,y:239,width:145,height:77},{x:785,y:441,width:65,height:63}],reserved:[{x:180,y:270,radius:55},{x:190,y:413,radius:50}]};
 function deferred(){let resolve,reject;const promise=new Promise((yes,no)=>{resolve=yes;reject=no;});return{promise,resolve,reject};}
 
-test('all five levels and both tracks place shared cultural objects in reachable, separated room positions',t=>{
+test('all three levels and both tracks place shared cultural objects in reachable, separated room positions',t=>{
  const p=setup(t);
- for(const language of ['indonesian','chinese'])for(let level=1;level<=5;level++)for(let index=0;index<5;index++){
+ for(const language of ['indonesian','chinese'])for(let level=1;level<=3;level++)for(let index=0;index<5;index++){
   const objects=p.w.VocabularyGameplay.placeObjects(question(language,level,index).question.objects,geometry);
   assert.equal(objects.length,3);
   const grid=20,seen=new Set(['480,400']),queue=[[480,400]];
@@ -100,10 +100,10 @@ test('actual colouring supports brush, fill, clear, Done retry, cancel, and clea
  assert.throws(()=>p.w.VocabularyColouring.mount(p.root,{icon:'unsupported'},()=>{}),/outline/);
 });
 
-test('all five levels support five authoritative questions, replay, cleanup, and safe text rendering',async t=>{
+test('all three levels support five authoritative questions, replay, cleanup, and safe text rendering',async t=>{
  const p=setup(t);let completed=0;
  const controller=p.w.VocabularyGameplay.create({root:p.root,room:{geometry:()=>geometry,isNear:()=>true,clearMovement(){}},adapter:{select:()=>({correct:true,colouringAllowed:true}),complete:()=>{completed++;},exit(){}}});
- for(const language of ['indonesian','chinese'])for(let level=1;level<=5;level++){
+ for(const language of ['indonesian','chinese'])for(let level=1;level<=3;level++){
   for(let index=0;index<5;index++){
    const view=question(language,level,index);controller.sync(view);const first=controller.objects[0];await controller.select(first.id);
    p.root.querySelector('[data-tool="fill"]').click();await p.advance();p.root.querySelector('[data-tool="done"]').click();await p.advance();
@@ -112,7 +112,7 @@ test('all five levels support five authoritative questions, replay, cleanup, and
   controller.sync(null);assert.equal(controller.objects.length,0);assert.equal(controller.speaking,false);
   controller.sync(question(language,level,0,1));assert.match(p.root.textContent,/Question 1 of 5/);controller.sync(null);
  }
- assert.equal(completed,50);
+ assert.equal(completed,30);
  const unsafe=question();unsafe.question.before='<img src=x onerror=alert(1)>';controller.sync(unsafe);assert.equal(p.root.querySelector('img'),null);
  const missing=question('chinese');delete missing.question.pronunciation;assert.throws(()=>controller.sync(missing),/Pinyin/);controller.destroy();
 });

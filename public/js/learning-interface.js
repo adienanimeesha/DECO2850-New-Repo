@@ -17,9 +17,12 @@ function create({ action, getContent, room = () => window.OceanRoom }) {
  const levelItems = value => {
   const model = learning(value) || {};
   const content = getContent(value) || {};
-  if (content.learningLevels && model.levels) return content.learningLevels.map(definition => ({
-   ...definition, ...model.levels.find(item => item.level === definition.level)
-  }));
+  // Only render levels known to both the current curriculum and authoritative
+  // progress. This safely ignores obsolete definitions retained by an old tab
+  // and obsolete progress entries retained by an older server state.
+  if (Array.isArray(content.learningLevels) && Array.isArray(model.levels)) return content.learningLevels
+   .filter(definition => model.levels.some(item => item.level === definition.level))
+   .map(definition => ({...definition, ...model.levels.find(item => item.level === definition.level)}));
   const definitions = model.levels || value?.vocabularyLevels || content.vocabularyLevels || [];
   return Array.isArray(definitions) ? definitions : [];
  };
@@ -81,7 +84,10 @@ function create({ action, getContent, room = () => window.OceanRoom }) {
  function statusOf(item, index) {
   if (!item) return { locked: true, completed: false };
   const completed = item.completed === true || item.status === 'completed';
-  const locked = item.unlocked === false || item.locked === true || item.available === false || ['locked', 'unavailable'].includes(item.status);
+  const explicitlyAvailable = completed || item.unlocked === true || item.available === true || item.locked === false ||
+   ['available', 'ready', 'in-progress'].includes(item.status);
+  const locked = !explicitlyAvailable || item.unlocked === false || item.locked === true ||
+   item.available === false || ['locked', 'unavailable'].includes(item.status);
   return { locked, completed };
  }
  function labelledButton(text, className) {
@@ -93,7 +99,7 @@ function create({ action, getContent, room = () => window.OceanRoom }) {
   const list = $('learning-level-list');
   list.replaceChildren();
   const levels = levelItems(state);
-  for (let index = 0; index < 5; index++) {
+  for (let index = 0; index < levels.length; index++) {
    const item = levels[index], status = statusOf(item, index);
    const row = document.createElement('article'); row.className = 'learning-card';
    row.classList.toggle('is-locked', status.locked); row.classList.toggle('is-complete', status.completed);

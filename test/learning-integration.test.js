@@ -6,14 +6,14 @@ const content = require('../public/js/journey-content');
 const bridge = require('../public/js/learning-backend');
 const {createJourney} = require('../journey');
 
-test('all 50 real curriculum questions map to supported, parseable illustrations and colouring outlines', t => {
+test('all 30 real curriculum questions map to supported, parseable illustrations and colouring outlines', t => {
  const dom = new JSDOM('<!doctype html><div id="root"></div>', {runScripts: 'outside-only'});
  t.after(() => dom.window.close());
  const w = dom.window; w.Image = class {};
  for (const file of ['ocean-art','vocabulary-gameplay']) w.eval(fs.readFileSync(`public/js/${file}.js`, 'utf8'));
  let count = 0;
  for (const [language, track] of Object.entries(content)) {
-  assert.equal(track.learningLevels.length, 5);
+  assert.equal(track.learningLevels.length, 3);
   for (const level of track.learningLevels) {
    assert.equal(level.questions.length, 5);
    for (const [index, q] of level.questions.entries()) {
@@ -37,7 +37,7 @@ test('all 50 real curriculum questions map to supported, parseable illustrations
    }
   }
  }
- assert.equal(count,50);
+ assert.equal(count,30);
 });
 
 // Real backend handlers with asynchronously delivered socket events. No fixture
@@ -123,7 +123,7 @@ function mobile(t, api, name='mobile.html', viewport={width:960,height:620}) {
  return {w,d,socket,sent,draws,ellipses,motion,advance,click,walk,get controller(){return controller;}};
 }
 
-for(const language of ['indonesian','chinese'])test(`${language}: real sockets and complete pages cover all 25 words, story, festival, return, optional levels and replay`,async t=>{
+for(const language of ['indonesian','chinese'])test(`${language}: real sockets and complete pages cover all 15 words, story, festival, return, optional levels and replay`,async t=>{
  const api=await networkBackend(t),p=mobile(t,api),aquarium=mobile(t,api,'pet.html');
  await waitFor(()=>p.w.JellyJourney.state&&p.socket.connected);
  p.click(`[data-language="${language}"]`);p.click('#start-adventure');
@@ -132,7 +132,7 @@ for(const language of ['indonesian','chinese'])test(`${language}: real sockets a
  await p.walk(180,214);
  assert.equal(p.d.querySelector('#learning-level-screen').hidden,false);
  assert.equal(p.d.querySelectorAll('#learning-level-list button').length,1);
- assert.equal(p.d.querySelectorAll('#learning-level-list .is-locked').length,4);
+ assert.equal(p.d.querySelectorAll('#learning-level-list .is-locked').length,2);
  assert.equal(p.d.querySelector('#learning-level-list h3').textContent,content[language].learningLevels[0].title);
  p.click('#learning-level-list button');
  await waitFor(()=>p.controller?.active&&!p.w.JellyJourney.locked);
@@ -165,6 +165,7 @@ for(const language of ['indonesian','chinese'])test(`${language}: real sockets a
  }
  assert.equal(api.journey.snapshot().bag.length,5);
  assert.equal(api.journey.snapshot().learning.storybookUnlocked,true);
+ assert.equal(api.journey.snapshot().learning.levels[1].unlocked,false,'Level 1 must not unlock Level 2');
  assert.equal(p.d.querySelector('#activity-screen').hidden,true);
  assert.equal(p.w.JellyJourney.state.storyDone,false);assert.equal(p.w.JellyJourney.state.invited,false);assert.equal(p.w.JellyJourney.state.outfit,null);
  assert.equal(p.d.querySelector('.jelly-question-bubble'),null);
@@ -206,12 +207,16 @@ for(const language of ['indonesian','chinese'])test(`${language}: real sockets a
  }
  p.click('#take-home');await waitFor(()=>p.w.JellyJourney.state.phase==='aquarium');
  assert.equal(api.journey.snapshot().memories.length,13);
+ assert.equal(api.journey.snapshot().mainAdventureCompleted,true);
+ assert.equal(api.journey.snapshot().learning.levels[1].unlocked,true);
+ assert.match(p.d.querySelector('#welcome-return').textContent,/unlocked Level 2/);
  await waitFor(()=>/13 collected memories/.test(aquarium.d.querySelector('#aquarium-status').textContent));
- p.click(`[data-language="${language}"]`);p.click('#continue-adventure');await waitFor(()=>p.w.JellyJourney.state.phase==='room');
+ assert.equal(p.d.querySelector(`[data-language="${language}"]`).getAttribute('aria-pressed'),'true');
+ p.click('#continue-adventure');await waitFor(()=>p.w.JellyJourney.state.phase==='room');
  assert.equal(p.w.JellyJourney.state.learning.levels[0].completed,true);
  assert.equal(p.d.querySelector('#storybook-unlock-screen').hidden,true);
  // Optional levels use the real content and the same physical/colouring loop.
- for(let level=2;level<=5;level++) {
+ for(let level=2;level<=3;level++) {
   await p.walk(180,214);
   assert.equal(p.d.querySelectorAll('#learning-level-list button').length,level);
   assert.equal(p.d.querySelector('#learning-level-list button').textContent,'Replay');
@@ -228,7 +233,7 @@ for(const language of ['indonesian','chinese'])test(`${language}: real sockets a
   }
  }
  assert.equal(api.journey.snapshot().learning.allCompleted,true);
- assert.equal(api.journey.snapshot().bag.length,20);
+ assert.equal(api.journey.snapshot().bag.length,10);
  await p.walk(486,269);assert.equal(p.d.querySelector('#learning-story-list button').textContent,'Replay');
  p.click('#learning-story-list button');await waitFor(()=>!p.d.querySelector('#storybook-backdrop').hidden);
  assert.equal(p.w.JellyJourney.state.storyPage,0);
@@ -238,7 +243,7 @@ for(const language of ['indonesian','chinese'])test(`${language}: real sockets a
  for(let beat=0;beat<3;beat++){p.click('#scene-continue');await p.advance(100);}
  p.click(language==='chinese'?'[data-chinese-choice="story-shell"]':'#story-shell');
  p.click('#scene-continue');await p.advance(100);p.click('#scene-continue');await p.advance(100);
- await waitFor(()=>p.w.JellyJourney.state.storyPage===1);assert.equal(api.journey.snapshot().bag.length,20);
+ await waitFor(()=>p.w.JellyJourney.state.storyPage===1);assert.equal(api.journey.snapshot().bag.length,10);
 });
 
 test('reset invalidates previous attempts and competing activities cannot interrupt a level',async t=>{
@@ -256,13 +261,22 @@ test('reset invalidates previous attempts and competing activities cannot interr
  for(let page=0;page<5;page++)await adapter.request('storyPage',{page});
  client.socket.emit('journey-invitation');await waitFor(()=>api.journey.snapshot().invited);
  client.socket.emit('journey-try-outfit',content.chinese.outfits[0].id);await waitFor(()=>api.journey.snapshot().outfit);
+ await assert.rejects(adapter.request('startLevel',{level:2}),/not available/,'Level 2 remains locked before festival return');
+ client.socket.emit('journey-festival');await waitFor(()=>api.journey.snapshot().phase==='festival');
+ for(const item of content.chinese.festivalItems){
+  if(item.area!==api.journey.snapshot().festivalArea){client.socket.emit('journey-area',item.area);await waitFor(()=>api.journey.snapshot().festivalArea===item.area);}
+  client.socket.emit('journey-find',item.id);await waitFor(()=>api.journey.snapshot().festivalFeedback);
+  client.socket.emit('journey-next-festival');await waitFor(()=>!api.journey.snapshot().festivalFeedback);
+ }
+ client.socket.emit('journey-return');await waitFor(()=>api.journey.snapshot().phase==='aquarium');
+ client.socket.emit('journey-start','chinese');await waitFor(()=>api.journey.snapshot().phase==='room');
  await adapter.request('startLevel',{level:2});const before=api.journey.snapshot(),errors=[];client.socket.on('journey-error',e=>errors.push(e));
  client.socket.emit('journey-try-outfit',content.chinese.outfits[1].id);
  client.socket.emit('journey-festival');client.socket.emit('journey-invitation');
  await assert.rejects(adapter.request('selectStory',{storyId:content.chinese.stories[0].id}),/not available/);
  assert.deepEqual(api.journey.snapshot(),before);assert.equal(errors.length,4);
  await adapter.request('exitLevel');assert.equal(api.journey.snapshot().learning.active,null);
- client.socket.emit('journey-festival');await waitFor(()=>api.journey.snapshot().phase==='festival');
+ assert.equal(api.journey.snapshot().mainAdventureCompleted,true);
 });
 
 test('adapter times out, rejects disconnects, ignores stale results, and permits recovery',async()=>{
@@ -337,7 +351,7 @@ test('reader waits for backend confirmation and rejected pages can be retried',a
  await waitFor(()=>p.d.querySelector('#scene-next').disabled===false);
 });
 
-test('all 50 questions fit actual room silhouettes, floating envelopes, reachable grid and control reserves',async t=>{
+test('all 30 questions fit actual room silhouettes, floating envelopes, reachable grid and control reserves',async t=>{
  const api=await networkBackend(t),p=mobile(t,api);await waitFor(()=>p.w.JellyJourney.state);
  p.click('[data-language="indonesian"]');p.click('#start-adventure');await waitFor(()=>p.w.JellyJourney.state.phase==='room');
  const game=p.w.VocabularyGameplay,geometry=p.w.OceanRoom.learningGeometry();
@@ -431,7 +445,7 @@ for(const language of ['indonesian','chinese'])test(`${language}: fresh adventur
  p.click(`[data-language="${language}"]`);assert.equal(p.d.querySelector('#continue-adventure').hidden,false);p.click('#start-adventure');
  await waitFor(()=>p.w.JellyJourney.state.phase==='room');
  const fresh=p.w.JellyJourney.state;assert.ok(fresh.trip>old.trip);assert.equal(fresh.bag.length,0);assert.equal(fresh.memories.length,0);assert.equal(fresh.learning.active,null);
- assert.deepEqual(Array.from(fresh.learning.levels,l=>l.completed),[false,false,false,false,false]);assert.equal(fresh.learning.storybookUnlocked,false);assert.equal(fresh.storyDone,false);assert.equal(fresh.invited,false);assert.equal(fresh.outfit,null);
+ assert.deepEqual(Array.from(fresh.learning.levels,l=>l.completed),[false,false,false]);assert.equal(fresh.learning.storybookUnlocked,false);assert.equal(fresh.storyDone,false);assert.equal(fresh.invited,false);assert.equal(fresh.outfit,null);
  assert.equal(p.d.querySelector('#learning-guidance').hidden,false);assert.equal(p.d.querySelector('#activity-screen').hidden,true);assert.equal(p.controller.objects.length,0);
  // Deliver an obsolete snapshot to every real client handler, including the adapter.
  p.socket.listeners('journey-state').forEach(fn=>fn(old));aquarium.socket.listeners('journey-state').forEach(fn=>fn(old));await p.advance(50);

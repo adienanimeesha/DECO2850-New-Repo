@@ -75,9 +75,9 @@ async function finishLevel(api, client, level, options = {}) {
     await answerCurrent(api, client, index === 0 ? options : {});
 }
 
-test('both culturally grounded language tracks have five distinct five-question levels', () => {
+test('both culturally grounded language tracks have three distinct five-question levels', () => {
   for (const [language, entry] of Object.entries(content)) {
-    assert.equal(entry.learningLevels.length, 5);
+    assert.equal(entry.learningLevels.length, 3);
     assert.equal(entry.stories.length, 1);
     assert.equal(entry.festivals.length, 1);
     assert.equal(entry.stories[0].festivalId, entry.festivals[0].id);
@@ -112,11 +112,13 @@ for (const language of ['indonesian', 'chinese']) {
     await api.phase('room');
     let state = api.journey.snapshot();
     assert.equal(state.learning.active, null);
-    assert.deepEqual(state.learning.levels.map(item => item.unlocked), [true, false, false, false, false]);
+    assert.deepEqual(state.learning.levels.map(item => item.unlocked), [true, false, false]);
     assert.equal(state.learning.storybookUnlocked, false);
     await api.send(mobile, 'journey-story-page', 0);
     await api.send(mobile, 'journey-invitation');
     await api.send(mobile, 'journey-learning-start', { level: 2 });
+    await api.send(mobile, 'journey-learning-start', { level: 4 });
+    await api.send(mobile, 'journey-learning-start', { level: 5 });
     assert.equal(api.journey.snapshot().storyPage, 0);
     assert.equal(api.journey.snapshot().invited, false);
     assert.equal(api.journey.snapshot().learning.active, null);
@@ -126,7 +128,7 @@ for (const language of ['indonesian', 'chinese']) {
     assert.equal(state.learning.storybookUnlocked, true);
     assert.equal(state.learning.storybookUnlockVersion, 1);
     assert.equal(state.learning.storybookUnlockedAtTrip, state.trip);
-    assert.equal(state.learning.levels[1].unlocked, true);
+    assert.equal(state.learning.levels[1].unlocked, false, 'Level 1 unlocks the storybook, not Level 2');
     assert.equal(state.bag.length, 5);
     const reconnect = await api.connect();
     assert.deepEqual(reconnect.states.at(-1), state);
@@ -163,7 +165,11 @@ for (const language of ['indonesian', 'chinese']) {
     await api.phase('aquarium');
     state = api.journey.snapshot();
     assert.equal(state.memories.length, 13);
+    assert.equal(state.mainAdventureCompleted, true);
+    assert.equal(state.learning.levels[1].unlocked, true, 'festival return unlocks Level 2');
     assert.deepEqual(aquarium.states.at(-1), state);
+    const returnedReconnect = await api.connect();
+    assert.deepEqual(returnedReconnect.states.at(-1), state, 'refresh restores the completed festival and Level 2 unlock');
     await api.send(mobile, 'journey-start', language);
     await api.phase('room');
     state = api.journey.snapshot();
@@ -183,15 +189,29 @@ for (const language of ['indonesian', 'chinese']) {
 test('optional levels unlock in order and replay grants no duplicate rewards', async t => {
   const api = await setup(t), client = await api.connect();
   await api.send(client, 'journey-start', 'chinese'); await api.phase('room');
-  for (let level = 1; level <= 5; level++) {
-    await finishLevel(api, client, level);
-    const state = api.journey.snapshot();
-    assert.equal(state.learning.levels[level - 1].completed, true);
-    if (level < 5) assert.equal(state.learning.levels[level].unlocked, true);
+  await finishLevel(api, client, 1);
+  assert.equal(api.journey.snapshot().learning.levels[1].unlocked, false);
+  await api.send(client, 'journey-story-select', { storyId: content.chinese.stories[0].id });
+  for (let page = 0; page < 5; page++) await api.send(client, 'journey-story-page', page);
+  await api.send(client, 'journey-invitation');
+  await api.send(client, 'journey-try-outfit', content.chinese.outfits[0].id);
+  await api.send(client, 'journey-festival'); await api.phase('festival');
+  for (const item of content.chinese.festivalItems) {
+    if (item.area !== api.journey.snapshot().festivalArea)
+      await api.send(client, 'journey-area', item.area);
+    await api.send(client, 'journey-find', item.id);
+    await api.send(client, 'journey-next-festival');
   }
+  await api.send(client, 'journey-return'); await api.phase('aquarium');
+  assert.equal(api.journey.snapshot().learning.levels[1].unlocked, true);
+  await api.send(client, 'journey-start', 'chinese'); await api.phase('room');
+  await finishLevel(api, client, 2);
+  assert.equal(api.journey.snapshot().learning.levels[2].unlocked, true);
+  await finishLevel(api, client, 3);
   assert.equal(api.journey.snapshot().learning.allCompleted, true);
   const rewardCount = api.journey.snapshot().bag.length;
-  await finishLevel(api, client, 1);
+  await finishLevel(api, client, 2);
+  await finishLevel(api, client, 3);
   assert.equal(api.journey.snapshot().bag.length, rewardCount);
   assert.equal(api.journey.snapshot().learning.storybookUnlockVersion, 1);
 });

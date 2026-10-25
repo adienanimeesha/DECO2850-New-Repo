@@ -277,8 +277,9 @@ test('Bring Jelly home keeps its outfit and memories until starting a fresh adve
  p.click('#return-early');p.click('#exit-confirm');assert.equal(p.state.phase,'returning');
  p.update({phase:'aquarium'});
  assert.equal(p.state.memories.length,1);assert.equal(p.state.outfit,journeys.chinese.outfits[0].id);
- assert.equal(d.querySelector('#language-screen').hidden,false);assert.equal(d.querySelector('#start-adventure').disabled,true);
- assert.equal(d.querySelectorAll('[data-language][aria-pressed="true"]').length,0);
+ assert.equal(d.querySelector('#language-screen').hidden,false);assert.equal(d.querySelector('#start-adventure').disabled,false);
+ assert.equal(d.querySelector('[data-language="chinese"]').getAttribute('aria-pressed'),'true');
+ assert.equal(d.querySelector('#continue-adventure').hidden,false);
  assert.match(d.querySelector('#welcome-return').textContent,/1 discoveries/);
  p.click('[data-language="indonesian"]');p.click('#start-adventure');
  assert.equal(p.state.memories.length,0);assert.equal(p.state.bag.length,0);assert.equal(p.state.outfit,null);assert.equal(p.state.storyPage,0);
