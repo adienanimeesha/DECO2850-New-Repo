@@ -8,6 +8,42 @@ let memoryProximityArmed = true;
 let wardrobeProximityArmed = true;
 let storyVoiceTimer = null, storyVoiceListener = null;
 const art = window.OceanArt;
+const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+const wornJellyImages = new Map();
+const festivalImages = new Map();
+function festivalImage(path) {
+ let image = festivalImages.get(path);
+ if (!image) {
+  image = new Image();
+  image.src = path;
+  festivalImages.set(path, image);
+ }
+ return image;
+}
+function drawFestivalImage(path,x,y,maxWidth,maxHeight,crop,keepScreenAspect=false) {
+ const image=festivalImage(path);
+ if(!image.complete||!image.naturalWidth||!image.naturalHeight)return false;
+ const [sourceX,sourceY,sourceWidth,sourceHeight]=crop||[0,0,image.naturalWidth,image.naturalHeight];
+ const scale=Math.min(maxWidth/sourceWidth,maxHeight/sourceHeight);
+ const screen=keepScreenAspect?art.screenScale(canvas):null;
+ const width=sourceWidth*scale*(screen?screen.unit/screen.x:1);
+ const height=sourceHeight*scale*(screen?screen.unit/screen.y:1);
+ if(crop)context.drawImage(image,sourceX,sourceY,sourceWidth,sourceHeight,x-width/2,y-height/2,width,height);
+ else context.drawImage(image,x-width/2,y-height/2,width,height);
+ return true;
+}
+function preloadFestivalArea(area) {
+ const content=journey.content,zone=content?.festivalAreas?.[area];
+ if(!zone?.background)return;
+ for(const path of [zone.background,...(content.festivalItems||[]).filter(item=>item.area===area).map(item=>item.festivalImage),
+  ...zone.distractors.map(item=>item.festivalImage),...Object.values(content.festivalNavigation||{})])
+  if(path)festivalImage(path);
+}
+function wornJellyImage(outfit) {
+ let image=wornJellyImages.get(outfit.id);
+ if(!image){image=new Image();image.src=art.jellyDataUrl(outfit);wornJellyImages.set(outfit.id,image);}
+ return image;
+}
 let learning = null, learningOptions = null, learningApproach = null;
 let learningStoryUnlocked = false;
 const learningBusy = () => Boolean(learning?.blocked);
@@ -50,7 +86,7 @@ function learningGeometry() {
    const box=node.getBoundingClientRect();
    return {x:(box.left-rect.left)*960/rect.width,y:(box.top-rect.top)*620/rect.height,width:box.width*960/rect.width,height:box.height*620/rect.height};
   });
- return {bounds:world.bounds,furniture:roomFurniture,player:{...player},visualObstacles:roomVisualObstacles,reserved:ui};
+ return {bounds:world.bounds,furniture,player:{...player},visualObstacles:roomVisualObstacles,reserved:ui};
 }
 const keysDown = new Set();
 const touchPointers = new Map();
@@ -187,7 +223,7 @@ function stations() {
  if (journey.state?.phase === 'festival') {
   const area=journey.state.festivalArea||0, c=journey.content;
   const objects=[...c.festivalItems.filter(x=>x.area===area&&!journey.state.festivalFound.includes(x.id)),...c.festivalAreas[area].distractors];
-  return [...objects.map(x=>({...x,kind:'treasure',label:x.word||'Explore this object',radius:65})),
+  return [...objects.map(x=>({...x,kind:'treasure',label:x.festivalImage?'Explore this object':x.word||'Explore this object',radius:x.festivalRadius??(x.festivalImage?110:65)})),
    ...(area>0?[{id:'area-left',kind:'portal',area:area-1,label:c.festivalAreas[area-1].name,x:80,y:450,radius:34}]:[]),
    ...(area<c.festivalAreas.length-1?[{id:'area-right',kind:'portal',area:area+1,label:c.festivalAreas[area+1].name,x:880,y:450,radius:34}]:[])];
  }
@@ -196,7 +232,7 @@ function stations() {
   {id:'book',kind:'book',label:'Read the cultural story',x:486,y:269,radius:104},
   {id:'learning-bookshelf',kind:'learning-bookshelf',label:'Choose a vocabulary level',x:180,y:214,radius:95},
   {id:'wardrobe',kind:'wardrobe',label:'Try on a festival outfit',x:810,y:212,radius:100},
-  {id:'memories',kind:'memories',label:'Open your memory book',x:190,y:413,radius:112}
+  ...(journey.memories.length?[{id:'memories',kind:'memories',label:'Open your memory book',x:190,y:413,radius:112}]:[])
  ];
  if(!learningOptions)return common.filter(s=>s.kind!=='wardrobe'||(journey.wardrobeReady ?? (journey.state?.storyDone&&journey.state?.invited)));
  return common.filter(s=>(s.kind!=='book'||learningStoryUnlocked) && (s.kind!=='wardrobe'||journey.wardrobeReady));
@@ -460,7 +496,8 @@ function nextPage() {
     turnPage(pageIndex + 1);
   } else {
     closeStory();
-    showFeedback("Your story is complete! Check your mailbox for a festival invitation.", 6500);
+    if(journey.state?.storyDone&&!journey.state?.invited)journey.openActivity('mail');
+    else showFeedback("Your story is complete! Your invitation is in the mailbox.", 6500);
   }
 }
 function renderPage(startNarration = true) {
@@ -607,6 +644,7 @@ function startIntroBeat(index, speak = true) {
   introElement("scene-beat-label").textContent = beat.label;
   introElement("scene-subtitle").textContent = beat.line;
   introElement("scene-play").textContent = "⏸ Pause";
+  introElement("scene-continue").textContent = index === 3 ? "Try the glowing object →" : "Continue story →";
   introElement("scene-next").disabled = !introState.completedChapters[pageIndex];
   syncChineseChoices();
   const startingSide = pageIndex % 2 === 0 ? "left" : "right";
@@ -659,6 +697,7 @@ function storySpeechParts(line) {
 }
 function storyVoice(lang) {
   const voices=window.speechSynthesis.getVoices?.() || [];
+  if (window.VocabularySpeech?.voiceFor) return window.VocabularySpeech.voiceFor(voices,lang);
   const normalize=voice=>voice.lang.toLowerCase().replaceAll('_','-');
   if(lang==='id-ID') return voices.find(voice=>normalize(voice)==='id-id') || voices.find(voice=>/^id(-|$)/.test(normalize(voice)));
   if(lang==='zh-CN') {
@@ -823,6 +862,7 @@ function tickIntro(time) {
       else if (introState.beat === 4) {
         if (introState.completedChapters[pageIndex]) {
           introState.completed=true;introElement('scene-next').disabled=false;
+          introElement('scene-continue').textContent=pageIndex===storyChapterCount-1?'Finish story →':'Next page →';
         } else if (!storySubmission && !storySaveError) {
           const submission={page:pageIndex,trip:journey.state.trip,story:journey.state.activeStoryId};
           storySubmission=submission;introElement('scene-next').disabled=true;introStatus('Saving this page…');
@@ -830,6 +870,7 @@ function tickIntro(time) {
             if(storySubmission!==submission||!storyOpen)return;
             storySubmission=null;introState.completed=true;introState.completedChapters[submission.page]=true;
             introElement('scene-next').disabled=false;
+            introElement('scene-continue').textContent=submission.page===storyChapterCount-1?'Finish story →':'Next page →';
             introStatus(submission.page===storyChapterCount-1?'Story complete · choose Finish story to return to the ocean':'Page complete · choose Next page');
           }).catch(error=>{
             if(storySubmission!==submission||!storyOpen)return;
@@ -943,7 +984,7 @@ function applyIntroVisual() {
     introElement("nyale-school").setAttribute("opacity", String(beat < 2 ? 0 : Math.min(1, beat === 2 ? t / 1.3 : 1)));
     put("nyale-school", Math.sin(worldTime * 1.9) * 9, Math.sin(worldTime * 2.6) * 7);
     put("nyale-target", Math.sin(worldTime * 2.4) * 13, Math.sin(worldTime * 3.3) * 7 - (state.interactionDone ? Math.abs(Math.sin((worldTime - state.reactionTime) * 10)) * 13 : 0));
-    introElement("nyale-target-body").setAttribute("d", `M648 423 Q666 ${383 + Math.sin(worldTime * 9) * 9} 688 411 T734 404`);
+    introElement("nyale-target-body").setAttribute("transform", `translate(0 ${Math.sin(worldTime * 9) * 5})`);
   } else {
     leftX = beat === 0 ? -90 + 395 * introEase(t / 3.5) : 305;
     rightX = beat === 0 ? 1070 - 410 * introEase(t / 3.5) : 660;
@@ -1200,6 +1241,20 @@ function drawJellyfish(time) {
   const bob = Math.sin(time / 420) * (player.moving ? 5 : 3);
   const pulse = 1 + Math.sin(time / (player.moving ? 190 : 400)) * .045;
   ellipse(player.x, player.y + 17, 24, 8, "#2c789661");
+  const outfit=journey.outfit;
+  if(outfit?.id.startsWith('sasak-')||outfit?.id.startsWith('hanfu-')){
+    const image=wornJellyImage(outfit);
+    if(image.complete&&image.naturalWidth){
+      const scale=art.screenScale(canvas);
+      context.save();context.translate(player.x,player.y-25+bob);
+      context.scale(scale.unit/scale.x,scale.unit/scale.y);context.scale(pulse,1/pulse);
+      const festival=journey.state?.phase==='festival';
+      context.drawImage(image,festival?-58:-44,festival?-69:-55,festival?116:88,festival?133:101);
+      if(learning?.speaking)ellipse(0,-7,2.6,3+Math.sin(time/85)**2*2,'#544770');
+      context.restore();
+      return;
+    }
+  }
   const scale=art.screenScale(canvas);
   context.save(); context.translate(player.x, player.y - 25 + bob); context.scale(1.17*scale.unit/scale.x, 1.17*scale.unit/scale.y);
   for (let i = -2; i <= 2; i += 1) {
@@ -1276,10 +1331,10 @@ function stationLabel(text,x,y) {
 function drawStations(time) {
  if(journey.state?.phase === 'festival') return;
  stationLabel('LEARNING BOOKSHELF',180,161);
- stationLabel('MEMORY SHELF',179,347);
+ if(journey.memories.length) stationLabel('MEMORY SHELF',179,347);
 }
 function drawWornOutfit(time) {
- const o=journey.outfit; if(!o) return;
+ const o=journey.outfit; if(!o||o.id.startsWith('sasak-')||o.id.startsWith('hanfu-')) return;
  const x=0,y=9,scale=art.screenScale(canvas);
  context.save();
  context.translate(player.x,player.y-25+Math.sin(time/420)*3);context.scale(scale.unit/scale.x,scale.unit/scale.y);
@@ -1287,11 +1342,44 @@ function drawWornOutfit(time) {
  context.beginPath();context.moveTo(x-26,y);context.lineTo(x-31,y+28);context.quadraticCurveTo(x,y+41,x+31,y+28);context.lineTo(x+26,y);context.closePath();context.fill();context.stroke();
  line([x-24,y+25,x+24,y+25],o.accent,5);
  line([x-15,y+1,x+7,y+23],o.accent,3);line([x+15,y+1,x-7,y+23],o.accent,3);
- if(o.id.startsWith('sasak')) {roundedRect(x-33,y-48,66,10,4,o.colour,'#875baa');line([x-28,y-43,x+28,y-43],o.accent,3);}
  context.restore();
+}
+function drawFestivalNavigation(zone) {
+ for(const portal of stations().filter(s=>s.kind==='portal')) {
+  const path=journey.content.festivalNavigation?.[portal.id==='area-right'?'right':'left'];
+  if(path) {
+   if(!drawFestivalImage(path,portal.x,portal.y,86,80,undefined,true))
+    stationLabel(portal.id==='area-right'?'→':'←',portal.x,portal.y+4);
+  }
+  else {
+   roundedRect(portal.x-27,portal.y-32,54,62,12,'#fff0cd','#b394b8');
+   stationLabel(portal.id==='area-right'?'→':'←',portal.x,portal.y+4);
+  }
+  stationLabel(portal.label,portal.x,portal.y+(path?62:53));
+  if(portal.id==='area-right')stationLabel('MORE TO EXPLORE →',portal.x,portal.y-63);
+ }
+ stationLabel(`${journey.content.festival.toUpperCase()} · ${zone.name}`,480,185);
 }
 function drawFestival(time) {
  const chinese=journey.state.language==='chinese', area=journey.state.festivalArea||0, zone=journey.content.festivalAreas[area];
+ if(zone.background) {
+  const image=festivalImage(zone.background);
+  if(image.complete&&image.naturalWidth>0) {
+   const sourceRatio=image.naturalWidth/image.naturalHeight, canvasRatio=960/620;
+   if(sourceRatio>canvasRatio) {
+    const width=image.naturalHeight*canvasRatio;
+    context.drawImage(image,(image.naturalWidth-width)/2,0,width,image.naturalHeight,0,0,960,620);
+   } else {
+    const height=image.naturalWidth/canvasRatio;
+    context.drawImage(image,0,(image.naturalHeight-height)/2,image.naturalWidth,height,0,0,960,620);
+   }
+   drawFestivalNavigation(zone);
+   return;
+  }
+  context.fillStyle='#fceacb';context.fillRect(0,0,960,620);
+  drawFestivalNavigation(zone);
+  return;
+ }
  const g=context.createLinearGradient(0,0,0,620);g.addColorStop(0,chinese?'#7179b3':'#ffc6c1');g.addColorStop(1,chinese?'#d7c6e4':'#ffebce');context.fillStyle=g;context.fillRect(0,0,960,620);
  ellipse(780,95,48,48,'#fff3c8');
  for(let i=0;i<20;i++)ellipse(50+(i*157)%880,30+(i*71)%160,2,2,'#fff6cd');
@@ -1313,21 +1401,30 @@ function drawFestival(time) {
   for(let i=0;i<3;i++)art.canvasIcon(context,'rabbit',570+i*65,315,45);
   drawSeaweed(500,365,.5,time);
  }
- for(const portal of stations().filter(s=>s.kind==='portal')) {
-  roundedRect(portal.x-27,portal.y-32,54,62,12,'#fff0cd','#b394b8');
-  stationLabel(portal.id==='area-right'?'→':'←',portal.x,portal.y+4);
-  stationLabel(portal.label,portal.x,portal.y+53);
- }
  line([55,116,470,146,905,112],'#ae83b1',3);
  for(let i=0;i<7;i++) {const x=90+i*130;art.canvasIcon(context,chinese?'lantern':'star',x,150+Math.sin(time/900+i)*3,chinese?63:39);}
- stationLabel(`${journey.content.festival.toUpperCase()} · ${zone.name}`,480,185);
+ drawFestivalNavigation(zone);
  drawSeaweed(75,560,.6,time);drawSeaweed(888,565,.5,time);
  for(const [x,y] of [[140,320],[845,340],[400,530]]) {
   ellipse(x,y,18,18,'#ffddb9','#c58f9e',2);roundedRect(x-20,y+18,40,44,15,'#c89ccf','#a57bac');
  }
 }
 function drawFestivalItem(item,time) {
- const bob=Math.sin(time/400+item.x)*4;
+ const bob=reducedMotion?.matches?0:Math.sin(time/400+item.x)*4;
+ if(item.festivalImage) {
+  const x=item.x,y=item.y+(item.festivalCenterOffset??-8)+bob;
+  const chinese=journey.state?.language==='chinese';
+  const screen=art.screenScale(canvas);
+  context.save();
+  context.beginPath();context.ellipse(x,y,48*screen.unit/screen.x,48*screen.unit/screen.y,0,0,Math.PI*2);
+  context.fillStyle=chinese?'#f0e2ffbf':'#fff8dfb8';
+  context.shadowColor=chinese?'#e7d1ff':'#fff4b8';context.shadowBlur=22;
+  context.fill();
+  context.shadowBlur=0;context.strokeStyle='#ffffffeb';context.lineWidth=3;
+  context.stroke();context.restore();
+  drawFestivalImage(item.festivalImage,x,y,item.festivalSize||82,item.festivalSize||78,item.festivalCrop,true);
+  return;
+ }
  ellipse(item.x,item.y+26,27,8,'#7274a133');
  ellipse(item.x,item.y-8+bob,41,41,'#fff8df66','#ffffffaa',2);
  art.canvasIcon(context,item.icon,item.x,item.y-8+bob,64);
@@ -1342,26 +1439,59 @@ function configureChineseStage() {
  svg.classList.add('chinese-scene');svg.setAttribute('viewBox','0 0 960 520');svg.setAttribute('role','group');svg.setAttribute('aria-label',chapters[pageIndex].title);
  const icon=(id,x,y,size)=>`<svg x="${x}" y="${y}" width="${size}" height="${size}" viewBox="0 0 100 100" aria-hidden="true">${art.svg(id).split('>').slice(1).join('>').replace(/<\/svg>$/,'')}</svg>`;
  const choice=(name,label,artwork)=>`<g class="chinese-scene-choice" data-chinese-choice="${name}" role="button" tabindex="-1" aria-disabled="true" aria-label="${label}">${artwork}</g>`;
- const family=(name,x,colour,label)=>`<g data-family="${name}" transform="translate(${x} 0)">${choice(name,label,`<ellipse cx="0" cy="445" rx="44" ry="12" fill="#75979d33"/><path d="M-33 354Q0 333 33 354L43 439H-43Z" fill="${colour}" stroke="#a382ac" stroke-width="3"/><circle cx="0" cy="328" r="30" fill="#f1c3a6" stroke="#b88a9e" stroke-width="3"/><path d="M-29 326Q-37 283 3 291Q34 290 29 319Q11 304-3 313Z" fill="#7b668f"/><circle cx="-10" cy="328" r="3" fill="#62517b"/><circle cx="10" cy="328" r="3" fill="#62517b"/><path d="M-7 342Q0 348 7 342" fill="none" stroke="#b27d98" stroke-width="2"/><path d="M-30 369L-46 395M30 369L46 395" stroke="#edbaa1" stroke-width="10" stroke-linecap="round"/><g data-delivered="${name}" hidden>${icon('letter',14,372,45)}</g>`)}</g>`;
- const moon='<circle cx="750" cy="109" r="62" fill="#fff1c2"/><circle cx="730" cy="95" r="10" fill="#efdcae"/><circle cx="766" cy="126" r="13" fill="#efdcae"/>';
+ const family=(name,x,colour,label,interactive=false)=>{
+  const drawing=`<ellipse cx="0" cy="445" rx="44" ry="12" fill="#75979d33"/><path d="M-33 354Q0 333 33 354L43 439H-43Z" fill="${colour}" stroke="#a382ac" stroke-width="3"/><circle cx="0" cy="328" r="30" fill="#f1c3a6" stroke="#b88a9e" stroke-width="3"/><path d="M-29 326Q-37 283 3 291Q34 290 29 319Q11 304-3 313Z" fill="#7b668f"/><circle cx="-10" cy="328" r="3" fill="#62517b"/><circle cx="10" cy="328" r="3" fill="#62517b"/><path d="M-7 342Q0 348 7 342" fill="none" stroke="#b27d98" stroke-width="2"/><path d="M-30 369L-46 395M30 369L46 395" stroke="#edbaa1" stroke-width="10" stroke-linecap="round"/>${interactive?`<g data-delivered="${name}" hidden>${icon('letter',14,372,45)}</g>`:''}`;
+  return `<g data-family="${name}" transform="translate(${x} 0)">${interactive?choice(name,label,drawing):`<g data-story-explore="family" role="button" tabindex="-1" aria-label="Family member">${drawing}</g>`}</g>`;
+ };
+ const moon=icon('moon',688,47,124);
  const stars=`<g fill="#fff7d9">${Array.from({length:17},(_,i)=>`<circle cx="${40+i*53}" cy="${35+i*41%160}" r="${2+i%3}"/>`).join('')}</g>`;
  const starsTarget=pageIndex===0||pageIndex===3?choice('story-fish','Stars in the sky',stars):stars;
- const moonTarget=pageIndex===0?choice('story-shell','Moon',moon):moon;
- const rabbit=icon('rabbit',400,255,140);
- const rabbitTarget=pageIndex===4?choice('scene-boat','Rabbit lantern',`<path d="M470 239V269" stroke="#b69bbc" stroke-width="3"/>${rabbit}`):rabbit;
+ const moonTarget=pageIndex===0?choice('story-shell','Moon',moon):`<g data-story-explore="moon" role="button" tabindex="-1" aria-label="Moon">${moon}</g>`;
+ const rabbit=pageIndex===2?'':icon('rabbit',pageIndex===4?420:400,255,140);
+ const rabbitTarget=pageIndex===4?choice('scene-boat','Rabbit lantern',`<path d="M490 239V269" stroke="#b69bbc" stroke-width="3"/>${rabbit}`):`<g data-story-explore="rabbit" role="button" tabindex="-1" aria-label="Moon rabbit">${rabbit}</g>`;
  const prop=pageIndex===2?choice('peace-ripple','Mooncake',icon('mooncake',625,327,95)):pageIndex===3?choice('nyale-target','Lantern',icon('lantern',625,327,95)):'';
- svg.innerHTML=`<defs><linearGradient id="moon-sky" x2="0" y2="1"><stop stop-color="#858cc5"/><stop offset="1" stop-color="#ddd1ec"/></linearGradient></defs><rect width="960" height="520" fill="url(#moon-sky)"/>${moonTarget}${starsTarget}<path d="M0 340Q200 285 430 340T960 320V520H0Z" fill="#a5cecd"/><path d="M0 441Q300 365 500 455T960 418V520H0Z" fill="#d4e4d4"/><path d="M30 310H225L205 265H60Z" fill="#a288b8"/><path d="M60 310V399M205 310V399" stroke="#a288b8" stroke-width="14"/><path d="M0 230Q480 280 960 225" stroke="#b195bd" stroke-width="3" fill="none"/><g data-moon-lanterns>${[90,290,480,680,875].map(x=>icon('lantern',x-23,230,45)).join('')}</g>${pageIndex===1?family('prince-left',265,'#c5a3da','First family member')+family('prince-right',700,'#eab4cc','Second family member'):''}<ellipse cx="486" cy="438" rx="93" ry="16" fill="#8daeb544"/><g data-moon-rabbit>${rabbitTarget}</g><g data-moon-prop>${prop}</g><text data-chinese-success hidden x="480" y="480" text-anchor="middle" font-size="24" fill="#855d98" font-family="Trebuchet MS">A little discovery, a lovely memory ♡</text>`;
+ const familyScene=[1,2,3,4].includes(pageIndex)?family('prince-left',265,'#c5a3da','First family member',pageIndex===1)+family('prince-right',700,'#eab4cc','Second family member',pageIndex===1):'';
+ const table=[2,4].includes(pageIndex)?`<g data-story-explore="table" role="button" tabindex="-1" aria-label="Family table"><ellipse cx="490" cy="447" rx="148" ry="23" fill="#75979d44"/><path d="M376 390Q490 370 604 390L591 421Q490 438 389 421Z" fill="#f7dcdd" stroke="#9e78a8" stroke-width="5"/><path d="M404 420V461M576 420V461" stroke="#9e78a8" stroke-width="13"/><ellipse cx="490" cy="390" rx="114" ry="28" fill="#fff0d9" stroke="#9e78a8" stroke-width="5"/>${pageIndex===4?icon('mooncake',460,351,57):''}</g>`:'';
+ svg.innerHTML=`<defs><linearGradient id="moon-sky" x2="0" y2="1"><stop stop-color="#858cc5"/><stop offset="1" stop-color="#ddd1ec"/></linearGradient></defs><rect width="960" height="520" fill="url(#moon-sky)"/>${moonTarget}${starsTarget}<path d="M0 340Q200 285 430 340T960 320V520H0Z" fill="#a5cecd"/><path d="M0 441Q300 365 500 455T960 418V520H0Z" fill="#d4e4d4"/><path d="M30 310H225L205 265H60Z" fill="#a288b8"/><path d="M60 310V399M205 310V399" stroke="#a288b8" stroke-width="14"/><path d="M0 230Q480 280 960 225" stroke="#b195bd" stroke-width="3" fill="none"/><g data-moon-lanterns>${[90,290,480,680,875].map(x=>`<g data-story-explore="lantern" role="button" tabindex="-1" aria-label="Lantern">${icon('lantern',x-23,230,45)}</g>`).join('')}</g>${familyScene}${table}${pageIndex===2?`<ellipse cx="670" cy="419" rx="64" ry="17" fill="#fff0d9" stroke="#a382ac" stroke-width="3"/>`:''}<ellipse cx="486" cy="438" rx="93" ry="16" fill="#8daeb544"/><g data-moon-rabbit>${rabbitTarget}</g><g data-moon-prop>${prop}</g><text data-chinese-success hidden x="480" y="480" text-anchor="middle" font-size="24" fill="#855d98" font-family="Trebuchet MS">A little discovery, a lovely memory ♡</text>`;
  // These are the objects in the illustration itself, with keyboard semantics
  // and a glow during the interaction beat. No separate choice controls.
+ let draggedMooncake=false,mooncakeDrag=null;
+ const exploreMessages={moon:'The full moon shines above everyone at the festival.',rabbit:'This rabbit comes from our moon story.',lantern:'A lantern lights the garden path.',family:'A family member is ready to celebrate together.',table:'The family shares mooncakes at this table.'};
+ const exploreObject=kind=>{const message=exploreMessages[kind];if(!message)return;introStatus(message);speakIntroHint(message);};
  svg.addEventListener('click',event=>{
+  if(draggedMooncake){draggedMooncake=false;return;}
   const object=event.target.closest('[data-chinese-choice]');
   if(object?.getAttribute('aria-disabled')==='false')chooseIntroObject(object.dataset.chineseChoice);
+  else {const decoration=event.target.closest('[data-story-explore]');if(decoration?.getAttribute('aria-disabled')==='false')exploreObject(decoration.dataset.storyExplore);}
  });
  svg.addEventListener('keydown',event=>{
   if(event.key!=='Enter'&&event.key!==' ')return;
   const object=event.target.closest('[data-chinese-choice]');
   if(object?.getAttribute('aria-disabled')==='false'){event.preventDefault();chooseIntroObject(object.dataset.chineseChoice);}
+  else {const decoration=event.target.closest('[data-story-explore]');if(decoration?.getAttribute('aria-disabled')==='false'){event.preventDefault();exploreObject(decoration.dataset.storyExplore);}}
  });
+ svg.addEventListener('pointerdown',event=>{
+  const object=event.target.closest('[data-chinese-choice="peace-ripple"]');
+  if(pageIndex!==2||object?.getAttribute('aria-disabled')!=='false')return;
+  mooncakeDrag={object,x:event.clientX,y:event.clientY,dx:0,dy:0};svg.setPointerCapture?.(event.pointerId);
+ });
+ svg.addEventListener('pointermove',event=>{
+  if(!mooncakeDrag)return;
+  const rect=svg.getBoundingClientRect();
+  mooncakeDrag.dx=(event.clientX-mooncakeDrag.x)*960/rect.width;
+  mooncakeDrag.dy=(event.clientY-mooncakeDrag.y)*520/rect.height;
+  if(Math.hypot(mooncakeDrag.dx,mooncakeDrag.dy)>10)
+   mooncakeDrag.object.setAttribute('transform',`translate(${mooncakeDrag.dx} ${mooncakeDrag.dy})`);
+ });
+ svg.addEventListener('pointerup',()=>{
+  if(!mooncakeDrag)return;
+  const {object,dx,dy}=mooncakeDrag;mooncakeDrag=null;
+  if(Math.hypot(dx,dy)<=10)return;
+  draggedMooncake=true;setTimeout(()=>{draggedMooncake=false;},0);
+  if(Math.hypot(672+dx-490,374+dy-390)<125){object.setAttribute('transform','translate(-182 16)');chooseIntroObject('peace-ripple');}
+  else {object.removeAttribute('transform');introStatus('The family table is in the middle. Try bringing the mooncake there.');}
+ });
+ svg.addEventListener('pointercancel',()=>{mooncakeDrag?.object.removeAttribute('transform');mooncakeDrag=null;});
  stage.insertBefore(svg,stage.firstChild);syncChineseChoices();
 }
 function syncChineseChoices() {
@@ -1369,6 +1499,10 @@ function syncChineseChoices() {
  svg.querySelectorAll('[data-chinese-choice]').forEach(object=>{
   const active=introState.active && introState.playing && introState.beat===3 && !introState.interactionDone && !introState.invitedPrinces.has(object.dataset.chineseChoice);
   object.setAttribute('tabindex',active?'0':'-1');object.setAttribute('aria-disabled',String(!active));object.classList.toggle('choice-active',active);
+ });
+ svg.querySelectorAll('[data-story-explore]').forEach(object=>{
+  const active=introState.active&&introState.playing&&introState.beat===3&&!introState.interactionDone;
+  object.setAttribute('tabindex',active?'0':'-1');object.setAttribute('aria-disabled',String(!active));
  });
  svg.querySelectorAll('[data-delivered]').forEach(item=>item.toggleAttribute('hidden',!introState.invitedPrinces.has(item.dataset.delivered)));
  svg.querySelector('[data-chinese-success]').toggleAttribute('hidden',!introState.interactionDone);
@@ -1378,7 +1512,10 @@ function chooseChineseObject(name) {
   if(introState.invitedPrinces.has(name))return;
   introState.invitedPrinces.add(name);syncChineseChoices();
   if(introState.invitedPrinces.size<2){introStatus('One invitation delivered! Tap the other family member.');return;}
- } else if(name!==chapterChoiceIds[pageIndex][0]) {introStatus('Good try! '+chapters[pageIndex].prompt);speakIntroHint('Good try. '+chapters[pageIndex].prompt);return;}
+ } else if(name!==chapterChoiceIds[pageIndex][0]) {
+  const message=pageIndex===0?'You found the stars twinkling beside the moon. Look around the night sky.':'You found a star beside the lantern. Look along the garden path.';
+  introStatus(message);speakIntroHint(message);return;
+ }
  completeIntroInteraction('Wonderful! You helped our story along.');syncChineseChoices();
 }
 function applyChineseVisual() {
@@ -1393,10 +1530,11 @@ function applyChineseVisual() {
 }
 // Read-along mode lets children advance narration at their own pace, while the
 // chapter's interaction is still required before Next page unlocks.
-const continueButton=document.createElement('button');continueButton.type='button';continueButton.id='scene-continue';continueButton.textContent='Continue narration →';
-introElement('scene-replay').after(continueButton);
+const continueButton=introElement('scene-continue');
 continueButton.addEventListener('click',()=>{
- if(!introState.active||!introState.playing)return;
+ if(!introState.active)return;
+ if(introState.completed&&introState.beat===4){nextPage();return;}
+ if(!introState.playing)toggleIntroPlayback();
  cancelIntroSpeech();storySaveError=false;introState.narrationDone=true;introState.elapsed=100;
 });
 window.OceanRoom={
@@ -1429,6 +1567,8 @@ window.OceanRoom={
  startStory(){openStory(true);},learningGeometry,
  lock(value){roomLocked=value;clearMovement();if(value)learning?.cancelNarration();},clearMovement,walkTo,closeStory,feedback:showFeedback,
  sync(next,prev){
+  if(next.phase==='travelling'||next.phase==='festival')preloadFestivalArea(next.festivalArea||0);
+  if(next.phase==='festival')preloadFestivalArea((next.festivalArea||0)+1);
   if(learning && (next.phase!=='room'||next.trip!==activeTrip)){canvas.style.cursor='';learning.stop();learningApproach=null;learningStoryUnlocked=false;}
   chapters=journey.content.chapters;storyChapterCount=chapters.length;
   if (storyOpen && (next.activeStoryId !== prev?.activeStoryId || next.storyPage < (prev?.storyPage || 0) || next.learning?.active)) closeStory();
@@ -1441,7 +1581,12 @@ window.OceanRoom={
    clearMovement();player.x=next.festivalArea>prev.festivalArea?140:820;player.y=450;festivalApproach=null;areaPending=false;
   }
   if(next.festivalMission!==prev?.festivalMission)festivalApproach=null;
-  furniture=next.phase==='festival'?[]:roomFurniture;
+  furniture=next.phase==='festival'?[]:roomFurniture.filter(item=>{
+   if(item.id==='memory-shelf')return (next.memories?.length||0)+(next.bag?.length||0)>0;
+   if(item.id==='vanity')return next.invited===true;
+   if(item.id==='story-table')return next.learning?.storybookUnlocked===true||next.storyDone===true;
+   return true;
+  });
   introState.completedChapters=chapters.map((_,i)=>i<next.storyPage);
   updateInteraction();
  }

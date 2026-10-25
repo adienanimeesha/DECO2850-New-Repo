@@ -31,7 +31,7 @@ function draw(time){
  if(visible&&jellyImage.complete&&jellyImage.naturalWidth){const scale=art.screenScale(canvas);ctx.save();ctx.translate(x,y);ctx.scale(scale.unit/scale.x,scale.unit/scale.y);ctx.rotate(Math.sin(time/1700)*.06);ctx.drawImage(jellyImage,-58,-69+Math.sin(time/330)*3,116,134);ctx.restore();}
  requestAnimationFrame(draw);
 }
-function updateImage(){const track=window.JOURNEYS[state.language],c=track&&(window.JourneyLearning?.selectedContent(track,state)||track),outfit=c?.outfits.find(x=>x.id===state.outfit);const image=new Image(),version=++imageVersion;image.onload=()=>{if(version===imageVersion)jellyImage=image;};image.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(art.jelly(outfit));}
+function updateImage(){const track=window.JOURNEYS[state.language],c=track&&(window.JourneyLearning?.selectedContent(track,state)||track),outfit=c?.outfits.find(x=>x.id===state.outfit);const image=new Image(),version=++imageVersion;image.onload=()=>{if(version===imageVersion)jellyImage=image;};image.src=art.jellyDataUrl(outfit);}
 let awaitingSnapshot=true;
 socket.on('disconnect',()=>{awaitingSnapshot=true;});
 socket.on('journey-state',next=>{

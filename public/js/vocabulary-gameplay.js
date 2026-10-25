@@ -73,17 +73,24 @@ function positionBubble(options) {
 function create({ root, adapter, room, colouring = window.VocabularyColouring }) {
  if (!root || !adapter || !room || !colouring || !window.VocabularySpeech) throw new Error('Vocabulary gameplay dependencies are missing.');
  let view = null, objects = [], generation = 0, pending = false, speaking = false, disposed = false, paint = null, paintedKey = null;
- let feedbackParts = null, cancelledKey = null, hoveredId=null,targetId=null,characterBubble=null,bubbleSize=null,layoutDirty=false;
+ let feedbackParts = null, cancelledKey = null, hoveredId=null,targetId=null,characterBubble=null,bubbleSize=null,layoutDirty=false,wrongHintTimer=null;
  const reducedMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)');
- const speech = window.VocabularySpeech.create({onSpeaking(value){speaking=value;},onStatus(message){const node=root.querySelector('.vocabulary-audio-status');if(node)node.textContent=message;}});
+ const speech = window.VocabularySpeech.create({onSpeaking(value){speaking=value;},onStatus(message){const node=root.querySelector('.vocabulary-audio-status');if(node){node.textContent=message;node.hidden=!message;}}});
  function stopPresentation() {
+  clearTimeout(wrongHintTimer);wrongHintTimer=null;
   generation++; speech.cancel(); paint?.close(); paint=null; paintedKey=null; pending=false; objects=[]; feedbackParts=null; cancelledKey=null;
   room.clearMovement(); root.replaceChildren(); root.hidden=true;
   hoveredId=targetId=null;characterBubble?.remove();characterBubble=null;bubbleSize=null;layoutDirty=false;
  }
  function parts(question) {
   const lang = view.language === 'chinese' ? 'zh-CN' : 'id-ID';
-  return [{text:question.before,lang:'en-US',audio:question.beforeAudio},{text:question.word,lang,audio:question.wordAudio},{text:question.after,lang:'en-US',audio:question.afterAudio}];
+  const before=question.before.replace(/[“"'‘\s]+$/u,'').trim();
+  const after=question.after.replace(/^[”"'’\s]+/u,'').replace(/[?.!\s]+$/u,'').trim();
+  return [
+   {text:before,lang:'en-US',audio:question.beforeAudio},
+   {text:question.word,lang,audio:question.wordAudio},
+   ...(/[\p{L}\p{N}]/u.test(after)?[{text:after,lang:'en-US',audio:question.afterAudio}]:[])
+  ];
  }
  function replay() { if (view?.question && !paint && !disposed) speech.play(feedbackParts || parts(view.question)); }
  function relayout() {
@@ -101,12 +108,14 @@ function create({ root, adapter, room, colouring = window.VocabularyColouring })
   if(canvas)canvas.parentElement.append(root);
   const bubble=document.createElement('section');bubble.className='vocabulary-overlay';bubble.setAttribute('aria-label','Vocabulary controls');
   const progress=document.createElement('small');progress.textContent=`Level ${view.level} · Question ${view.index + 1} of 5`;
-  const text=document.createElement('p');text.className='vocabulary-prompt';text.setAttribute('aria-live','polite');
+  const text=document.createElement('p');text.className='vocabulary-prompt';text.lang='en-US';
   const word=document.createElement('mark');word.lang=view.language==='chinese'?'zh-CN':'id-ID';word.textContent=view.question.word;
-  text.append(document.createTextNode(view.question.before+' '),word,document.createTextNode(' '+view.question.after));
+  const lead=/[“"'‘]\s*$/u.test(view.question.before)||/\s$/u.test(view.question.before)?view.question.before:view.question.before+' ';
+  const tail=/^\s*[”"'’.,!?]/u.test(view.question.after)||/^\s/u.test(view.question.after)?view.question.after:' '+view.question.after;
+  text.append(document.createTextNode(lead),word,document.createTextNode(tail));
   const pronunciation=document.createElement('small');pronunciation.className='vocabulary-pronunciation';pronunciation.textContent=view.question.pronunciation || '';
   const hint=document.createElement('p');hint.className='vocabulary-hint';hint.setAttribute('role','status');
-  const status=document.createElement('small');status.className='vocabulary-audio-status sr-only';status.setAttribute('role','status');
+  const status=document.createElement('small');status.className='vocabulary-audio-status';status.setAttribute('role','status');status.hidden=true;
   const replayButton=document.createElement('button');replayButton.type='button';replayButton.className='vocabulary-replay secondary';replayButton.textContent='Replay narration';replayButton.addEventListener('click',replay);
   const exit=document.createElement('button');exit.type='button';exit.className='vocabulary-exit secondary';exit.textContent='Exit level';
   exit.addEventListener('click',async()=>{
@@ -117,10 +126,10 @@ function create({ root, adapter, room, colouring = window.VocabularyColouring })
   const resume=document.createElement('button');resume.type='button';resume.className='vocabulary-resume primary';resume.textContent='Continue colouring';resume.hidden=true;
   resume.addEventListener('click',()=>openColouring(objects.find(item=>item.id===view?.colouringItemId)));
   const controls=document.createElement('div');controls.className='vocabulary-controls';controls.append(replayButton,exit,resume);
-  const choices=document.createElement('div');choices.className='vocabulary-choice-controls';choices.setAttribute('aria-label','Swim to a numbered picture');
+  const choices=document.createElement('div');choices.className='vocabulary-choice-controls';choices.setAttribute('aria-label','Swim to a picture');
   objects.forEach(item=>{
    const button=document.createElement('button');button.type='button';button.className='vocabulary-choice secondary';button.dataset.vocabularyChoice=item.id;
-   button.textContent=String(item.choice);button.tabIndex=-1;button.setAttribute('aria-label',item.label);button.disabled=!room.walkTo;
+   button.textContent=item.label;button.tabIndex=-1;button.setAttribute('aria-label',item.label);button.disabled=!room.walkTo;
    button.addEventListener('click',()=>room.walkTo?.('@vocabulary/'+item.id));
    button.addEventListener('focus',()=>{hoveredId=item.id;});button.addEventListener('blur',()=>{hoveredId=null;});choices.append(button);
   });
@@ -129,7 +138,7 @@ function create({ root, adapter, room, colouring = window.VocabularyColouring })
   const transcript=document.createElement('div');transcript.className='sr-only vocabulary-transcript';
   transcript.append(progress,text,pronunciation,choices);
   bubble.append(transcript,controls,hint,status);root.append(bubble);
-  if(canvas){characterBubble=document.createElement('aside');characterBubble.className='jelly-question-bubble';characterBubble.hidden=true;characterBubble.setAttribute('aria-hidden','true');characterBubble.append(text.cloneNode(true));if(view.question.pronunciation)characterBubble.append(pronunciation.cloneNode(true));canvas.parentElement.append(characterBubble);}
+  if(canvas){characterBubble=document.createElement('aside');characterBubble.className='jelly-question-bubble';characterBubble.hidden=true;characterBubble.setAttribute('aria-hidden','true');const visibleProgress=document.createElement('small');visibleProgress.className='vocabulary-visible-progress';visibleProgress.textContent=`Word ${view.index+1} of 5 · Colour it to continue`;characterBubble.append(visibleProgress,text.cloneNode(true));if(view.question.pronunciation)characterBubble.append(pronunciation.cloneNode(true));canvas.parentElement.append(characterBubble);}
  }
  function validate(next) {
   const q=next.question;
@@ -152,12 +161,14 @@ function create({ root, adapter, room, colouring = window.VocabularyColouring })
  }
  function openColouring(item) {
   if(!item||paint||!view)return;
+  clearTimeout(wrongHintTimer);wrongHintTimer=null;
+  const hint=root.querySelector('.vocabulary-hint');hint.classList.remove('is-incorrect');hint.textContent='';
   const token=generation,key=view.key;
   speech.cancel();room.clearMovement();paintedKey=key;cancelledKey=null;
   if(characterBubble)characterBubble.hidden=true;
   root.querySelector('.vocabulary-resume').hidden=true;
   const host=document.createElement('div');host.className='vocabulary-colouring-host';root.append(host);
-  paint=colouring.mount(host,{...item,icon:view.colouringAsset||item.icon},async artwork=>{
+  paint=colouring.mount(host,{...item,icon:view.colouringAsset||item.icon,step:view.index+1,total:5},async artwork=>{
    if(token!==generation||paintedKey!==key)return;
    await adapter.complete({key,objectId:item.id,artwork});
    if(token===generation){paint?.close();paint=null;host.remove();root.querySelector('.vocabulary-hint').textContent='Waiting for the next question…';}
@@ -172,15 +183,20 @@ function create({ root, adapter, room, colouring = window.VocabularyColouring })
   if(disposed||!view||pending||paint)return;
   const item=objects.find(o=>o.id===id);if(!item||!room.isNear(item))return;
   if(view.stage==='colouring'){if(id===view.colouringItemId)openColouring(item);return;}
+  clearTimeout(wrongHintTimer);wrongHintTimer=null;
+  const previousHint=root.querySelector('.vocabulary-hint');previousHint.classList.remove('is-incorrect');previousHint.textContent='';
   const token=generation,key=view.key;pending=true;speech.cancel();room.clearMovement();
   try {
    const result=await adapter.select({key,objectId:id});
    if(token!==generation||disposed)return;
    if(result?.correct!==true){
-    root.querySelector('.vocabulary-hint').textContent=result?.hint || view.question.hint;
+    const message=result?.hint || view.question.hint;
+    const hint=root.querySelector('.vocabulary-hint');
+    clearTimeout(wrongHintTimer);hint.textContent=message;hint.classList.add('is-incorrect');
+    wrongHintTimer=setTimeout(()=>{if(token===generation&&hint.isConnected){hint.textContent='';hint.classList.remove('is-incorrect');}wrongHintTimer=null;},5200);
     // Hints are content, never inferred from the renderer's icon names.
     // Keep contextual mixed-language hint audio available as content segments.
-    feedbackParts=result?.speechParts || null;if(feedbackParts)speech.play(feedbackParts);
+    feedbackParts=result?.speechParts || [{text:message,lang:'en-US'}];speech.play(feedbackParts);
     return;
    }
    if(result.colouringAllowed!==true)return;
@@ -223,9 +239,8 @@ function create({ root, adapter, room, colouring = window.VocabularyColouring })
    ctx.beginPath();ctx.ellipse(0,0,37,37,0,0,Math.PI*2);ctx.fillStyle='#efffffdd';ctx.fill();ctx.shadowBlur=0;
    ctx.strokeStyle=focused?'#76558e':'#b49acd';ctx.lineWidth=focused?3:2;ctx.stroke();
    ctx.beginPath();ctx.ellipse(0,0,42,42,0,0,Math.PI*2);ctx.strokeStyle=focused?'#ffffff':'#e5fff5';ctx.lineWidth=2;ctx.stroke();
-   ctx.beginPath();ctx.ellipse(0,34,9,9,0,0,Math.PI*2);ctx.fillStyle='#76558e';ctx.fill();
-   ctx.fillStyle='#ffffff';ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(String(item.choice),0,34);ctx.restore();
-   window.OceanArt.canvasIcon(ctx,item.icon,item.x,item.y+bob,58);
+   ctx.restore();
+   window.OceanArt.canvasIcon(ctx,item.icon,item.x,item.y+bob,68);
   }
   updateCharacterBubble(player);
  }

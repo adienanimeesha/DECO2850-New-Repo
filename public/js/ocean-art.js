@@ -77,8 +77,43 @@ Object.assign(icons, {
  'rabbit-lantern': shape('M49 5V23M39 6H59','none')+`<g transform="translate(10 20) scale(.8)">${icons.rabbit}</g>`+shape('M47 84V95M40 95H54','none'),
  'family-gathering': family+shape('M15 82H85V91H15Z','#f8d9bd')
 });
-function svg(icon) { return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" aria-hidden="true">${icons[icon] || icons.shell}</svg>`; }
+// One local sticker identity is used by learning, colouring, memories, story
+// props and festival keepsakes. OpenMoji SVGs are pinned to release 17.0.0.
+const openMoji = Object.freeze({
+ beach:'1F3D6', wave:'1F30A',
+ water:'1F4A7', celebration:'1F389', moon:'1F315',
+ rabbit:'1F407', mooncake:'1F96E', family:'1F46A',
+ star:'2B50', pastry:'1F96E', reunion:'1F46A',
+});
+const projectStickers = new Set([
+ 'princess','shell','sea','nyale','boat','sand','coast','evening','chicken','drum',
+ 'woven-cloth','headcloth','lantern','garden','stars','path',
+ 'light','hanfu','moon-viewing','mid-autumn',
+]);
+// The supplied lesson drawings have a colour view for room choices and their
+// original black-line view for colouring. Sea and wave share the same ocean art.
+const lessonPictures = Object.freeze({
+ princess: {color:'/assetNEW/mandalika-colour.jpeg',outline:'/assetNEW/mandalika.jpeg',raster:true,round:true},
+ sea: {color:'/assetNEW/ocean-colour.jpeg',outline:'/assetNEW/ocean.jpeg',raster:true,round:true},
+ wave: {color:'/assetNEW/ocean-colour.jpeg',outline:'/assetNEW/ocean.jpeg',raster:true,round:true},
+});
+function asset(icon) {
+ if(lessonPictures[icon])return lessonPictures[icon];
+ const code=openMoji[icon],project=projectStickers.has(icon);
+ if(!code&&!project)return null;
+ const kind=project?'project':'openmoji',file=(code||icon)+'.svg';
+ return {color:`/assets/learning/${kind}/color/${file}`,
+  outline:`/assets/learning/${kind}/outline/${file}`};
+}
+function svg(icon) {
+ const sticker=asset(icon);
+ return sticker
+  ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" aria-hidden="true"><image href="${sticker.color}" x="4" y="4" width="92" height="92"/></svg>`
+  : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" aria-hidden="true">${icons[icon] || icons.shell}</svg>`;
+}
 function outline(icon,fill='#fff') {
+ const sticker=asset(icon);
+ if(sticker)return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" aria-hidden="true"><image href="${sticker.outline}" x="4" y="4" width="92" height="92"/></svg>`;
  // A stroked worm needs an enclosed body for brush/fill colouring.
  const source=icon==='nyale'?`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">${shape('M5 62Q21 6 46 39Q52 47 57 62Q66 91 80 32Q83 24 91 29Q98 32 95 40Q76 107 51 83Q43 75 38 57Q27 17 19 68Q15 80 7 75Q2 72 5 62Z','#cf94e5')}${circle(87,35,2,'#544770')}</svg>`:svg(icon);
  const document=new DOMParser().parseFromString(source,'image/svg+xml');
@@ -92,13 +127,81 @@ function outline(icon,fill='#fff') {
  });
  return new XMLSerializer().serializeToString(document.documentElement);
 }
+function sasakJelly(outfit,time) {
+ const cloth=outfit.colour,gold=outfit.accent,rose=outfit.id==='sasak-rose';
+ const deep=rose?'#94536d':'#694894',light=rose?'#f4b8ca':'#c6a3e5';
+ const diamonds=[34,43,52,61].map(x=>`<path d="M${x} 20l3-3 3 3-3 3Z" fill="none" stroke="${gold}" stroke-width="1.2"/>`).join('');
+ return `<svg xmlns="http://www.w3.org/2000/svg" class="bau-nyale-outfit" viewBox="0 0 100 115" aria-hidden="true"><g transform="translate(0 ${Math.sin(time)*2})" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M29 67Q18 88 30 102M43 70Q34 99 45 109M57 70Q67 99 56 109M71 67Q82 88 70 102" fill="none" stroke="#d998e5" stroke-width="7"/>
+  <path d="M30 61Q50 56 70 61L81 76L74 83L68 73L69 88Q50 95 31 88L32 73L26 83L18 76Z" fill="#fff2d8" stroke="${deep}" stroke-width="2.2"/>
+  <path d="M18 76L28 82M72 82L82 76M34 67L48 81L62 65" fill="none" stroke="${cloth}" stroke-width="4"/>
+  <path d="M33 80Q50 76 69 80L71 100Q51 109 30 99Z" fill="${cloth}" stroke="${deep}" stroke-width="2.5"/>
+  <path d="M35 83L66 82L60 98Q45 103 31 96Z" fill="${light}" stroke="${deep}" stroke-width="1.8"/>
+  <path d="M34 88Q51 89 65 86M33 96Q47 104 68 98" fill="none" stroke="${gold}" stroke-width="2.5"/>
+  <path d="M63 80L74 80L76 100Q74 106 71 101L69 88Z" fill="${cloth}" stroke="${deep}" stroke-width="2"/>
+  <path d="M67 85L74 85M68 91L75 91M70 98L75 98" stroke="${gold}" stroke-width="1.6"/>
+  <path d="M32 97l2-4 2 4 2-4 2 4M47 101l2-4 2 4 2-4 2 4M70 102v4m3-4v4m3-5v4" fill="none" stroke="${gold}" stroke-width="1.4"/>
+  <path d="M38 90l2-3 2 3-2 3ZM50 93l2-3 2 3-2 3ZM59 89l2-3 2 3-2 3Z" fill="${gold}"/>
+  <path d="M19 78Q15 86 19 89Q24 91 25 83M81 78Q85 86 81 89Q76 91 75 83" fill="#d59be9"/>
+  <path d="M19 57C16 27 32 9 50 9S84 27 81 57Q78 68 68 62Q60 73 50 63Q40 73 32 62Q22 68 19 57Z" fill="#d59be9" stroke="#78539a" stroke-width="2.8"/>
+  <ellipse cx="33" cy="49" rx="6" ry="4" fill="#ffbadb"/><ellipse cx="68" cy="49" rx="6" ry="4" fill="#ffbadb"/>
+  <circle cx="38" cy="43" r="3" fill="#544770"/><circle cx="62" cy="43" r="3" fill="#544770"/>
+  <path d="M44 54Q50 61 56 54" fill="none" stroke="#544770" stroke-width="2.5"/>
+  <path d="M22 30Q23 11 42 7Q65 2 78 22L82 34L76 40L70 27Q44 19 22 39Z" fill="${cloth}" stroke="${deep}" stroke-width="2.5"/>
+  <path d="M27 23Q48 9 73 23L72 29Q50 17 25 32Z" fill="${light}" stroke="${deep}" stroke-width="1.6"/>
+  <path d="M25 24Q49 10 73 24" fill="none" stroke="${gold}" stroke-width="2.2"/>
+  ${diamonds}
+  <path d="M20 34Q45 20 72 28L75 35Q48 27 20 43Z" fill="${cloth}" stroke="${deep}" stroke-width="2.5"/>
+  <path d="M75 28Q83 34 84 45L78 54L73 42Z" fill="${light}" stroke="${deep}" stroke-width="2.2"/>
+  <path d="M76 37L82 44M77 43L81 48" stroke="${gold}" stroke-width="1.5"/>
+  <path d="M75 25Q82 18 83 17Q85 24 80 30M78 29Q88 29 89 32Q83 37 77 34" fill="${cloth}" stroke="${deep}" stroke-width="1.6"/>
+  <g fill="${gold}" stroke="${deep}" stroke-width=".7"><ellipse cx="70" cy="29" rx="2.2" ry="5"/><ellipse cx="70" cy="29" rx="2.2" ry="5" transform="rotate(72 70 29)"/><ellipse cx="70" cy="29" rx="2.2" ry="5" transform="rotate(144 70 29)"/><ellipse cx="70" cy="29" rx="2.2" ry="5" transform="rotate(216 70 29)"/><ellipse cx="70" cy="29" rx="2.2" ry="5" transform="rotate(288 70 29)"/><circle cx="70" cy="29" r="2" fill="#fff9eb"/></g>
+  <circle cx="79" cy="33" r="2.5" fill="${gold}"/>
+ </g></svg>`;
+}
+function moonJelly(outfit,time) {
+ const rose=outfit.id==='hanfu-rose',cloth=outfit.colour,gold=outfit.accent;
+ const deep=rose?'#934b71':'#694895',light=rose?'#f5b9c9':'#c9a8e8';
+ const blossom=(x,y,size)=>`<g transform="translate(${x} ${y}) scale(${size})" fill="${gold}" stroke="${deep}" stroke-width=".55"><path d="M0-5Q3-7 3-3Q7-3 5 0Q7 3 3 3Q3 7 0 5Q-3 7-3 3Q-7 3-5 0Q-7-3-3-3Q-3-7 0-5Z"/><circle r="1.8" fill="#f7afc1" stroke="none"/></g>`;
+ return `<svg xmlns="http://www.w3.org/2000/svg" class="moon-festival-outfit" viewBox="0 0 100 115" aria-hidden="true"><g transform="translate(0 ${Math.sin(time)*2})" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M28 70Q17 91 29 102M43 72Q34 100 44 110M57 72Q66 101 56 110M72 70Q83 91 71 102" fill="none" stroke="#d998e5" stroke-width="7"/>
+  <path d="M31 59Q50 54 69 59Q80 70 77 97Q51 111 23 97Q19 80 31 59Z" fill="${light}" stroke="${deep}" stroke-width="2.5"/>
+  <path d="M30 73Q20 81 15 94Q21 102 34 99L40 78M70 73Q80 81 85 94Q79 102 66 99L60 78" fill="#fff1df" stroke="${deep}" stroke-width="2"/>
+  <path d="M34 72Q50 65 66 72L73 99Q50 108 27 99Z" fill="#fff2db" stroke="${deep}" stroke-width="2.2"/>
+  <path d="M32 69Q18 72 12 92Q15 102 27 101Q34 94 39 79Z" fill="${cloth}" stroke="${deep}" stroke-width="2.4"/>
+  <path d="M68 69Q82 72 88 92Q85 102 73 101Q66 94 61 79Z" fill="${cloth}" stroke="${deep}" stroke-width="2.4"/>
+  <path d="M16 93Q21 100 28 96M84 93Q79 100 72 96M35 95Q50 102 65 95" fill="none" stroke="${gold}" stroke-width="2.5"/>
+  <path d="M35 61L48 78L53 77L66 61L72 72L61 90Q50 84 39 90L28 72Z" fill="${cloth}" stroke="${deep}" stroke-width="2.4"/>
+  <path d="M40 64L50 77L60 64M36 70L47 82M64 70L53 82" fill="none" stroke="${gold}" stroke-width="3"/>
+  <path d="M34 83Q50 79 66 83L66 89Q50 85 34 89Z" fill="${deep}" stroke="${gold}" stroke-width="1.2"/>
+  <path d="M48 87L47 103L52 109L56 103L54 87Z" fill="${light}" stroke="${deep}" stroke-width="1.7"/>
+  <path d="M50 89L50 103M54 91L54 102" fill="none" stroke="${gold}" stroke-width="1.5"/>
+  <path d="M65 78Q60 73 65 68Q61 75 68 77Q67 78 65 78Z" fill="${gold}"/>
+  ${blossom(28,84,.55)}${blossom(72,84,.55)}${blossom(38,93,.45)}
+  <path d="M19 59C16 23 33 8 50 8S84 23 81 59Q77 70 67 62Q59 71 50 63Q41 71 33 62Q23 70 19 59Z" fill="#d59be9" stroke="#78539a" stroke-width="2.8"/>
+  <ellipse cx="33" cy="49" rx="6" ry="4" fill="#ffbadb"/><ellipse cx="68" cy="49" rx="6" ry="4" fill="#ffbadb"/>
+  <circle cx="38" cy="43" r="3" fill="#544770"/><circle cx="62" cy="43" r="3" fill="#544770"/>
+  <path d="M44 54Q50 61 56 54" fill="none" stroke="#544770" stroke-width="2.5"/>
+  <path d="M80 27Q91 30 93 40L86 41L88 56L82 57L78 38Z" fill="${cloth}" stroke="${deep}" stroke-width="2.2"/>
+  <path d="M84 36L87 52M89 34L90 39" fill="none" stroke="${gold}" stroke-width="1.6"/>
+  <path d="M78 26Q85 16 88 21Q91 25 83 31M82 28Q92 24 95 30Q96 34 84 34" fill="${cloth}" stroke="${deep}" stroke-width="1.5"/>
+  ${blossom(78,25,1.3)}${blossom(85,32,.75)}
+ </g></svg>`;
+}
 function jelly(outfit, time = 0) {
+ if(outfit?.id?.startsWith('sasak-'))return sasakJelly(outfit,time);
+ if(outfit?.id?.startsWith('hanfu-'))return moonJelly(outfit,time);
  const c = outfit?.colour || '#d59be9', a = outfit?.accent || '#fff0bb';
  const robe = outfit ? `<path d="M30 58L23 90Q50 104 77 90L70 58Z" fill="${c}" stroke="#875baa" stroke-width="2"/><path d="M35 62L59 83M65 62L41 83" stroke="${a}" stroke-width="3"/><path d="M26 85H74" stroke="${a}" stroke-width="5"/>` : '';
  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 115" aria-hidden="true"><g transform="translate(0 ${Math.sin(time)*2})"><path d="M29 65Q18 88 30 99M43 67Q34 95 44 106M57 67Q66 95 57 106M70 65Q81 87 70 99" fill="none" stroke="#d998e5" stroke-width="6" stroke-linecap="round"/>${robe}<path d="M19 59C16 20 33 7 50 7S85 25 81 59Q73 72 66 62Q58 72 50 62Q41 72 34 62Q25 72 19 59Z" fill="#d59be9" stroke="#875baa" stroke-width="3"/><ellipse cx="33" cy="49" rx="6" ry="4" fill="#ffbadb"/><ellipse cx="68" cy="49" rx="6" ry="4" fill="#ffbadb"/><circle cx="38" cy="42" r="3" fill="#544770"/><circle cx="62" cy="42" r="3" fill="#544770"/><path d="M44 53Q50 61 56 53" stroke="#544770" stroke-width="2" fill="none"/><ellipse cx="34" cy="25" rx="12" ry="5" fill="#ffffff65"/>${outfit?.id.startsWith('sasak') ? `<path d="M21 24Q50 7 79 24L76 34Q50 20 24 34Z" fill="${c}" stroke="#875baa" stroke-width="2"/><path d="M25 27Q50 16 75 27" fill="none" stroke="${a}" stroke-width="3"/>` : ''}</g></svg>`;
 }
+function jellyDataUrl(outfit) {
+ return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(jelly(outfit));
+}
 function clothing(outfit) {
  const c=outfit.colour,a=outfit.accent,sasak=outfit.id.startsWith('sasak');
+ if(sasak)return sasakJelly(outfit,0);
+ if(outfit.id.startsWith('hanfu-'))return moonJelly(outfit,0);
  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 130" aria-hidden="true"><path d="M44 20L29 31L13 67L29 75L38 57L31 111Q60 123 89 111L82 57L91 75L107 67L91 31L76 20Z" fill="${c}" stroke="#88649f" stroke-width="3"/><path d="M44 21L65 63L77 21M47 36L58 60" fill="none" stroke="${a}" stroke-width="4"/><path d="M36 74H85M32 104Q60 114 88 104" fill="none" stroke="${a}" stroke-width="6"/>${sasak ? `<path d="M26 8Q60-1 94 8L90 18Q60 11 30 18Z" fill="${c}" stroke="#88649f" stroke-width="2"/><path d="M40 82L45 92L50 82M59 82L64 92L69 82M78 82L83 92" fill="none" stroke="${a}" stroke-width="2"/>` : `<path d="M41 77L36 111M80 77L87 111" fill="none" stroke="${a}" stroke-width="2"/>`}</svg>`;
 }
 function screenScale(canvas) {
@@ -109,10 +212,24 @@ function screenScale(canvas) {
 function canvasIcon(ctx, icon, x, y, size) {
  const im = images[icon],scale=screenScale(ctx.canvas);
  const w=size*scale.unit/scale.x,h=size*scale.unit/scale.y;
- if (im?.complete && im.naturalWidth) ctx.drawImage(im,x-w/2,y-h/2,w,h);
+ if (!im?.complete || !im.naturalWidth)return;
+ if(asset(icon)?.round){
+  const sourceSize=Math.min(im.naturalWidth,im.naturalHeight);
+  const sourceX=(im.naturalWidth-sourceSize)/2;
+  const sourceY=icon==='princess'?(im.naturalHeight-sourceSize)*.1:(im.naturalHeight-sourceSize)/2;
+  ctx.save();ctx.beginPath();ctx.ellipse(x,y,w/2,h/2,0,0,Math.PI*2);ctx.clip();
+  ctx.drawImage(im,sourceX,sourceY,sourceSize,sourceSize,x-w/2,y-h/2,w,h);
+  ctx.restore();
+  return;
+ }
+ ctx.drawImage(im,x-w/2,y-h/2,w,h);
 }
 const images = {};
-for (const key of Object.keys(icons)) { const im = new Image(); im.src = 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg(key)); images[key]=im; }
+for (const key of new Set([...Object.keys(icons),...Object.keys(openMoji),...projectStickers])) {
+ const im = new Image(),sticker=asset(key);
+ im.src = sticker ? sticker.color : 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg(key));
+ images[key]=im;
+}
 const artworkImages=new Map();
 function canvasMemory(ctx,item,x,y,size) {
  if(!item.artwork){canvasIcon(ctx,item.icon,x,y,size);return;}
@@ -129,5 +246,5 @@ function roomBubble(index, seconds) {
  const alpha=Math.max(0,Math.min(1,(560-y)/32,(y-126)/32));
  return {x:74+(index*127)%810+Math.sin(seconds*.6+index)*4,y,radius:3+index%4,alpha};
 }
-window.OceanArt = { clearMemoryCache:()=>artworkImages.clear(), hasIcon: icon => Object.prototype.hasOwnProperty.call(icons,icon), roomBubble, svg, outline, jelly, clothing, canvasIcon, canvasMemory, screenScale };
+window.OceanArt = { clearMemoryCache:()=>artworkImages.clear(), hasIcon: icon => Boolean(asset(icon)) || Object.prototype.hasOwnProperty.call(icons,icon), asset, roomBubble, svg, outline, jelly, jellyDataUrl, clothing, canvasIcon, canvasMemory, screenScale };
 })();

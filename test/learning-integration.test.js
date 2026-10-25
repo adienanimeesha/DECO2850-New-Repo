@@ -6,27 +6,41 @@ const content = require('../public/js/journey-content');
 const bridge = require('../public/js/learning-backend');
 const {createJourney} = require('../journey');
 
-test('all 50 real curriculum questions map to supported, parseable illustrations and colouring outlines', t => {
+test('all 30 real curriculum questions map to supported, parseable illustrations and colouring outlines', t => {
  const dom = new JSDOM('<!doctype html><div id="root"></div>', {runScripts: 'outside-only'});
  t.after(() => dom.window.close());
  const w = dom.window; w.Image = class {};
  for (const file of ['ocean-art','vocabulary-gameplay']) w.eval(fs.readFileSync(`public/js/${file}.js`, 'utf8'));
  let count = 0;
  for (const [language, track] of Object.entries(content)) {
-  assert.equal(track.learningLevels.length, 5);
+  assert.equal(track.learningLevels.length, 3);
   for (const level of track.learningLevels) {
    assert.equal(level.questions.length, 5);
    for (const [index, q] of level.questions.entries()) {
     const state = {phase:'room',language,trip:1,learning:{active:{level:level.level,questionIndex:index,questionId:q.id,attemptId:++count,stage:'select'}}};
     const view = bridge.presentation(state, track);
     assert.equal(view.question.word, q.targetWord);
-    assert.equal(view.question.hint, q.hint);
+    assert.equal(view.question.hint, track.learningRetryMessage);
     assert.deepEqual(view.question.objects.map(x=>x.id), q.options.map(x=>x.itemId));
     for (const asset of [...q.options.map(x=>x.asset),q.colouringAsset]) {
      assert.ok(w.OceanArt.hasIcon(asset), `Missing ${language} ${q.id}: ${asset}`);
-     const svg = new w.DOMParser().parseFromString(w.OceanArt.outline(asset), 'image/svg+xml');
-     assert.equal(svg.querySelector('parsererror'), null);
-     assert.ok(svg.querySelectorAll('path,rect,circle,ellipse').length > 0, asset);
+     const files = w.OceanArt.asset(asset);
+     assert.ok(files, `Missing local sticker mapping: ${asset}`);
+     for (const variant of ['color','outline']) {
+      assert.match(files[variant], /^\/(?:assets\/learning|assetNEW)\//);
+      const local = 'public' + files[variant];
+      assert.ok(fs.existsSync(local), `Broken ${variant} asset path: ${local}`);
+      if(files.raster){
+       assert.match(local,/\.jpe?g$/);
+       assert.equal(fs.readFileSync(local).subarray(0,3).toString('hex'),'ffd8ff',`Invalid JPEG: ${local}`);
+       assert.ok(fs.statSync(local).size < 300000,`Oversized lesson picture: ${local}`);
+      } else {
+       const svg = new w.DOMParser().parseFromString(fs.readFileSync(local,'utf8'), 'image/svg+xml');
+       assert.equal(svg.querySelector('parsererror'), null, local);
+       assert.ok(svg.querySelectorAll('path,rect,circle,ellipse').length > 0, local);
+       assert.ok(fs.statSync(local).size < 40000, `Oversized sticker: ${local}`);
+      }
+     }
     }
     const objects = w.VocabularyGameplay.placeObjects(view.question.objects, {
      bounds:{left:49,right:911,top:127,bottom:567},player:{x:486,y:408,radius:21},
@@ -37,7 +51,150 @@ test('all 50 real curriculum questions map to supported, parseable illustrations
    }
   }
  }
- assert.equal(count,50);
+ assert.equal(count,30);
+ const princess=w.OceanArt.asset('princess'),sea=w.OceanArt.asset('sea');
+ assert.deepEqual(w.OceanArt.asset('wave'),sea,'sea and wave reuse the supplied ocean picture');
+ assert.equal(princess.outline,'/assetNEW/mandalika.jpeg');
+ assert.equal(sea.outline,'/assetNEW/ocean.jpeg');
+ for(const picture of [princess,sea]){
+  assert.equal(picture.round,true);
+  assert.notEqual(picture.color,picture.outline,'floating art is coloured; popup art is black and white');
+ }
+ // The same identities resolve to the same files in the story/festival scenes.
+ for(const [language,track] of Object.entries(content))for(const item of track.festivalItems){
+  const match=track.learningLevels.flatMap(level=>level.questions).find(q=>q.targetWord===item.word);
+  if(match)assert.deepEqual(w.OceanArt.asset(item.icon),w.OceanArt.asset(match.colouringAsset),`${language}: ${item.word}`);
+ }
+ const storyMarkup=fs.readFileSync('public/mobile.html','utf8');
+ for(const key of ['shell','nyale','boat'])
+  assert.ok(storyMarkup.includes(`href="${w.OceanArt.asset(key).color}"`),`storybook does not reuse ${key}`);
+});
+
+test('every tutorial question gives a distinct cultural clue, with hunger only for food', () => {
+ const food=new Set(['ayam Taliwang','月饼','糕点']);
+ const prompts=new Set();
+ for(const [language,track] of Object.entries(content))for(const level of track.learningLevels)
+  for(const question of level.questions){
+   const {sentenceBefore, sentenceAfter, targetWord}=question;
+   assert.ok(sentenceBefore.length>20,`Missing clue for ${targetWord}`);
+   assert.match(sentenceBefore,/\bfind\s*$/i,`Clue should lead into ${targetWord}`);
+   assert.match(sentenceAfter,/\?$/,`Missing visible question mark for ${targetWord}`);
+   assert.doesNotMatch(sentenceBefore,/picture for/i);
+   if(food.has(targetWord))assert.match(sentenceBefore,/hungry/i,`Food clue for ${targetWord}`);
+   else assert.doesNotMatch(sentenceBefore,/hungry/i,`Non-food clue for ${targetWord}`);
+   const prompt=sentenceBefore+targetWord+sentenceAfter;
+   assert.ok(!prompts.has(prompt),`Repeated clue for ${targetWord}`);prompts.add(prompt);
+   const state={phase:'room',language,trip:1,learning:{active:{level:level.level,questionIndex:level.questions.indexOf(question),questionId:question.id,attemptId:1,stage:'select'}}};
+   const view=bridge.presentation(state,track);
+   assert.equal(view.question.before,sentenceBefore);
+   assert.equal(view.question.after,sentenceAfter);
+  }
+ assert.equal(prompts.size,30);
+});
+
+test('Bau Nyale areas use the supplied local backgrounds in story order', () => {
+ const paths = [
+  '/assetNEW/foodcourtyard(baunyale).jpeg',
+  '/assetNEW/musicgathering(baunyale).jpeg',
+  '/assetNEW/seasideharbour(baunyale).jpeg'
+ ];
+ assert.deepEqual(content.indonesian.festivalAreas.map(area=>area.background),paths);
+ for(const path of paths) {
+  const file='public'+path;
+  assert.ok(fs.existsSync(file),`Missing festival background: ${file}`);
+  assert.equal(fs.readFileSync(file).subarray(0,3).toString('hex'),'ffd8ff',`Invalid JPEG: ${file}`);
+ }
+});
+
+test('Mid-Autumn areas use the supplied full-scene PNG backgrounds in story order', () => {
+ const paths=[
+  '/assetNEW/mooncakecourtyard.png',
+  '/assetNEW/lanternwalk.png',
+  '/assetNEW/moongarden.png'
+ ];
+ assert.deepEqual(content.chinese.festivalAreas.map(area=>area.background),paths);
+ for(const path of paths){
+  const file='public'+path,bytes=fs.readFileSync(file);
+  assert.equal(bytes.subarray(0,8).toString('hex'),'89504e470d0a1a0a',`Invalid PNG: ${file}`);
+  assert.ok(bytes.readUInt32BE(16)>960&&bytes.readUInt32BE(20)>620,`Background too small: ${file}`);
+ }
+});
+
+test('Mid-Autumn mission and distractor PNGs retain their IDs, positions and visible crops', () => {
+ const track=content.chinese;
+ const expected=[
+  {target:['mooncake-festival',0,660,420,'mission-01-mooncake.png'],distractor:['food-star',310,440,'distractor-01-star.png']},
+  {target:['lantern-festival',1,300,370,'mission-02-lantern.png'],distractor:['walk-mooncake',710,500,'distractor-02-mooncake.png']},
+  {target:['rabbit-festival',2,660,400,'mission-03-rabbit-decoration.png'],distractor:['garden-moon',320,430,'distractor-03-moon.png']}
+ ];
+ for(const {target,distractor} of expected){
+  const [id,area,x,y,file]=target,item=track.festivalItems[area];
+  assert.deepEqual([item.id,item.area,item.x,item.y,item.festivalImage],[id,area,x,y,`/assetNEW/${file}`]);
+  const [wrongId,wrongX,wrongY,wrongFile]=distractor,wrong=track.festivalAreas[area].distractors;
+  assert.equal(wrong.length,1);
+  assert.deepEqual([wrong[0].id,wrong[0].x,wrong[0].y,wrong[0].festivalImage],
+   [wrongId,wrongX,wrongY,`/assetNEW/${wrongFile}`]);
+  for(const choice of [item,wrong[0]]){
+   const bytes=fs.readFileSync('public'+choice.festivalImage);
+   assert.equal(bytes.subarray(0,8).toString('hex'),'89504e470d0a1a0a');
+   assert.equal(bytes[25],6,'the supplied item artwork has transparency');
+   const width=bytes.readUInt32BE(16),height=bytes.readUInt32BE(20);
+   const [sx,sy,sw,sh]=choice.festivalCrop;
+   assert.ok(sx>=0&&sy>=0&&sw>0&&sh>0&&sx+sw<=width&&sy+sh<=height);
+   assert.equal(choice.festivalSize,64);
+   assert.equal(choice.festivalRadius,65,'the original selection reach is preserved');
+   assert.equal(choice.festivalCenterOffset,0,'the artwork remains centered on its hit area');
+  }
+ }
+});
+
+test('both festivals use the same transparent previous and next arrow artwork', () => {
+ const arrows={left:'/assetNEW/ArrowPointingToTheLeft.png',right:'/assetNEW/ArrowPointingRight.png'};
+ for(const language of ['indonesian','chinese'])assert.deepEqual(content[language].festivalNavigation,arrows);
+ for(const path of Object.values(arrows)){
+  const file='public'+path,bytes=fs.readFileSync(file);
+  assert.equal(bytes.subarray(0,8).toString('hex'),'89504e470d0a1a0a',`Invalid PNG: ${file}`);
+  assert.equal(bytes[25],6,`Arrow must have transparency: ${file}`);
+ }
+});
+
+test('each Bau Nyale mission has four spaced transparent PNG choices with named distractors', () => {
+ const track=content.indonesian,seen=new Set();
+ for(const [area,zone] of track.festivalAreas.entries()) {
+  const choices=[track.festivalItems.find(item=>item.area===area),...zone.distractors];
+  assert.equal(choices.length,4);
+  assert.equal(zone.distractors.length,3);
+  assert.equal(new Set(choices.map(item=>item.festivalImage)).size,4);
+  for(const choice of choices) {
+   assert.ok(choice.id&&choice.word&&choice.meaning&&choice.festivalImage);
+   assert.ok(!seen.has(choice.id),`Repeated selection ID: ${choice.id}`);seen.add(choice.id);
+   for(const other of choices)if(other!==choice)
+    assert.ok(Math.hypot(choice.x-other.x,choice.y-other.y)>220,`${choice.id} overlaps ${other.id}`);
+  }
+ }
+ for(const path of [...track.festivalItems,...track.festivalAreas.flatMap(area=>area.distractors)].map(item=>item.festivalImage)) {
+  const file='public'+path,bytes=fs.readFileSync(file);
+  assert.equal(bytes.subarray(0,8).toString('hex'),'89504e470d0a1a0a',`Invalid PNG: ${file}`);
+  assert.equal(bytes[25],6,`PNG must have transparency: ${file}`);
+ }
+});
+
+test('supplied tutorial pictures render as circular coloured choices without stretching',t=>{
+ const dom=new JSDOM('<!doctype html>',{runScripts:'outside-only'});t.after(()=>dom.window.close());
+ const w=dom.window,calls=[];
+ w.Image=class {constructor(){this.complete=true;this.naturalWidth=1156;this.naturalHeight=1388;}set src(value){this._src=value;}};
+ w.eval(fs.readFileSync('public/js/ocean-art.js','utf8'));
+ const ctx={canvas:{getBoundingClientRect:()=>({width:960,height:620})},
+  save(){calls.push('save');},beginPath(){calls.push('path');},ellipse(...args){calls.push(['ellipse',...args]);},
+  clip(){calls.push('clip');},drawImage(...args){calls.push(['image',...args]);},restore(){calls.push('restore');}};
+ for(const icon of ['princess','sea','wave']){
+  calls.length=0;w.OceanArt.canvasIcon(ctx,icon,100,100,68);
+  assert.equal(calls[0],'save');assert.equal(calls[2][0],'ellipse');
+  assert.equal(calls[3],'clip');assert.equal(calls[4][0],'image');
+  assert.equal(calls[4].length,10,'source and destination crop preserve image proportions');
+  assert.equal(calls[4][4],calls[4][5],'the source crop is square');
+  assert.equal(calls.at(-1),'restore');
+ }
 });
 
 // Real backend handlers with asynchronously delivered socket events. No fixture
@@ -67,7 +224,8 @@ test('adapter uses real backend events, waits for state, rejects errors and dupl
  const start=adapter.request('startLevel',{level:1});
  await assert.rejects(adapter.request('startLevel',{level:1}),/wait/);await start;
  const q=content.indonesian.learningLevels[0].questions[0], key=bridge.keyOf(api.journey.snapshot());
- const wrong=await adapter.request('selectObject',{key,objectId:q.distractorItemIds[0]});assert.equal(wrong.correct,false);assert.match(wrong.hint,/putri/);
+ const wrong=await adapter.request('selectObject',{key,objectId:q.distractorItemIds[0]});
+ assert.equal(wrong.correct,false);assert.equal(wrong.hint,content.indonesian.learningRetryMessage);
  const right=await adapter.request('selectObject',{key,objectId:q.correctItemId});assert.equal(right.colouringAllowed,true);assert.equal(api.journey.snapshot().learning.active.stage,'colouring');
  await adapter.request('completeQuestion',{key,artwork:'data:image/png;base64,YQ=='});assert.equal(api.journey.snapshot().learning.active.questionIndex,1);
  await assert.rejects(adapter.request('completeQuestion',{key}),/no longer active/);
@@ -102,7 +260,7 @@ function mobile(t, api, name='mobile.html', viewport={width:960,height:620}) {
   const left=parseFloat(this.style.left)||0,top=parseFloat(this.style.top)||0;
   return {left,top,width,height,right:left+width,bottom:top+height};
  };
- w.Image=class{constructor(){this.complete=true;this.naturalWidth=100;this.naturalHeight=100;}set src(value){this._src=value;this.onload?.();}get src(){return this._src;}};
+ w.Image=class{constructor(){this.complete=true;this.naturalWidth=100;this.naturalHeight=100;}set src(value){this._src=value;if(/^\/assetNEW\/(mission|distractor)-/.test(value)){this.naturalWidth=1254;this.naturalHeight=1254;}if(/^\/assetNEW\/ArrowPointing/.test(value)){this.naturalWidth=1306;this.naturalHeight=1205;}this.onload?.();}get src(){return this._src;}};
  Object.defineProperty(w.performance,'now',{value:()=>now});
  w.requestAnimationFrame=fn=>{const id=++sequence;frames.set(id,fn);return id;};w.cancelAnimationFrame=id=>frames.delete(id);
  w.setTimeout=(fn,ms)=>{const id=++sequence;timers.set(id,{fn,at:now+ms});return id;};w.clearTimeout=id=>timers.delete(id);
@@ -123,8 +281,8 @@ function mobile(t, api, name='mobile.html', viewport={width:960,height:620}) {
  return {w,d,socket,sent,draws,ellipses,motion,advance,click,walk,get controller(){return controller;}};
 }
 
-for(const language of ['indonesian','chinese'])test(`${language}: real sockets and complete pages cover all 25 words, story, festival, return, optional levels and replay`,async t=>{
- const api=await networkBackend(t),p=mobile(t,api),aquarium=mobile(t,api,'pet.html');
+for(const language of ['indonesian','chinese'])test(`${language}: real sockets and complete pages cover all 15 words, story, festival, return, optional levels and replay`,async t=>{
+ const api=await networkBackend(t),p=mobile(t,api,'mobile.html',language==='chinese'?{width:390,height:590}:{width:960,height:620}),aquarium=mobile(t,api,'pet.html');
  await waitFor(()=>p.w.JellyJourney.state&&p.socket.connected);
  p.click(`[data-language="${language}"]`);p.click('#start-adventure');
  await waitFor(()=>p.w.JellyJourney.state.phase==='room');
@@ -132,7 +290,7 @@ for(const language of ['indonesian','chinese'])test(`${language}: real sockets a
  await p.walk(180,214);
  assert.equal(p.d.querySelector('#learning-level-screen').hidden,false);
  assert.equal(p.d.querySelectorAll('#learning-level-list button').length,1);
- assert.equal(p.d.querySelectorAll('#learning-level-list .is-locked').length,4);
+ assert.equal(p.d.querySelectorAll('#learning-level-list .is-locked').length,2);
  assert.equal(p.d.querySelector('#learning-level-list h3').textContent,content[language].learningLevels[0].title);
  p.click('#learning-level-list button');
  await waitFor(()=>p.controller?.active&&!p.w.JellyJourney.locked);
@@ -144,7 +302,9 @@ for(const language of ['indonesian','chinese'])test(`${language}: real sockets a
   assert.equal(p.d.querySelector('.vocabulary-prompt mark').textContent,q.targetWord);
   let object=p.controller.objects.find(o=>o.id===q.distractorItemIds[0]);
   await p.walk(object.x,object.y);
-  await waitFor(()=>p.d.querySelector('.vocabulary-hint').textContent.includes(q.hint));
+  await waitFor(()=>p.d.querySelector('.vocabulary-hint').textContent===content[language].learningRetryMessage);
+  assert.ok(!p.d.querySelector('.vocabulary-hint').textContent.includes(q.targetWord));
+  assert.ok(!p.d.querySelector('.vocabulary-hint').textContent.includes(q.translation));
   assert.equal(api.journey.snapshot().learning.active.stage,'select');
   object=p.controller.objects.find(o=>o.id===q.correctItemId);await p.walk(object.x,object.y);
   await waitFor(()=>p.d.querySelector('.vocabulary-colouring'));
@@ -165,6 +325,7 @@ for(const language of ['indonesian','chinese'])test(`${language}: real sockets a
  }
  assert.equal(api.journey.snapshot().bag.length,5);
  assert.equal(api.journey.snapshot().learning.storybookUnlocked,true);
+ assert.equal(api.journey.snapshot().learning.levels[1].unlocked,false,'Level 1 must not unlock Level 2');
  assert.equal(p.d.querySelector('#activity-screen').hidden,true);
  assert.equal(p.w.JellyJourney.state.storyDone,false);assert.equal(p.w.JellyJourney.state.invited,false);assert.equal(p.w.JellyJourney.state.outfit,null);
  assert.equal(p.d.querySelector('.jelly-question-bubble'),null);
@@ -192,26 +353,112 @@ for(const language of ['indonesian','chinese'])test(`${language}: real sockets a
   p.click('#scene-next');await p.advance(2000);
  }
  assert.equal(api.journey.snapshot().storyDone,true);
- p.w.JellyJourney.openActivity('wardrobe');assert.equal(p.d.querySelector('#activity-screen').hidden,true);
- p.click('#mailbox-button');p.click('#accept-invite');
+ p.w.JellyJourney.openActivity('wardrobe');
+ assert.equal(p.d.querySelector('#activity-screen').hidden,false,'the invitation opens when the story finishes');
+ assert.match(p.d.querySelector('#activity-title').textContent,/invited/);
+ assert.equal(p.d.querySelector('[data-outfit]'),null,'the wardrobe stays locked until the invitation is accepted');
+ p.click('#accept-invite');
  await waitFor(()=>p.w.JellyJourney.state.invited);await p.advance(7000);
  assert.ok(p.d.querySelector('[data-outfit]'));
  p.click(`[data-outfit="${content[language].outfits[0].id}"]`);
  await waitFor(()=>p.w.JellyJourney.state.outfit);p.click('#outfit-done');
  await waitFor(()=>p.w.JellyJourney.state.phase==='festival');
+ if(language==='indonesian'){
+  p.draws.length=0;await p.advance(50);
+  assert.ok(p.draws.some(([image])=>image?.src===content.indonesian.festivalAreas[0].background),
+   'food courtyard uses the supplied background');
+ }
+ p.draws.length=0;await p.advance(50);
+ const outfitClass=language==='indonesian'?'bau-nyale-outfit':'moon-festival-outfit';
+ assert.ok(p.draws.some(([image])=>image?.src?.includes(outfitClass)),
+  `festival Jelly uses the same ${language} artwork as the wardrobe`);
  for(const [index,item] of content[language].festivalItems.entries()) {
   if(p.w.JellyJourney.state.festivalArea!==item.area){await p.walk(880,450);await waitFor(()=>p.w.JellyJourney.state.festivalArea===item.area);}
+  p.draws.length=0;p.ellipses.length=0;await p.advance(50);
+  const background=content[language].festivalAreas[item.area].background;
+  const backgroundDraw=p.draws.find(([image])=>image?.src===background);
+  assert.ok(backgroundDraw,`${language} festival area ${item.area} draws its matching background`);
+  assert.equal(backgroundDraw.length,9,'the scene uses a source crop and a full-canvas destination');
+  assert.deepEqual(backgroundDraw.slice(5),[0,0,960,620]);
+  assert.ok(Math.abs(backgroundDraw[3]/backgroundDraw[4]-960/620)<.00001,'the source crop preserves its aspect ratio');
+  const expectedDirections=item.area===0?['right']:item.area===2?['left']:['left','right'];
+  const arrowDraws=expectedDirections.map(direction=>{
+   const drawing=p.draws.find(([image])=>image?.src===content[language].festivalNavigation[direction]);
+   assert.ok(drawing,`${language} area ${item.area} draws the ${direction} navigation PNG`);
+   assert.equal(drawing.length,5,'the complete transparent PNG is drawn');
+   const screen=p.w.OceanArt.screenScale(p.d.getElementById('game'));
+   assert.ok(Math.abs(drawing[3]*screen.x/(drawing[4]*screen.y)-1306/1205)<.00001,
+    'the arrow keeps its original proportions on the screen');
+   return drawing;
+  });
+  if(arrowDraws.length===2){
+   assert.ok(Math.abs(arrowDraws[0][3]-arrowDraws[1][3])<.00001);
+   assert.ok(Math.abs(arrowDraws[0][4]-arrowDraws[1][4])<.00001);
+  }
+  if(language==='chinese'){
+   const choices=[item,...content.chinese.festivalAreas[item.area].distractors];
+   const screen=p.w.OceanArt.screenScale(p.d.getElementById('game'));
+   const halos=p.ellipses.filter(([, ,rx,ry])=>
+    Math.abs(rx-48*screen.unit/screen.x)<.001&&Math.abs(ry-48*screen.unit/screen.y)<.001);
+   assert.equal(halos.length,2,'target and distractor share the same circular glow');
+   for(const choice of choices){
+    const drawing=p.draws.find(([image])=>image?.src===choice.festivalImage);
+    assert.ok(drawing,`missing floating PNG for ${choice.id}`);
+    assert.equal(drawing.length,9,'transparent margins are cropped without stretching');
+    assert.deepEqual(drawing.slice(1,5),choice.festivalCrop);
+    assert.ok(Math.max(drawing[7]*screen.x,drawing[8]*screen.y)<=64.001*screen.unit,
+     'the floating object stays smaller than Jelly on the screen');
+    assert.ok(Math.abs(drawing[7]*screen.x/(drawing[8]*screen.y)-choice.festivalCrop[2]/choice.festivalCrop[3])<.00001,
+     'the artwork keeps its original proportions on the screen');
+    const centerX=drawing[5]+drawing[7]/2,centerY=drawing[6]+drawing[8]/2;
+    assert.ok(halos.some(([x,y])=>Math.abs(x-centerX)<.001&&Math.abs(y-centerY)<.001),
+     `the glow stays centered behind ${choice.id}`);
+   }
+   if(index===0){
+    p.motion.matches=true;p.draws.length=0;await p.advance(50);
+    const stillY=p.draws.find(([image])=>image?.src===item.festivalImage)[6];
+    p.draws.length=0;await p.advance(500);
+    assert.equal(p.draws.find(([image])=>image?.src===item.festivalImage)[6],stillY,
+     'reduced motion stops festival item bobbing');
+    p.motion.matches=false;
+   }
+   const selected=content.chinese.festivalAreas[item.area].distractors[0];
+   await p.walk(selected.x,selected.y);
+   await waitFor(()=>p.d.querySelector('#feedback').textContent.includes(`That's not ${item.word}. That's ${selected.word} (${selected.meaning})`));
+   assert.equal(p.w.JellyJourney.state.festivalMission,index);
+   assert.equal(p.w.JellyJourney.state.festivalFeedback,false,'a distractor cannot finish the mission');
+  }
+  if(language==='indonesian'){
+   for(const choice of [item,...content.indonesian.festivalAreas[item.area].distractors])
+    assert.ok(p.draws.some(([image])=>image?.src===choice.festivalImage),`missing floating PNG for ${choice.word}`);
+   const selected=content.indonesian.festivalAreas[item.area].distractors[0];
+   await p.walk(selected.x,selected.y);
+   await waitFor(()=>p.d.querySelector('#feedback').textContent.includes(`That's not ${item.word}. That's ${selected.word}`));
+   assert.equal(p.w.JellyJourney.state.festivalFeedback,false,'a distractor cannot finish the mission');
+  }
   await p.walk(item.x,item.y);await waitFor(()=>p.w.JellyJourney.state.festivalFeedback&&p.w.JellyJourney.state.festivalMission===index&&!p.d.querySelector('#activity-screen').hidden);
+  if(item.festivalImage){
+   assert.equal(p.d.querySelector('.festival-discovery img')?.getAttribute('src'),item.festivalImage);
+  }
+  if(language==='indonesian')assert.equal(p.d.querySelector('#activity-title').textContent,item.thanks);
   p.click('#festival-next');await waitFor(()=>p.w.JellyJourney.state.festivalMission===index+1);
  }
  p.click('#take-home');await waitFor(()=>p.w.JellyJourney.state.phase==='aquarium');
  assert.equal(api.journey.snapshot().memories.length,13);
+ assert.equal(api.journey.snapshot().mainAdventureCompleted,true);
+ assert.equal(api.journey.snapshot().learning.levels[1].unlocked,true);
+ assert.match(p.d.querySelector('#welcome-return').textContent,/unlocked Level 2/);
  await waitFor(()=>/13 collected memories/.test(aquarium.d.querySelector('#aquarium-status').textContent));
- p.click(`[data-language="${language}"]`);p.click('#continue-adventure');await waitFor(()=>p.w.JellyJourney.state.phase==='room');
+ assert.equal(api.journey.snapshot().outfit,content[language].outfits[0].id);
+ aquarium.draws.length=0;await aquarium.advance(50);
+ assert.ok(aquarium.draws.some(([image])=>image?.src?.includes(outfitClass)),
+  `the pet aquarium draws the selected ${language} outfit after returning`);
+ assert.equal(p.d.querySelector(`[data-language="${language}"]`).getAttribute('aria-pressed'),'true');
+ p.click('#continue-adventure');await waitFor(()=>p.w.JellyJourney.state.phase==='room');
  assert.equal(p.w.JellyJourney.state.learning.levels[0].completed,true);
  assert.equal(p.d.querySelector('#storybook-unlock-screen').hidden,true);
  // Optional levels use the real content and the same physical/colouring loop.
- for(let level=2;level<=5;level++) {
+ for(let level=2;level<=3;level++) {
   await p.walk(180,214);
   assert.equal(p.d.querySelectorAll('#learning-level-list button').length,level);
   assert.equal(p.d.querySelector('#learning-level-list button').textContent,'Replay');
@@ -228,7 +475,7 @@ for(const language of ['indonesian','chinese'])test(`${language}: real sockets a
   }
  }
  assert.equal(api.journey.snapshot().learning.allCompleted,true);
- assert.equal(api.journey.snapshot().bag.length,20);
+ assert.equal(api.journey.snapshot().bag.length,10);
  await p.walk(486,269);assert.equal(p.d.querySelector('#learning-story-list button').textContent,'Replay');
  p.click('#learning-story-list button');await waitFor(()=>!p.d.querySelector('#storybook-backdrop').hidden);
  assert.equal(p.w.JellyJourney.state.storyPage,0);
@@ -238,7 +485,7 @@ for(const language of ['indonesian','chinese'])test(`${language}: real sockets a
  for(let beat=0;beat<3;beat++){p.click('#scene-continue');await p.advance(100);}
  p.click(language==='chinese'?'[data-chinese-choice="story-shell"]':'#story-shell');
  p.click('#scene-continue');await p.advance(100);p.click('#scene-continue');await p.advance(100);
- await waitFor(()=>p.w.JellyJourney.state.storyPage===1);assert.equal(api.journey.snapshot().bag.length,20);
+ await waitFor(()=>p.w.JellyJourney.state.storyPage===1);assert.equal(api.journey.snapshot().bag.length,10);
 });
 
 test('reset invalidates previous attempts and competing activities cannot interrupt a level',async t=>{
@@ -256,13 +503,22 @@ test('reset invalidates previous attempts and competing activities cannot interr
  for(let page=0;page<5;page++)await adapter.request('storyPage',{page});
  client.socket.emit('journey-invitation');await waitFor(()=>api.journey.snapshot().invited);
  client.socket.emit('journey-try-outfit',content.chinese.outfits[0].id);await waitFor(()=>api.journey.snapshot().outfit);
+ await assert.rejects(adapter.request('startLevel',{level:2}),/not available/,'Level 2 remains locked before festival return');
+ client.socket.emit('journey-festival');await waitFor(()=>api.journey.snapshot().phase==='festival');
+ for(const item of content.chinese.festivalItems){
+  if(item.area!==api.journey.snapshot().festivalArea){client.socket.emit('journey-area',item.area);await waitFor(()=>api.journey.snapshot().festivalArea===item.area);}
+  client.socket.emit('journey-find',item.id);await waitFor(()=>api.journey.snapshot().festivalFeedback);
+  client.socket.emit('journey-next-festival');await waitFor(()=>!api.journey.snapshot().festivalFeedback);
+ }
+ client.socket.emit('journey-return');await waitFor(()=>api.journey.snapshot().phase==='aquarium');
+ client.socket.emit('journey-start','chinese');await waitFor(()=>api.journey.snapshot().phase==='room');
  await adapter.request('startLevel',{level:2});const before=api.journey.snapshot(),errors=[];client.socket.on('journey-error',e=>errors.push(e));
  client.socket.emit('journey-try-outfit',content.chinese.outfits[1].id);
  client.socket.emit('journey-festival');client.socket.emit('journey-invitation');
  await assert.rejects(adapter.request('selectStory',{storyId:content.chinese.stories[0].id}),/not available/);
  assert.deepEqual(api.journey.snapshot(),before);assert.equal(errors.length,4);
  await adapter.request('exitLevel');assert.equal(api.journey.snapshot().learning.active,null);
- client.socket.emit('journey-festival');await waitFor(()=>api.journey.snapshot().phase==='festival');
+ assert.equal(api.journey.snapshot().mainAdventureCompleted,true);
 });
 
 test('adapter times out, rejects disconnects, ignores stale results, and permits recovery',async()=>{
@@ -288,7 +544,10 @@ test('unlock celebration follows each track and reset, and never replays initial
  const state=(language,completed)=>({phase:'room',language,stories:[],learning:{storybookUnlocked:completed,storybookUnlockVersion:completed?1:0,levels:content[language].learningLevels.map(l=>({level:l.level,unlocked:l.level===1,completed:l.level===1&&completed})),active:null}});
  const id=state('indonesian',false),idDone=state('indonesian',true),zh=state('chinese',false),zhDone=state('chinese',true);
  ui.sync(id,null);ui.sync(idDone,id);assert.equal(d.querySelector('#storybook-unlock-screen').hidden,false);
- d.querySelector('#explore-storybook').click();ui.stop();ui.sync(idDone,null);assert.equal(d.querySelector('#storybook-unlock-screen').hidden,true);
+ assert.equal(d.querySelector('#storybook-guidance').hidden,true,'the arrow waits until the unlock popup closes');
+ d.querySelector('#explore-storybook').click();assert.equal(d.querySelector('#storybook-guidance').hidden,false,'the first unlock points toward the book');
+ ui.approach('book');assert.equal(d.querySelector('#storybook-guidance').hidden,true,'the arrow disappears after finding the book');
+ ui.stop();ui.sync(idDone,null);assert.equal(d.querySelector('#storybook-unlock-screen').hidden,true);
  ui.sync(id,idDone);ui.sync(idDone,id);assert.equal(d.querySelector('#storybook-unlock-screen').hidden,false,'fresh same-language track celebrates again');d.querySelector('#explore-storybook').click();
  ui.sync(zh,idDone);ui.sync(zhDone,zh);assert.equal(d.querySelector('#storybook-unlock-screen').hidden,false);
  d.querySelector('#explore-storybook').click();ui.sync({phase:'aquarium',language:null},zhDone);
@@ -337,7 +596,7 @@ test('reader waits for backend confirmation and rejected pages can be retried',a
  await waitFor(()=>p.d.querySelector('#scene-next').disabled===false);
 });
 
-test('all 50 questions fit actual room silhouettes, floating envelopes, reachable grid and control reserves',async t=>{
+test('all 30 questions fit actual room silhouettes, floating envelopes, reachable grid and control reserves',async t=>{
  const api=await networkBackend(t),p=mobile(t,api);await waitFor(()=>p.w.JellyJourney.state);
  p.click('[data-language="indonesian"]');p.click('#start-adventure');await waitFor(()=>p.w.JellyJourney.state.phase==='room');
  const game=p.w.VocabularyGameplay,geometry=p.w.OceanRoom.learningGeometry();
@@ -408,7 +667,7 @@ test('all choices have matching affordances, stable hitboxes, pointer feedback a
  p.click(`[data-vocabulary-choice="${item.id}"]`);assert.equal(p.sent.filter(([event])=>event==='journey-learning-select-item').length,selections);
  await p.advance(7000);await waitFor(()=>p.sent.filter(([event])=>event==='journey-learning-select-item').length>selections);
  // The first question's second picture is a distractor, so the caption persists.
- await waitFor(()=>p.d.querySelector('.vocabulary-hint').textContent.includes(question.hint));
+ await waitFor(()=>p.d.querySelector('.vocabulary-hint').textContent===content.chinese.learningRetryMessage);
  assert.equal(bubble.hidden,false);
  const right=p.controller.objects.find(o=>o.id===question.correctItemId);await p.walk(right.x,right.y);await waitFor(()=>p.d.querySelector('.vocabulary-colouring'));
  assert.equal(bubble.hidden,true);p.click('[data-tool="cancel"]');assert.equal(bubble.hidden,true);
@@ -431,7 +690,7 @@ for(const language of ['indonesian','chinese'])test(`${language}: fresh adventur
  p.click(`[data-language="${language}"]`);assert.equal(p.d.querySelector('#continue-adventure').hidden,false);p.click('#start-adventure');
  await waitFor(()=>p.w.JellyJourney.state.phase==='room');
  const fresh=p.w.JellyJourney.state;assert.ok(fresh.trip>old.trip);assert.equal(fresh.bag.length,0);assert.equal(fresh.memories.length,0);assert.equal(fresh.learning.active,null);
- assert.deepEqual(Array.from(fresh.learning.levels,l=>l.completed),[false,false,false,false,false]);assert.equal(fresh.learning.storybookUnlocked,false);assert.equal(fresh.storyDone,false);assert.equal(fresh.invited,false);assert.equal(fresh.outfit,null);
+ assert.deepEqual(Array.from(fresh.learning.levels,l=>l.completed),[false,false,false]);assert.equal(fresh.learning.storybookUnlocked,false);assert.equal(fresh.storyDone,false);assert.equal(fresh.invited,false);assert.equal(fresh.outfit,null);
  assert.equal(p.d.querySelector('#learning-guidance').hidden,false);assert.equal(p.d.querySelector('#activity-screen').hidden,true);assert.equal(p.controller.objects.length,0);
  // Deliver an obsolete snapshot to every real client handler, including the adapter.
  p.socket.listeners('journey-state').forEach(fn=>fn(old));aquarium.socket.listeners('journey-state').forEach(fn=>fn(old));await p.advance(50);

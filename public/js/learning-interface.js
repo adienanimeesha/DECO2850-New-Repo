@@ -5,11 +5,12 @@ const $ = id => document.getElementById(id);
 
 function create({ action, getContent, room = () => window.OceanRoom }) {
  let state = null, previous = null, learningRoom = null, activePopup = null;
- let restoreFocus = null, unlockShown = false, pending = false;
+ let restoreFocus = null, unlockShown = false, pending = false, storybookCuePending = false;
  const levelScreen = $('learning-level-screen');
  const storyScreen = $('learning-story-screen');
  const unlockScreen = $('storybook-unlock-screen');
  const guidance = $('learning-guidance');
+ const storybookGuidance = $('storybook-guidance');
  const gameplayRoot = $('vocabulary-gameplay');
 
  const learning = value => value?.learning || value?.vocabularyLearning || null;
@@ -17,9 +18,12 @@ function create({ action, getContent, room = () => window.OceanRoom }) {
  const levelItems = value => {
   const model = learning(value) || {};
   const content = getContent(value) || {};
-  if (content.learningLevels && model.levels) return content.learningLevels.map(definition => ({
-   ...definition, ...model.levels.find(item => item.level === definition.level)
-  }));
+  // Only render levels known to both the current curriculum and authoritative
+  // progress. This safely ignores obsolete definitions retained by an old tab
+  // and obsolete progress entries retained by an older server state.
+  if (Array.isArray(content.learningLevels) && Array.isArray(model.levels)) return content.learningLevels
+   .filter(definition => model.levels.some(item => item.level === definition.level))
+   .map(definition => ({...definition, ...model.levels.find(item => item.level === definition.level)}));
   const definitions = model.levels || value?.vocabularyLevels || content.vocabularyLevels || [];
   return Array.isArray(definitions) ? definitions : [];
  };
@@ -81,7 +85,10 @@ function create({ action, getContent, room = () => window.OceanRoom }) {
  function statusOf(item, index) {
   if (!item) return { locked: true, completed: false };
   const completed = item.completed === true || item.status === 'completed';
-  const locked = item.unlocked === false || item.locked === true || item.available === false || ['locked', 'unavailable'].includes(item.status);
+  const explicitlyAvailable = completed || item.unlocked === true || item.available === true || item.locked === false ||
+   ['available', 'ready', 'in-progress'].includes(item.status);
+  const locked = !explicitlyAvailable || item.unlocked === false || item.locked === true ||
+   item.available === false || ['locked', 'unavailable'].includes(item.status);
   return { locked, completed };
  }
  function labelledButton(text, className) {
@@ -93,7 +100,7 @@ function create({ action, getContent, room = () => window.OceanRoom }) {
   const list = $('learning-level-list');
   list.replaceChildren();
   const levels = levelItems(state);
-  for (let index = 0; index < 5; index++) {
+  for (let index = 0; index < levels.length; index++) {
    const item = levels[index], status = statusOf(item, index);
    const row = document.createElement('article'); row.className = 'learning-card';
    row.classList.toggle('is-locked', status.locked); row.classList.toggle('is-complete', status.completed);
@@ -159,9 +166,12 @@ function create({ action, getContent, room = () => window.OceanRoom }) {
  }
  function openStories() {
   if (!state || state.phase !== 'room' || !levelOneComplete(state) || presentation(state)) return;
+  storybookCuePending = false; storybookGuidance.hidden = true;
   renderStories(); show(storyScreen, 'stories');
  }
  function showUnlock() {
+  storybookCuePending = true;
+  storybookGuidance.hidden = true;
   unlockShown = true; show(unlockScreen, 'unlock');
  }
  async function gameplayAction(name, payload) {
@@ -180,7 +190,9 @@ function create({ action, getContent, room = () => window.OceanRoom }) {
   });
  }
  function sync(next, prior) {
-  if (!next?.language || learning(next)?.storybookUnlockVersion === 0 || (prior && next.language !== prior.language)) unlockShown = false;
+  if (!next?.language || learning(next)?.storybookUnlockVersion === 0 || (prior && next.language !== prior.language)) {
+   unlockShown = false; storybookCuePending = false;
+  }
   previous = prior; state = next;
   configureRoom();
   const hasLearning = enabled(next), inRoom = next?.phase === 'room';
@@ -201,18 +213,20 @@ function create({ action, getContent, room = () => window.OceanRoom }) {
    ? prior?.language === next.language && oldModel?.storybookUnlockVersion === 0 && model.storybookUnlockVersion > 0
    : model?.showStoryUnlockCelebration === true || (prior && !wasUnlocked);
   if (inRoom && unlocked && !unlockShown && firstUnlock) showUnlock();
+  storybookGuidance.hidden = !(storybookCuePending && inRoom && unlocked && !activePopup);
  }
  function approach(id) {
   if (id === 'learning-bookshelf') openLevels();
   if (['learning-storybook','storybook','book'].includes(id)) openStories();
  }
- function stop() { closePopup(false); learningRoom?.stop(); document.body.classList.remove('is-vocabulary-active'); gameplayRoot.hidden = true; }
+ function stop() { closePopup(false); storybookCuePending = false; storybookGuidance.hidden = true; learningRoom?.stop(); document.body.classList.remove('is-vocabulary-active'); gameplayRoot.hidden = true; }
 
  $('close-level-select').addEventListener('click', closePopup);
  $('close-story-select').addEventListener('click', closePopup);
  $('explore-storybook').addEventListener('click', async () => {
   closePopup();
   // The unlock is permanent backend state; dismissing it is a local UI action.
+  storybookGuidance.hidden = !storybookCuePending;
  });
  [levelScreen, storyScreen].forEach(screen => screen.addEventListener('pointerdown', event => { if (event.target === screen) closePopup(); }));
  window.addEventListener('ocean-room-ready', configureRoom);
