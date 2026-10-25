@@ -1,19 +1,41 @@
 const journeys = require('./public/js/journey-content');
 
-// One adventure shared by the mobile and aquarium. Home keeps the current
-// trip's outfit and memories; starting another adventure clears them.
+// One authoritative, in-memory adventure shared by journey-enabled sockets.
 function createJourney(io, { transitionMs = 2200 } = {}) {
   let timer;
-  const freshState = (trip = 0) => ({ phase: 'aquarium', language: null, storyPage: 0, storyDone: false,
-    rhymeStep: 0, rhymeDone: false, rhymeListened: false, invited: false, outfit: null,
-    festivalArea: 0, festivalMission: 0, festivalFeedback: false, festivalFound: [], bag: [], memories: [], trip });
-  let state = freshState();
+  let attemptSequence = 0;
+  const fresh = (trip = 0, language = null) => ({
+    phase: 'aquarium', language, trip,
+    learning: {
+      tutorialCompleted: false, allCompleted: false, storybookUnlocked: false,
+      storybookUnlockVersion: 0, storybookUnlockedAtTrip: null,
+      levels: Array.from({ length: 5 }, (_, index) => ({
+        level: index + 1, unlocked: index === 0, completed: false,
+      })),
+      active: null,
+    },
+    stories: [], activeStoryId: null, storyPage: 0, storyDone: false,
+    invited: false, outfit: null, festivalId: null,
+    festivalArea: 0, festivalMission: 0, festivalFeedback: false,
+    festivalFound: [], bag: [], memories: [],
+  });
+  let state = fresh();
   const snapshot = () => JSON.parse(JSON.stringify(state));
   const publish = () => io.to('journey-devices').emit('journey-state', snapshot());
   const content = () => journeys[state.language];
+  const story = () => content()?.stories.find(item => item.id === state.activeStoryId);
+  const festival = () => content()?.festivals.find(item => item.id === state.festivalId);
+  const question = () => {
+    const active = state.learning.active;
+    return active && content()?.learningLevels[active.level - 1]?.questions[active.questionIndex];
+  };
+  const invalid = (socket, event) => socket.emit('journey-error', {
+    event, code: 'invalid-state', message: 'That action is not available right now.',
+  });
   function reward(item, source) {
     const entry = { ...item, source, language: state.language };
-    if (!state.bag.some(x => x.id === item.id)) state.bag.push(entry);
+    if (![...state.bag, ...state.memories].some(x => x.id === entry.id && x.language === entry.language))
+      state.bag.push(entry);
   }
   function transition(phase, next) {
     clearTimeout(timer);
@@ -22,77 +44,173 @@ function createJourney(io, { transitionMs = 2200 } = {}) {
     timer = setTimeout(() => { state.phase = next; publish(); }, transitionMs);
   }
   function returnHome() {
-    state.memories = [...state.memories];
+    state.learning.active = null;
     for (const item of state.bag) {
       if (!state.memories.some(x => x.id === item.id && x.language === item.language))
         state.memories.push(item);
     }
     transition('returning', 'aquarium');
   }
+  function resetTrip() {
+    state.trip++;
+    state.learning.active = null;
+    state.activeStoryId = content().stories[0]?.id || null;
+    state.storyPage = 0; state.storyDone = false; state.invited = false;
+    state.outfit = null; state.festivalId = null; state.festivalArea = 0;
+    state.festivalMission = 0; state.festivalFeedback = false;
+    state.festivalFound = []; state.bag = [];
+  }
+  function activate(level, questionIndex) {
+    state.learning.active = {
+      level, questionIndex,
+      questionId: content().learningLevels[level - 1].questions[questionIndex].id,
+      attemptId: ++attemptSequence, stage: 'select',
+    };
+  }
+  function finishQuestion(artwork) {
+    const active = state.learning.active, item = question();
+    reward({
+      id: 'learning-' + item.id, word: item.targetWord, meaning: item.translation,
+      pronunciation: item.pinyin, icon: item.colouringAsset,
+      ...(artwork ? { artwork } : {}),
+    }, 'learning');
+    if (active.questionIndex < 4) {
+      activate(active.level, active.questionIndex + 1);
+    } else {
+      const level = active.level;
+      state.learning.active = null;
+      state.learning.levels[level - 1].completed = true;
+      if (level < 5) state.learning.levels[level].unlocked = true;
+      if (level === 1 && !state.learning.tutorialCompleted) {
+        state.learning.tutorialCompleted = true;
+        state.learning.storybookUnlocked = true;
+        state.learning.storybookUnlockVersion++;
+        state.learning.storybookUnlockedAtTrip = state.trip;
+      }
+      state.learning.allCompleted = state.learning.levels.every(entry => entry.completed);
+    }
+    publish();
+  }
   io.on('connection', socket => {
     if (socket.handshake.auth.journey !== true) return;
     socket.join('journey-devices');
     socket.emit('journey-state', snapshot());
     socket.on('journey-start', language => {
-      if (!['indonesian', 'chinese'].includes(language) || state.phase !== 'aquarium') return;
-      state = { ...freshState(state.trip + 1), language };
+      if (!Object.hasOwn(journeys, language) || state.phase !== 'aquarium')
+        return invalid(socket, 'journey-start');
+      if (state.language !== language) {
+        state = fresh(state.trip, language);
+        state.stories = content().stories.map(item => ({
+          id: item.id, language, title: item.title, festivalId: item.festivalId,
+          completed: false, invitationAvailable: false, invited: false, replayEligible: true,
+        }));
+      }
+      resetTrip();
       transition('departing', 'room');
     });
+    socket.on('journey-reset', () => {
+      clearTimeout(timer); state = fresh(); attemptSequence = 0; publish();
+    });
+    socket.on('journey-learning-start', payload => {
+      const level = payload?.level;
+      if (state.phase !== 'room' || state.learning.active ||
+          !Number.isInteger(level) || level < 1 || level > 5 ||
+          !state.learning.levels[level - 1].unlocked)
+        return invalid(socket, 'journey-learning-start');
+      activate(level, 0); publish();
+    });
+    socket.on('journey-learning-select-item', payload => {
+      const active = state.learning.active, item = question();
+      if (state.phase !== 'room' || !active || active.stage !== 'select' ||
+          payload?.questionId !== item.id || payload?.attemptId !== active.attemptId ||
+          typeof payload?.itemId !== 'string' ||
+          !item.options.some(option => option.itemId === payload.itemId))
+        return invalid(socket, 'journey-learning-select-item');
+      if (payload.itemId !== item.correctItemId) {
+        socket.emit('journey-learning-result', {
+          correct: false, questionId: item.id, attemptId: active.attemptId,
+          hint: `That’s not ${item.targetWord}, but it’s okay! ${item.hint} Try again!`,
+        });
+        return;
+      }
+      active.stage = 'colouring';
+      socket.emit('journey-learning-result', {
+        correct: true, questionId: item.id, attemptId: active.attemptId,
+        colouringAsset: item.colouringAsset,
+      });
+      publish();
+    });
+    socket.on('journey-learning-colouring-complete', payload => {
+      const active = state.learning.active, item = question();
+      if (state.phase !== 'room' || !active || active.stage !== 'colouring' ||
+          payload?.questionId !== item.id || payload?.attemptId !== active.attemptId ||
+          (payload.artwork !== undefined && (typeof payload.artwork !== 'string' ||
+            !/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(payload.artwork) ||
+            payload.artwork.length > 250000)))
+        return invalid(socket, 'journey-learning-colouring-complete');
+      finishQuestion(payload.artwork);
+    });
+    socket.on('journey-learning-exit', () => {
+      if (state.phase !== 'room' || !state.learning.active)
+        return invalid(socket, 'journey-learning-exit');
+      state.learning.active = null; publish();
+    });
+    socket.on('journey-story-select', payload => {
+      const selected = content()?.stories.find(item => item.id === payload?.storyId);
+      if (state.phase !== 'room' || !state.learning.storybookUnlocked ||
+          state.learning.active || !selected ||
+          !content().festivals.some(item => item.id === selected.festivalId))
+        return invalid(socket, 'journey-story-select');
+      state.activeStoryId = selected.id;
+      state.storyPage = 0; state.storyDone = false; state.invited = false;
+      state.outfit = null; state.festivalId = null; state.festivalArea = 0;
+      state.festivalMission = 0; state.festivalFeedback = false; state.festivalFound = [];
+      publish();
+    });
     socket.on('journey-story-page', page => {
-      if (state.phase !== 'room' || state.storyDone || page !== state.storyPage) return;
-      reward(content().storyRewards[page], 'story');
+      const selected = story();
+      if (state.phase !== 'room' || !state.learning.storybookUnlocked ||
+          state.learning.active || !selected || state.storyDone || page !== state.storyPage)
+        return invalid(socket, 'journey-story-page');
+      reward(selected.rewards[page], 'story');
       state.storyPage++;
-      state.storyDone = state.storyPage === content().chapters.length;
-      publish();
-    });
-    socket.on('journey-rhyme-listened', () => {
-      if (state.phase !== 'room' || state.rhymeListened) return;
-      state.rhymeListened = true;
-      publish();
-    });
-    socket.on('journey-rhyme-answer', payload => {
-      if (state.phase !== 'room' || state.rhymeDone || !state.rhymeListened) return;
-      if (!payload || typeof payload.icon !== 'string' || typeof payload.artwork !== 'string' || !/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(payload.artwork) || payload.artwork.length > 250000) {
-        socket.emit('journey-hint', 'Colour your object and press Done to collect it.');
-        return;
+      state.storyDone = state.storyPage === selected.chapters.length;
+      if (state.storyDone) {
+        const progress = state.stories.find(item => item.id === selected.id);
+        progress.completed = true; progress.invitationAvailable = true;
       }
-      const icon = payload.icon;
-      const line = content().rhyme.lines[state.rhymeStep];
-      if (line.icon !== icon) {
-        socket.emit('journey-hint', 'Good try! Listen again and find the matching picture.');
-        return;
-      }
-      reward({ id: 'rhyme-' + line.icon, word: line.word, meaning: line.meaning,
-        pronunciation: line.pronunciation, icon: line.icon,
-        artwork: payload.artwork }, 'rhyme');
-      state.rhymeStep++;
-      state.rhymeDone = state.rhymeStep === content().rhyme.lines.length;
       publish();
     });
     socket.on('journey-invitation', () => {
-      if (state.phase !== 'room' || !state.storyDone || !state.rhymeDone) return;
-      state.invited = true;
+      if (state.phase !== 'room' || !state.storyDone || state.learning.active ||
+          !content().festivals.some(item => item.id === story()?.festivalId))
+        return invalid(socket, 'journey-invitation');
+      state.invited = true; state.festivalId = story().festivalId;
+      state.stories.find(item => item.id === state.activeStoryId).invited = true;
       publish();
     });
     socket.on('journey-try-outfit', id => {
-      if (state.phase !== 'room' || !state.invited || !content().outfits.some(x => x.id === id)) return;
-      state.outfit = id;
-      publish();
+      if (state.phase !== 'room' || !state.invited ||
+          !festival()?.outfits.some(item => item.id === id))
+        return invalid(socket, 'journey-try-outfit');
+      state.outfit = id; publish();
     });
     socket.on('journey-festival', () => {
-      if (state.phase !== 'room' || !state.invited || !state.outfit) return;
+      if (state.phase !== 'room' || !state.invited || !state.outfit || !festival())
+        return invalid(socket, 'journey-festival');
       transition('travelling', 'festival');
     });
     socket.on('journey-area', area => {
       if (state.phase !== 'festival' || state.festivalFeedback || !Number.isInteger(area) ||
-          Math.abs(area - state.festivalArea) !== 1 || !content().festivalAreas[area]) return;
-      state.festivalArea = area;
-      publish();
+          Math.abs(area - state.festivalArea) !== 1 || !festival()?.areas[area])
+        return invalid(socket, 'journey-area');
+      state.festivalArea = area; publish();
     });
     socket.on('journey-find', id => {
-      if (state.phase !== 'festival' || state.festivalFeedback) return;
-      const item = content().festivalItems[state.festivalMission];
-      if (!item) return;
+      if (state.phase !== 'festival' || state.festivalFeedback)
+        return invalid(socket, 'journey-find');
+      const item = festival()?.items[state.festivalMission];
+      if (!item) return invalid(socket, 'journey-find');
       if (item.id !== id || item.area !== state.festivalArea) {
         socket.emit('journey-hint', `Jelly is looking for ${item.word}. Keep exploring!`);
         return;
@@ -100,21 +218,21 @@ function createJourney(io, { transitionMs = 2200 } = {}) {
       state.festivalFound.push(id);
       const { x, y, area, request, thanks, fact, ...keepsake } = item;
       reward(keepsake, 'festival');
-      state.festivalFeedback = true;
-      publish();
+      state.festivalFeedback = true; publish();
     });
     socket.on('journey-next-festival', () => {
-      if (state.phase !== 'festival' || !state.festivalFeedback) return;
-      state.festivalFeedback = false;
-      state.festivalMission++;
-      publish();
+      if (state.phase !== 'festival' || !state.festivalFeedback)
+        return invalid(socket, 'journey-next-festival');
+      state.festivalFeedback = false; state.festivalMission++; publish();
     });
     socket.on('journey-return', () => {
-      if (state.phase !== 'festival' || state.festivalMission !== content().festivalItems.length || state.festivalFeedback) return;
+      if (state.phase !== 'festival' || state.festivalMission !== festival()?.items.length ||
+          state.festivalFeedback) return invalid(socket, 'journey-return');
       returnHome();
     });
     socket.on('journey-exit', () => {
-      if (state.phase === 'aquarium' || state.phase === 'returning') return;
+      if (state.phase === 'aquarium' || state.phase === 'returning')
+        return invalid(socket, 'journey-exit');
       returnHome();
     });
   });
