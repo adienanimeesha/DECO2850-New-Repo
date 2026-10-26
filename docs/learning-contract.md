@@ -4,7 +4,7 @@ This contract describes the integrated backend on `integration/language-learning
 
 ## Content
 
-`window.JOURNEYS[language]` (or `require('./public/js/journey-content')`) supports `indonesian` and `chinese`. Each has exactly five `learningLevels`, with exactly five `questions` per level. Each question has `id`, `language`, `level`, `targetWord`, `translation`, `pronunciationLocale`, `sentenceBefore`, `sentenceAfter`, `hint`, `correctItemId`, `distractorItemIds`, `colouringAsset`, and `options: [{ itemId, label, asset }]`. Mandarin questions also have tone-marked `pinyin`. The question's correct ID is content data for rendering; the server still validates all submitted IDs.
+`window.JOURNEYS[language]` (or `require('./public/js/journey-content')`) supports `indonesian` and `chinese`. Each has exactly three `learningLevels`, with exactly five `questions` per level. Each question has `id`, `language`, `level`, `targetWord`, `translation`, `pronunciationLocale`, `sentenceBefore`, `sentenceAfter`, `hint`, `correctItemId`, `distractorItemIds`, `colouringAsset`, and `options: [{ itemId, label, asset }]`. Mandarin questions also have tone-marked `pinyin`. The question's correct ID is content data for rendering; the server still validates all submitted IDs.
 
 `stories: [{ id, language, title, festivalId, chapters, rewards }]` and `festivals: [{ id, language, title, place, intro, areas, items, outfits }]` link by `festivalId`. The current entries are `putri-mandalika` → `bau-nyale` and `moon-rabbit` → `mid-autumn`. Only these complete festivals are selectable. The legacy top-level `chapters`, `storyRewards`, `festivalItems`, etc. remain for current frontend compatibility. New story/festival entries can be added in content data; the frontend must use the selected IDs and arrays rather than assuming those top-level arrays always represent the selection.
 
@@ -17,7 +17,7 @@ The server sends `journey-state` as a JSON object:
 | `revision` | Monotonically increasing snapshot revision for this server process; clients discard older snapshots except on a fresh reconnect, which may join a restarted server. |
 | `phase` | `aquarium`, `departing`, `room`, `travelling`, `festival`, or `returning`. |
 | `language`, `trip` | Selected content track and monotonically increasing visit number. `language` is null before a journey or after reset. |
-| `learning.levels` | Five `{ level, unlocked, completed }` entries. Only level 1 starts unlocked. Completed levels remain unlocked and replayable. |
+| `learning.levels` | Three `{ level, unlocked, completed }` entries. Only Level 1 starts unlocked. Finishing a level unlocks the next level immediately; no story or festival is required. Completed levels remain unlocked and replayable. |
 | `learning.active` | Null until a level is started at the bookshelf. Otherwise `{ level, questionIndex, questionId, attemptId, stage }`. `questionIndex` is zero-based; `stage` is `select` or `colouring`. Resolve the visible question from content using these IDs. |
 | `learning.tutorialCompleted`, `learning.allCompleted` | Permanent completion flags for this language's current server-session progress. |
 | `learning.storybookUnlocked` | Permanent Level 1 unlock flag. The book must stay closed while false. |
@@ -41,7 +41,7 @@ All listed events require the journey socket authentication above. Send exact pa
 | `journey-learning-exit` | none | In room, closes the active level. Starting it again begins question 1; completed rewards remain deduplicated. |
 | `journey-story-select` | `{ storyId }` | In room after book unlock, chooses an available story with an implemented festival. Resets the current reading, invitation, outfit and festival trip fields. A completed story may be selected again. No separate `journey-story-start` event is needed. |
 | `journey-story-page` | zero-based page number | Existing event. Accepted only for the active story after book unlock and in sequence. The final page marks its `stories` entry complete and invitation available. |
-| `journey-invitation` | none | Existing event. After the active story is finished, accepts its invitation and selects its linked festival. Level 2–5 completion is not required. |
+| `journey-invitation` | none | Existing event. After the active story is finished, accepts its invitation and selects its linked festival. Level 2–3 completion is not required. |
 | `journey-try-outfit`, `journey-festival` | outfit ID; none | Existing events. No learning level may be active. Outfit must belong to the linked festival; travel uses `travelling` → `festival`. |
 | `journey-area`, `journey-find`, `journey-next-festival`, `journey-return` | Existing payloads | Existing sequential festival mission and `returning` → `aquarium` transitions, using the active festival's content. |
 | `journey-exit` | none | Existing early return. Moves through `returning` and carries earned bag entries into memories. |
@@ -60,3 +60,7 @@ The physical book stays hidden until `storybookUnlocked`; approach opens story s
 The first-unlock popup follows the live unlock version transition, with initial/reconnect snapshots excluded. Reset and language changes restart the celebration lifecycle. Neither popup dismissal nor reconnect awards progress.
 
 The backend and all connected screens share one in-memory adventure. Continue adventure uses the string payload and retains same-language progress. Start new adventure sends `{language, fresh:true}` and clears that progress. Switching languages also starts a fresh track. The contract does not promise persistent accounts or progress across server restarts.
+
+## Independent learning progression
+
+Level 1 completion permanently unlocks both the storybook and Level 2. Level 2 completion unlocks Level 3. Each unlocked level is selected manually from the common-room bookshelf and runs the existing five-question find-item/colouring loop. Finishing a level leaves `learning.active` null; it never auto-starts another level. The storybook remains available in the common room after its first unlock. Finish or exit a vocabulary activity before selecting a story or another level. Festival completion and return preserve learning progress but are not prerequisites for Level 2. Reconnect restores the unlock state; replay does not duplicate rewards or unlock celebrations. Legacy completed-festival snapshots retain their prior Level 2 availability.

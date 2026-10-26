@@ -30,9 +30,11 @@ function createJourney(io, { transitionMs = 2200 } = {}) {
     state.learning.levels = definitions.map((definition, index) => {
       const progress = previous.find(item => item.level === definition.level) || {};
       const completed = progress.completed === true;
+      const predecessor = definitions[index - 1];
       const unlocked = index === 0 || completed ||
-        (definition.level === 2 && festivalCompleted) ||
-        (definition.level === 3 && previous.some(item => item.level === 2 && item.completed === true));
+        previous.some(item => item.level === predecessor?.level && item.completed === true) ||
+        // Retain availability in older completed-adventure snapshots.
+        (definition.level === 2 && (state.learning.tutorialCompleted || festivalCompleted));
       return { level: definition.level, unlocked, completed };
     });
     state.learning.allCompleted = state.learning.levels.every(entry => entry.completed);
@@ -106,9 +108,10 @@ function createJourney(io, { transitionMs = 2200 } = {}) {
         state.learning.storybookUnlockVersion++;
         state.learning.storybookUnlockedAtTrip = state.trip;
       }
-      // Level 2 belongs to the post-festival continuation, so Level 1 only
-      // opens the storybook. The optional levels then unlock in sequence.
-      if (level === 2) state.learning.levels[2].unlocked = true;
+      // Learning progresses independently of the story/festival. Unlock the
+      // next shelf, but let the player choose when to start it.
+      const nextLevel = state.learning.levels.find(entry => entry.level === level + 1);
+      if (nextLevel) nextLevel.unlocked = true;
       state.learning.allCompleted = state.learning.levels.every(entry => entry.completed);
     }
     publish();
@@ -258,7 +261,6 @@ function createJourney(io, { transitionMs = 2200 } = {}) {
       if (state.phase !== 'festival' || state.festivalMission !== festival()?.items.length ||
           state.festivalFeedback) return invalid(socket, 'journey-return');
       state.mainAdventureCompleted = true;
-      state.learning.levels[1].unlocked = true;
       returnHome();
     });
     socket.on('journey-exit', () => {

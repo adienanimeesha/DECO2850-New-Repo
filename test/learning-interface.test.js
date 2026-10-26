@@ -72,6 +72,23 @@ test('Level 1 completion celebrates once, then exposes available cultural storie
  assert.match(p.document.querySelector('#learning-story-list').textContent, /Putri Mandalika/);
 });
 
+test('tutorial celebration offers the next level without automatically starting it', async t => {
+ const p=setup(t),complete=structuredClone(p.base);
+ complete.learning.levels[0].status='completed';
+ complete.learning.levels[1].status='available';
+ complete.learning.storyUnlocked=true;
+ p.api.sync(p.base,null);p.api.sync(complete,p.base);
+ assert.equal(p.document.querySelector('#storybook-unlock-screen').hidden,false);
+ p.document.querySelector('#continue-learning').click();
+ assert.equal(p.document.querySelector('#storybook-unlock-screen').hidden,true);
+ assert.equal(p.document.querySelector('#learning-level-screen').hidden,false);
+ assert.equal(p.document.querySelectorAll('#learning-level-list .learning-card-action').length,2);
+ assert.equal(p.actions.length,0,'opening the menu does not auto-start learning');
+ p.document.querySelector('#learning-level-list .learning-card:nth-child(2) button').click();
+ await Promise.resolve();
+ assert.equal(JSON.stringify(p.actions[0]),JSON.stringify(['startLevel',{levelId:'level-2',level:2}]));
+});
+
 test('completed levels and stories render Replay while locked content stays inert', t => {
  const p = setup(t), state = structuredClone(p.base);
  state.learning.storyUnlocked = true;

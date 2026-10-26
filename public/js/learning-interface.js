@@ -223,6 +223,10 @@ function create({ action, getContent, room = () => window.OceanRoom }) {
 
  $('close-level-select').addEventListener('click', closePopup);
  $('close-story-select').addEventListener('click', closePopup);
+ $('continue-learning').addEventListener('click', () => {
+  storybookCuePending=false;storybookGuidance.hidden=true;
+  closePopup();openLevels();
+ });
  $('explore-storybook').addEventListener('click', async () => {
   closePopup();
   // The unlock is permanent backend state; dismissing it is a local UI action.

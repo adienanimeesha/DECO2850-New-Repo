@@ -130,7 +130,7 @@ for (const language of ['indonesian', 'chinese']) {
     assert.equal(state.learning.storybookUnlocked, true);
     assert.equal(state.learning.storybookUnlockVersion, 1);
     assert.equal(state.learning.storybookUnlockedAtTrip, state.trip);
-    assert.equal(state.learning.levels[1].unlocked, false, 'Level 1 unlocks the storybook, not Level 2');
+    assert.equal(state.learning.levels[1].unlocked, true, 'Level 1 unlocks both Level 2 and the storybook');
     assert.equal(state.bag.length, 5);
     const reconnect = await api.connect();
     assert.deepEqual(reconnect.states.at(-1), state);
@@ -176,7 +176,7 @@ for (const language of ['indonesian', 'chinese']) {
     state = api.journey.snapshot();
     assert.equal(state.memories.length, 13);
     assert.equal(state.mainAdventureCompleted, true);
-    assert.equal(state.learning.levels[1].unlocked, true, 'festival return unlocks Level 2');
+    assert.equal(state.learning.levels[1].unlocked, true, 'festival return retains Level 2 availability');
     assert.deepEqual(aquarium.states.at(-1), state);
     const returnedReconnect = await api.connect();
     assert.deepEqual(returnedReconnect.states.at(-1), state, 'refresh restores the completed festival and Level 2 unlock');
@@ -196,34 +196,39 @@ for (const language of ['indonesian', 'chinese']) {
   });
 }
 
-test('optional levels unlock in order and replay grants no duplicate rewards', async t => {
+for(const language of ['indonesian','chinese'])test(`${language}: levels unlock sequentially before any story or festival and replay grants no duplicate rewards`, async t => {
   const api = await setup(t), client = await api.connect();
-  await api.send(client, 'journey-start', 'chinese'); await api.phase('room');
+  await api.send(client, 'journey-start', language); await api.phase('room');
+  await api.send(client, 'journey-learning-start', {level:3});
+  assert.equal(api.journey.snapshot().learning.active,null,'cannot skip prerequisites');
   await finishLevel(api, client, 1);
-  assert.equal(api.journey.snapshot().learning.levels[1].unlocked, false);
-  await api.send(client, 'journey-story-select', { storyId: content.chinese.stories[0].id });
-  for (let page = 0; page < 5; page++) await api.send(client, 'journey-story-page', page);
-  await api.send(client, 'journey-invitation');
-  await api.send(client, 'journey-try-outfit', content.chinese.outfits[0].id);
-  await api.send(client, 'journey-festival'); await api.phase('festival');
-  for (const item of content.chinese.festivalItems) {
-    if (item.area !== api.journey.snapshot().festivalArea)
-      await api.send(client, 'journey-area', item.area);
-    await api.send(client, 'journey-find', item.id);
-    await api.send(client, 'journey-next-festival');
-  }
-  await api.send(client, 'journey-return'); await api.phase('aquarium');
-  assert.equal(api.journey.snapshot().learning.levels[1].unlocked, true);
-  await api.send(client, 'journey-start', 'chinese'); await api.phase('room');
+  let state=api.journey.snapshot();
+  assert.equal(state.learning.levels[1].unlocked,true);
+  assert.equal(state.learning.levels[2].unlocked,false);
+  assert.equal(state.learning.storybookUnlocked,true);
+  assert.equal(state.learning.active,null,'does not auto-start Level 2');
+  assert.equal(state.storyPage,0);assert.equal(state.mainAdventureCompleted,false);
+  const reconnected=await api.connect();
+  assert.deepEqual(reconnected.states.at(-1).learning,state.learning,'reconnect preserves both choices');
+  await api.send(client,'journey-learning-start',{level:2});
+  const active=api.journey.snapshot();
+  await api.send(client,'journey-learning-start',{level:3});
+  await api.send(client,'journey-story-select',{storyId:content[language].stories[0].id});
+  assert.deepEqual(api.journey.snapshot(),active,'only one activity at a time');
+  await api.send(client,'journey-learning-exit');
+  await api.send(client,'journey-story-select',{storyId:content[language].stories[0].id});
+  assert.equal(api.journey.snapshot().activeStoryId,content[language].stories[0].id,'storybook remains available after exiting learning');
   await finishLevel(api, client, 2);
-  assert.equal(api.journey.snapshot().learning.levels[2].unlocked, true);
+  state=api.journey.snapshot();
+  assert.equal(state.learning.levels[2].unlocked,true);
+  assert.equal(state.learning.active,null,'does not auto-start Level 3');
+  assert.equal(state.storyPage,0);assert.equal(state.mainAdventureCompleted,false);
   await finishLevel(api, client, 3);
-  assert.equal(api.journey.snapshot().learning.allCompleted, true);
-  const rewardCount = api.journey.snapshot().bag.length;
-  await finishLevel(api, client, 2);
-  await finishLevel(api, client, 3);
-  assert.equal(api.journey.snapshot().bag.length, rewardCount);
-  assert.equal(api.journey.snapshot().learning.storybookUnlockVersion, 1);
+  assert.equal(api.journey.snapshot().learning.allCompleted,true);
+  const rewardCount=api.journey.snapshot().bag.length;
+  await finishLevel(api, client, 1);await finishLevel(api, client, 2);await finishLevel(api, client, 3);
+  assert.equal(api.journey.snapshot().bag.length,rewardCount);
+  assert.equal(api.journey.snapshot().learning.storybookUnlockVersion,1);
 });
 
 test('invalid events, exit, reset and a language change cannot leak progress', async t => {

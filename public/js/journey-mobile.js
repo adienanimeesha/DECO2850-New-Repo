@@ -143,11 +143,15 @@ function updateMission() {
  if(!state)return;
  const c=content();let step=1,goal='',detail='';
  const learning=state.learning||state.vocabularyLearning;
+ const view=state.phase==='room'&&learning?(window.JourneyLearning?.presentation(state,c)||learning.presentation||learning.currentQuestion||state.vocabularyPresentation):null;
  if(state.phase==='festival') {
   step=5;
   const mission=state.festivalMission||0,item=c.festivalItems[mission],area=state.festivalArea||0;
   goal=item?item.request:'All festival missions complete! Swim home.';
   detail=item?`Mission ${mission+1} of ${c.festivalItems.length} · Area ${area+1} of ${c.festivalAreas.length}: ${c.festivalAreas[area].name} · ${state.festivalFeedback?'Read Jelly’s thank-you, then continue.':area===item.area?'Swim to a glowing picture. Tap any picture to explore.':`Swim ${area<item.area?'right →':'left ←'} to ${c.festivalAreas[item.area].name}.`}`:'Bring your discoveries back to the aquarium.';
+ } else if(view) {
+  goal=`Learn ${view.question?.word || 'the new word'}.`;
+  detail=`Level ${view.level} · Question ${(view.index ?? 0)+1} of 5 · Move Jelly to the matching object.`;
  } else if(state.invited) {
   step=4;goal=`Swim to the wardrobe and dress for ${c.festival}.`;detail='Try on an outfit, then press Done to travel.';
  } else if(state.storyDone) {
@@ -156,13 +160,10 @@ function updateMission() {
   const levels=learning.levels||state.vocabularyLevels||[];
   const first=levels[0];
   const unlocked=learning.storybookUnlocked===true||learning.storyUnlocked===true||state.storyUnlocked===true||first?.completed===true||first?.status==='completed';
-  const view=window.JourneyLearning?.presentation(state,c)||learning.presentation||learning.currentQuestion||state.vocabularyPresentation;
-  if(view) {
-   goal=`Learn ${view.question?.word || 'the new word'}.`;
-   detail=`Level ${view.level} · Question ${(view.index ?? 0)+1} of 5 · Move Jelly to the matching object.`;
-  } else if(unlocked) {
-   goal='Swim to the storybook and choose a cultural story.';
-   detail='The storybook opened after you completed Level 1.';
+  if(unlocked) {
+   const nextLevel=levels.find(level=>(level.unlocked===true||level.status==='available')&&level.completed!==true&&level.status!=='completed');
+   goal='Choose your next adventure.';
+   detail=nextLevel?`Level ${nextLevel.level||levels.indexOf(nextLevel)+1} is ready at the bookshelf. The storybook is open whenever you want to read.`:'All vocabulary levels complete! Revisit the bookshelf or choose a cultural story.';
   } else {
    goal='Move your jellyfish towards the bookshelf to begin.';
    detail='Level 1 introduces the words you need for your first story.';
@@ -231,7 +232,7 @@ socket.on('journey-state', next => {
  $('travel-copy').textContent=next.phase==='travelling' ? c.festivalIntro : next.phase==='returning' ? 'Follow Jelly on the aquarium screen.' : 'From the aquarium to your little ocean home.';
  $('travel-jelly').innerHTML=art.jelly(outfit());
  $('welcome-return').textContent=next.mainAdventureCompleted && next.phase==='aquarium'
-  ? `Welcome home, Jelly! You've unlocked Level 2! Continue the adventure to return to the common room and visit the bookshelf.`
+  ? `Welcome home, Jelly! Your memories are safe. Continue the adventure to learn more words or revisit the storybook.`
   : next.memories.length ? `${next.memories.length} discoveries are waiting in your aquarium. Ready for another adventure?` : '';
  if (!['room','festival'].includes(next.phase)) { if (activity) closeActivity(); window.OceanRoom?.closeStory(); }
  window.OceanRoom?.sync(next,prev);

@@ -332,7 +332,7 @@ for(const language of ['indonesian','chinese'])test(`${language}: real sockets a
  }
  assert.equal(api.journey.snapshot().bag.length,5);
  assert.equal(api.journey.snapshot().learning.storybookUnlocked,true);
- assert.equal(api.journey.snapshot().learning.levels[1].unlocked,false,'Level 1 must not unlock Level 2');
+ assert.equal(api.journey.snapshot().learning.levels[1].unlocked,true,'Level 1 unlocks Level 2 without a festival');
  assert.equal(p.d.querySelector('#activity-screen').hidden,true);
  assert.equal(p.w.JellyJourney.state.storyDone,false);assert.equal(p.w.JellyJourney.state.invited,false);assert.equal(p.w.JellyJourney.state.outfit,null);
  assert.equal(p.d.querySelector('.jelly-question-bubble'),null);
@@ -454,7 +454,7 @@ for(const language of ['indonesian','chinese'])test(`${language}: real sockets a
  assert.equal(api.journey.snapshot().memories.length,13);
  assert.equal(api.journey.snapshot().mainAdventureCompleted,true);
  assert.equal(api.journey.snapshot().learning.levels[1].unlocked,true);
- assert.match(p.d.querySelector('#welcome-return').textContent,/unlocked Level 2/);
+ assert.match(p.d.querySelector('#welcome-return').textContent,/learn more words or revisit the storybook/);
  await waitFor(()=>/13 collected memories/.test(aquarium.d.querySelector('#aquarium-status').textContent));
  assert.equal(api.journey.snapshot().outfit,content[language].outfits[0].id);
  aquarium.draws.length=0;await aquarium.advance(50);
@@ -495,6 +495,41 @@ for(const language of ['indonesian','chinese'])test(`${language}: real sockets a
  await waitFor(()=>p.w.JellyJourney.state.storyPage===1);assert.equal(api.journey.snapshot().bag.length,10);
 });
 
+for(const language of ['indonesian','chinese'])test(`${language}: Level 2 and Level 3 run in the common room before any story or festival`,async t=>{
+ const api=await networkBackend(t),socket=api.connect(),adapter=bridge.create({socket});
+ await waitFor(()=>socket.connected);await new Promise(r=>setTimeout(r,5));
+ socket.emit('journey-start',language);await waitFor(()=>api.journey.snapshot().phase==='room');
+ await adapter.request('startLevel',{level:1});
+ for(const q of content[language].learningLevels[0].questions){
+  const key=bridge.keyOf(api.journey.snapshot());
+  await adapter.request('selectObject',{key,objectId:q.correctItemId});await adapter.request('completeQuestion',{key});
+ }
+ const p=mobile(t,api);await waitFor(()=>p.w.JellyJourney.state?.learning?.tutorialCompleted);
+ for(const level of [2,3]){
+  await p.walk(180,214);
+  p.click(`#learning-level-list .learning-card:nth-child(${level}) button`);
+  await waitFor(()=>p.controller.active&&!p.w.JellyJourney.locked);
+  for(let index=0;index<5;index++){
+   const q=content[language].learningLevels[level-1].questions[index];await p.advance(50);
+   assert.equal(p.d.querySelector('.jelly-question-bubble mark').textContent,q.targetWord);
+   assert.match(p.d.querySelector('#mission-detail').textContent,new RegExp(`Level ${level}`));
+   const object=p.controller.objects.find(item=>item.id===q.correctItemId);
+   await p.walk(object.x,object.y);await waitFor(()=>p.d.querySelector('.vocabulary-colouring'));
+   p.click('[data-tool="fill"]');await p.advance();p.click('[data-tool="done"]');
+   await waitFor(()=>index===4?!p.w.JellyJourney.state.learning.active:p.w.JellyJourney.state.learning.active.questionIndex===index+1);
+  }
+  const state=api.journey.snapshot();
+  assert.equal(state.phase,'room');assert.equal(state.storyPage,0);assert.equal(state.mainAdventureCompleted,false);
+  assert.equal(state.learning.active,null);assert.equal(state.learning.storybookUnlocked,true);
+  if(level===2)assert.equal(state.learning.levels[2].unlocked,true);
+  await p.walk(486,269);
+  assert.equal(p.d.querySelector('#learning-story-screen').hidden,false,'storybook is accessible between levels');
+  p.click('#close-story-select');
+ }
+ assert.equal(api.journey.snapshot().learning.allCompleted,true);
+ assert.equal(api.journey.snapshot().bag.length,15);
+});
+
 test('reset invalidates previous attempts and competing activities cannot interrupt a level',async t=>{
  const api=backend(t),client=api.connect(),adapter=bridge.create({socket:client.socket});
  await new Promise(r=>setImmediate(r));
@@ -510,7 +545,7 @@ test('reset invalidates previous attempts and competing activities cannot interr
  for(let page=0;page<5;page++)await adapter.request('storyPage',{page});
  client.socket.emit('journey-invitation');await waitFor(()=>api.journey.snapshot().invited);
  client.socket.emit('journey-try-outfit',content.chinese.outfits[0].id);await waitFor(()=>api.journey.snapshot().outfit);
- await assert.rejects(adapter.request('startLevel',{level:2}),/not available/,'Level 2 remains locked before festival return');
+ assert.equal(api.journey.snapshot().learning.levels[1].unlocked,true,'Level 2 is available before festival return');
  client.socket.emit('journey-festival');await waitFor(()=>api.journey.snapshot().phase==='festival');
  for(const item of content.chinese.festivalItems){
   if(item.area!==api.journey.snapshot().festivalArea){client.socket.emit('journey-area',item.area);await waitFor(()=>api.journey.snapshot().festivalArea===item.area);}
