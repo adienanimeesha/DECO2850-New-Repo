@@ -96,6 +96,16 @@ const lessonPictures = Object.freeze({
  princess: {color:'/assetNEW/mandalika-colour.jpeg',outline:'/assetNEW/mandalika.jpeg',raster:true,round:true},
  sea: {color:'/assetNEW/ocean-colour.jpeg',outline:'/assetNEW/ocean.jpeg',raster:true,round:true},
  wave: {color:'/assetNEW/ocean-colour.jpeg',outline:'/assetNEW/ocean.jpeg',raster:true,round:true},
+ ...Object.fromEntries(Object.entries({
+  shell:'seashell.png', chicken:'ayam_taliwang.png', drum:'gendang.png', boat:'perahu.png',
+  moon:'distractor-03-moon.png', mooncake:'mission-01-mooncake.png',
+  lantern:'mission-02-lantern.png', rabbit:'mission-03-rabbit-decoration.png',
+  stars:'distractor-01-star.png', pastry:'mission-01-mooncake.png',
+ }).map(([key,file])=>[key,{
+  color:`/assetNEW/${file}`,
+  outline:`/assets/learning/derived/${key==='pastry'?'mooncake':key==='stars'?'star':key}.png`,
+  raster:true,
+ }])),
 });
 function asset(icon) {
  if(lessonPictures[icon])return lessonPictures[icon];
@@ -220,6 +230,14 @@ function canvasIcon(ctx, icon, x, y, size) {
   ctx.save();ctx.beginPath();ctx.ellipse(x,y,w/2,h/2,0,0,Math.PI*2);ctx.clip();
   ctx.drawImage(im,sourceX,sourceY,sourceSize,sourceSize,x-w/2,y-h/2,w,h);
   ctx.restore();
+  return;
+ }
+ if(asset(icon)?.raster){
+  // Fit the complete source illustration; portrait lanterns and rabbits must
+  // retain their proportions inside the existing floating interaction disc.
+  const ratio=Math.min(w/im.naturalWidth,h/(im.naturalHeight||im.naturalWidth));
+  const width=im.naturalWidth*ratio,height=(im.naturalHeight||im.naturalWidth)*ratio;
+  ctx.drawImage(im,x-width/2,y-height/2,width,height);
   return;
  }
  ctx.drawImage(im,x-w/2,y-h/2,w,h);

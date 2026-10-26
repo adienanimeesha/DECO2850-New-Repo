@@ -155,6 +155,9 @@ h2 { margin: 8px 0 14px; color: #235c9a; font-size: clamp(1.5rem, 3vw, 2.4rem); 
   pointer-events: none; z-index: 3;
 }
 .storybook > :not(.book-page-turn):not(.book-turn-still):not(.narrator-avatar) { position: relative; z-index: 1; }
+/* Keep the continuous illustration above the decorative spine (3), while
+   turning leaves (7/8) and Jelly (9) retain their existing foreground layers. */
+.storybook > #animated-scene { z-index: 4; }
 .story-top { padding: 2px 5px 10px; }
 .story-top span { letter-spacing: .12em; }
 .animated-scene { margin-top: 0; }
@@ -162,11 +165,6 @@ h2 { margin: 8px 0 14px; color: #235c9a; font-size: clamp(1.5rem, 3vw, 2.4rem); 
 .scene-stage {
   border: 2px solid #f4ddcc; border-radius: 11px 16px 17px 13px;
   box-shadow: 0 5px 13px #74638429, inset 0 0 22px #fff6e0;
-}
-.scene-stage::after {
-  content: ""; position: absolute; top: 0; bottom: 0; left: calc(50% - 7px); width: 14px;
-  background: linear-gradient(90deg, #5541691a, #fffbe87a 60%, #55416918);
-  pointer-events: none; z-index: 2;
 }
 .narrator-strip { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin: 13px 4px 12px; align-items: stretch; }
 .book-margin-note { display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 5px 14px; color: #5d648e; }

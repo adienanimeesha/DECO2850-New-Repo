@@ -1,0 +1,725 @@
+{
+  "count": 30,
+  "assets": [
+    {
+      "file": "storybook-object-assets/storybook-cloud-left.png",
+      "width": 1536,
+      "height": 1024,
+      "mode": "RGBA",
+      "alpha_min": 0,
+      "alpha_max": 254,
+      "fully_transparent_pixels": 934919,
+      "bounds_alpha_above_0": [
+        41,
+        78,
+        1493,
+        1024
+      ],
+      "bounds_alpha_above_32": [
+        46,
+        183,
+        1491,
+        849
+      ],
+      "bounds_format": "[left, top, right_exclusive, bottom_exclusive]",
+      "bytes": 1210868,
+      "sha256": "e79201336123453e8b70b6cd2019bdcb6e43052cf80db0d916a4dd7027a8ba3d"
+    },
+    {
+      "file": "storybook-object-assets/storybook-cloud-right.png",
+      "width": 1536,
+      "height": 1024,
+      "mode": "RGBA",
+      "alpha_min": 0,
+      "alpha_max": 254,
+      "fully_transparent_pixels": 922448,
+      "bounds_alpha_above_0": [
+        0,
+        17,
+        1514,
+        1024
+      ],
+      "bounds_alpha_above_32": [
+        58,
+        197,
+        1481,
+        868
+      ],
+      "bounds_format": "[left, top, right_exclusive, bottom_exclusive]",
+      "bytes": 1215287,
+      "sha256": "7b1076d8eb7c5581a02dee8a610e664f5f3deb5bc5545486561505fec420893f"
+    },
+    {
+      "file": "storybook-object-assets/storybook-fish.png",
+      "width": 1536,
+      "height": 1024,
+      "mode": "RGBA",
+      "alpha_min": 0,
+      "alpha_max": 254,
+      "fully_transparent_pixels": 941972,
+      "bounds_alpha_above_0": [
+        0,
+        21,
+        1450,
+        984
+      ],
+      "bounds_alpha_above_32": [
+        174,
+        79,
+        1377,
+        933
+      ],
+      "bounds_format": "[left, top, right_exclusive, bottom_exclusive]",
+      "bytes": 1424632,
+      "sha256": "a8e409ca71d54278b4a276aeca6a9a831751e8ba7c5a335173aca0d0b2f2fc85"
+    },
+    {
+      "file": "storybook-object-assets/storybook-flower.png",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA",
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "fully_transparent_pixels": 928761,
+      "bounds_alpha_above_0": [
+        63,
+        58,
+        1098,
+        1216
+      ],
+      "bounds_alpha_above_32": [
+        159,
+        61,
+        1096,
+        1211
+      ],
+      "bounds_format": "[left, top, right_exclusive, bottom_exclusive]",
+      "bytes": 904659,
+      "sha256": "d2d1f93163d6864f3659b2a5795cf64d47299128b1e0f3c55f75d197bb645a7c"
+    },
+    {
+      "file": "storybook-object-assets/storybook-id-canopy-left.png",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA",
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "fully_transparent_pixels": 1119755,
+      "bounds_alpha_above_0": [
+        31,
+        55,
+        1223,
+        1136
+      ],
+      "bounds_alpha_above_32": [
+        34,
+        232,
+        1220,
+        929
+      ],
+      "bounds_format": "[left, top, right_exclusive, bottom_exclusive]",
+      "bytes": 671340,
+      "sha256": "36c43a20bfc3ccd35b4f093dea266ba3a19f3859b920567cf3290ce23c4188fc"
+    },
+    {
+      "file": "storybook-object-assets/storybook-id-canopy-right.png",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA",
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "fully_transparent_pixels": 1075669,
+      "bounds_alpha_above_0": [
+        15,
+        89,
+        1237,
+        1230
+      ],
+      "bounds_alpha_above_32": [
+        20,
+        212,
+        1234,
+        982
+      ],
+      "bounds_format": "[left, top, right_exclusive, bottom_exclusive]",
+      "bytes": 711853,
+      "sha256": "b4106b5db45f793a240abb6138500b9b1123f95bffdf71f50e71241cbd04dc33"
+    },
+    {
+      "file": "storybook-object-assets/storybook-id-coastal-flag-left.png",
+      "width": 1024,
+      "height": 1536,
+      "mode": "RGBA",
+      "alpha_min": 0,
+      "alpha_max": 254,
+      "fully_transparent_pixels": 1200740,
+      "bounds_alpha_above_0": [
+        25,
+        55,
+        971,
+        1502
+      ],
+      "bounds_alpha_above_32": [
+        84,
+        67,
+        965,
+        1469
+      ],
+      "bounds_format": "[left, top, right_exclusive, bottom_exclusive]",
+      "bytes": 1236879,
+      "sha256": "d79ea05ffa627af1c2b5cce0f3a955f576a55c4e026438b7b5801b7e345ba243"
+    },
+    {
+      "file": "storybook-object-assets/storybook-id-coastal-flag-right.png",
+      "width": 1024,
+      "height": 1536,
+      "mode": "RGBA",
+      "alpha_min": 0,
+      "alpha_max": 254,
+      "fully_transparent_pixels": 1243075,
+      "bounds_alpha_above_0": [
+        71,
+        46,
+        992,
+        1514
+      ],
+      "bounds_alpha_above_32": [
+        91,
+        49,
+        937,
+        1452
+      ],
+      "bounds_format": "[left, top, right_exclusive, bottom_exclusive]",
+      "bytes": 1185290,
+      "sha256": "0d7f720b4b41e624ec79fcee2021b8728f84e03422b1de22ff862b0413cfc383"
+    },
+    {
+      "file": "storybook-object-assets/storybook-id-crowd-lilac.png",
+      "width": 1024,
+      "height": 1536,
+      "mode": "RGBA",
+      "alpha_min": 0,
+      "alpha_max": 254,
+      "fully_transparent_pixels": 1075595,
+      "bounds_alpha_above_0": [
+        31,
+        14,
+        1010,
+        1518
+      ],
+      "bounds_alpha_above_32": [
+        109,
+        16,
+        947,
+        1511
+      ],
+      "bounds_format": "[left, top, right_exclusive, bottom_exclusive]",
+      "bytes": 1649847,
+      "sha256": "90a3ec3d8d6ee980b207d72e180997012f609eb9af2bf09d2e7cfee284779af2"
+    },
+    {
+      "file": "storybook-object-assets/storybook-id-crowd-peach.png",
+      "width": 1024,
+      "height": 1536,
+      "mode": "RGBA",
+      "alpha_min": 0,
+      "alpha_max": 254,
+      "fully_transparent_pixels": 1052924,
+      "bounds_alpha_above_0": [
+        43,
+        21,
+        1008,
+        1536
+      ],
+      "bounds_alpha_above_32": [
+        174,
+        23,
+        849,
+        1505
+      ],
+      "bounds_format": "[left, top, right_exclusive, bottom_exclusive]",
+      "bytes": 1656543,
+      "sha256": "a950f75004c6380dd5412ce926a641e50f46b7ce647964f376ce726385023411"
+    },
+    {
+      "file": "storybook-object-assets/storybook-id-crowd-pink.png",
+      "width": 1024,
+      "height": 1536,
+      "mode": "RGBA",
+      "alpha_min": 0,
+      "alpha_max": 254,
+      "fully_transparent_pixels": 1080428,
+      "bounds_alpha_above_0": [
+        33,
+        16,
+        1006,
+        1523
+      ],
+      "bounds_alpha_above_32": [
+        150,
+        20,
+        894,
+        1520
+      ],
+      "bounds_format": "[left, top, right_exclusive, bottom_exclusive]",
+      "bytes": 1722349,
+      "sha256": "15b0015d7e41417835f4bafd93aeb91e8883d1c6d55b7a641db57b8e9baf5dc5"
+    },
+    {
+      "file": "storybook-object-assets/storybook-id-festival-bunting.png",
+      "width": 1536,
+      "height": 1024,
+      "mode": "RGBA",
+      "alpha_min": 0,
+      "alpha_max": 254,
+      "fully_transparent_pixels": 1361475,
+      "bounds_alpha_above_0": [
+        28,
+        149,
+        1520,
+        800
+      ],
+      "bounds_alpha_above_32": [
+        31,
+        268,
+        1505,
+        701
+      ],
+      "bounds_format": "[left, top, right_exclusive, bottom_exclusive]",
+      "bytes": 1134197,
+      "sha256": "c823dae699a9a080344b775c4852c576dab34bcd72db7f3f22b4422e554553b2"
+    },
+    {
+      "file": "storybook-object-assets/storybook-id-mandalika.png",
+      "width": 1024,
+      "height": 1536,
+      "mode": "RGBA",
+      "alpha_min": 0,
+      "alpha_max": 254,
+      "fully_transparent_pixels": 804723,
+      "bounds_alpha_above_0": [
+        0,
+        20,
+        975,
+        1536
+      ],
+      "bounds_alpha_above_32": [
+        84,
+        23,
+        971,
+        1505
+      ],
+      "bounds_format": "[left, top, right_exclusive, bottom_exclusive]",
+      "bytes": 1838780,
+      "sha256": "f0805246fcf6851af78aef0c663ba259d9fee25802945d50d1bb5c317b4bdcaf"
+    },
+    {
+      "file": "storybook-object-assets/storybook-id-neighbour-left.png",
+      "width": 1024,
+      "height": 1536,
+      "mode": "RGBA",
+      "alpha_min": 0,
+      "alpha_max": 254,
+      "fully_transparent_pixels": 1089537,
+      "bounds_alpha_above_0": [
+        0,
+        16,
+        1010,
+        1536
+      ],
+      "bounds_alpha_above_32": [
+        229,
+        19,
+        817,
+        1520
+      ],
+      "bounds_format": "[left, top, right_exclusive, bottom_exclusive]",
+      "bytes": 1651685,
+      "sha256": "e160f41c466d0e8fe935c95e93c4b518adc9e5d11e64a4a1178ce9b786ff1b22"
+    },
+    {
+      "file": "storybook-object-assets/storybook-id-neighbour-right.png",
+      "width": 1024,
+      "height": 1536,
+      "mode": "RGBA",
+      "alpha_min": 0,
+      "alpha_max": 254,
+      "fully_transparent_pixels": 1110156,
+      "bounds_alpha_above_0": [
+        49,
+        30,
+        980,
+        1516
+      ],
+      "bounds_alpha_above_32": [
+        147,
+        32,
+        886,
+        1510
+      ],
+      "bounds_format": "[left, top, right_exclusive, bottom_exclusive]",
+      "bytes": 1598804,
+      "sha256": "99b8b75e3569effc3e689b4a22a640961a008fe981585488296b690c8c022bfe"
+    },
+    {
+      "file": "storybook-object-assets/storybook-id-nyale-school-lilac.png",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA",
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "fully_transparent_pixels": 1323225,
+      "bounds_alpha_above_0": [
+        48,
+        35,
+        1222,
+        1166
+      ],
+      "bounds_alpha_above_32": [
+        51,
+        393,
+        1218,
+        873
+      ],
+      "bounds_format": "[left, top, right_exclusive, bottom_exclusive]",
+      "bytes": 517625,
+      "sha256": "c4227cdd4665e04219bef59e0e2d6cfeabed51d38a51c136f63f272065d8e912"
+    },
+    {
+      "file": "storybook-object-assets/storybook-id-nyale-school-peach.png",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA",
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "fully_transparent_pixels": 1322303,
+      "bounds_alpha_above_0": [
+        31,
+        39,
+        1236,
+        1220
+      ],
+      "bounds_alpha_above_32": [
+        35,
+        453,
+        1228,
+        906
+      ],
+      "bounds_format": "[left, top, right_exclusive, bottom_exclusive]",
+      "bytes": 534452,
+      "sha256": "568cea3d51ccc8fe0b59275f52148b55740aa2f0c69db3007964b1dbf4b475a2"
+    },
+    {
+      "file": "storybook-object-assets/storybook-id-nyale-school-pink.png",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA",
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "fully_transparent_pixels": 1312908,
+      "bounds_alpha_above_0": [
+        41,
+        45,
+        1216,
+        1214
+      ],
+      "bounds_alpha_above_32": [
+        78,
+        292,
+        1190,
+        917
+      ],
+      "bounds_format": "[left, top, right_exclusive, bottom_exclusive]",
+      "bytes": 512156,
+      "sha256": "ca81ea4a99fa4321e8053fc082195b74416e6c655b72d353de56afbbecf13142"
+    },
+    {
+      "file": "storybook-object-assets/storybook-id-nyale-target.png",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA",
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "fully_transparent_pixels": 1280669,
+      "bounds_alpha_above_0": [
+        39,
+        52,
+        1224,
+        1220
+      ],
+      "bounds_alpha_above_32": [
+        43,
+        430,
+        1215,
+        953
+      ],
+      "bounds_format": "[left, top, right_exclusive, bottom_exclusive]",
+      "bytes": 642285,
+      "sha256": "e5b7fcc84d062a6c7cef5ccc2a5550ff46f11f2dad79a55f1a322290deb7fcfb"
+    },
+    {
+      "file": "storybook-object-assets/storybook-id-plant-leafy-a.png",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA",
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "fully_transparent_pixels": 1028456,
+      "bounds_alpha_above_0": [
+        0,
+        69,
+        1236,
+        1220
+      ],
+      "bounds_alpha_above_32": [
+        25,
+        152,
+        1231,
+        1132
+      ],
+      "bounds_format": "[left, top, right_exclusive, bottom_exclusive]",
+      "bytes": 923308,
+      "sha256": "7aa3dc48f95b5e0ffb37d18e557ef831daf012ea3fbceb234c12a8b946da95cf"
+    },
+    {
+      "file": "storybook-object-assets/storybook-id-plant-leafy-b.png",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA",
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "fully_transparent_pixels": 1071016,
+      "bounds_alpha_above_0": [
+        24,
+        0,
+        1240,
+        1220
+      ],
+      "bounds_alpha_above_32": [
+        149,
+        63,
+        1189,
+        1177
+      ],
+      "bounds_format": "[left, top, right_exclusive, bottom_exclusive]",
+      "bytes": 887988,
+      "sha256": "0ec556549ce6fba2ccd28e13f8d08724e90b7309848639ed855a523a9e134c02"
+    },
+    {
+      "file": "storybook-object-assets/storybook-id-plant-pink.png",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA",
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "fully_transparent_pixels": 1125175,
+      "bounds_alpha_above_0": [
+        23,
+        37,
+        1198,
+        1234
+      ],
+      "bounds_alpha_above_32": [
+        132,
+        155,
+        1111,
+        1142
+      ],
+      "bounds_format": "[left, top, right_exclusive, bottom_exclusive]",
+      "bytes": 699171,
+      "sha256": "e7cbfde6e9d45d06b40a718a8e4845a55352987302c04a2d1796e6e331445893"
+    },
+    {
+      "file": "storybook-object-assets/storybook-id-plant-yellow.png",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA",
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "fully_transparent_pixels": 1124344,
+      "bounds_alpha_above_0": [
+        47,
+        19,
+        1224,
+        1254
+      ],
+      "bounds_alpha_above_32": [
+        207,
+        123,
+        1047,
+        1159
+      ],
+      "bounds_format": "[left, top, right_exclusive, bottom_exclusive]",
+      "bytes": 696209,
+      "sha256": "c01d50f50db09a1f039a571e2881bf4a17c8b1b1b63e0303346c52c1ea6fbbc1"
+    },
+    {
+      "file": "storybook-object-assets/storybook-id-prince-blue.png",
+      "width": 1024,
+      "height": 1536,
+      "mode": "RGBA",
+      "alpha_min": 0,
+      "alpha_max": 254,
+      "fully_transparent_pixels": 1060120,
+      "bounds_alpha_above_0": [
+        81,
+        28,
+        1008,
+        1512
+      ],
+      "bounds_alpha_above_32": [
+        181,
+        31,
+        852,
+        1509
+      ],
+      "bounds_format": "[left, top, right_exclusive, bottom_exclusive]",
+      "bytes": 1780769,
+      "sha256": "faee5ccf4185e8fee2cb83aee2d038a178ef618df05b9752d1b9d2911c8fb866"
+    },
+    {
+      "file": "storybook-object-assets/storybook-id-prince-green.png",
+      "width": 1024,
+      "height": 1536,
+      "mode": "RGBA",
+      "alpha_min": 0,
+      "alpha_max": 254,
+      "fully_transparent_pixels": 1053796,
+      "bounds_alpha_above_0": [
+        0,
+        22,
+        1002,
+        1518
+      ],
+      "bounds_alpha_above_32": [
+        167,
+        24,
+        863,
+        1512
+      ],
+      "bounds_format": "[left, top, right_exclusive, bottom_exclusive]",
+      "bytes": 1791140,
+      "sha256": "2ec0d4dc0d4572707568f5459ada9ccb5d7cfb19900d06648ca7510adad838b2"
+    },
+    {
+      "file": "storybook-object-assets/storybook-invitation.png",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA",
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "fully_transparent_pixels": 692741,
+      "bounds_alpha_above_0": [
+        0,
+        41,
+        1222,
+        1254
+      ],
+      "bounds_alpha_above_32": [
+        76,
+        249,
+        1178,
+        1032
+      ],
+      "bounds_format": "[left, top, right_exclusive, bottom_exclusive]",
+      "bytes": 1024817,
+      "sha256": "3a646ca0e8c6cf3188336339c8436937664c321fb450901dc9f2435cf6d2ad49"
+    },
+    {
+      "file": "storybook-object-assets/storybook-sun.png",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA",
+      "alpha_min": 0,
+      "alpha_max": 255,
+      "fully_transparent_pixels": 893006,
+      "bounds_alpha_above_0": [
+        0,
+        71,
+        1240,
+        1254
+      ],
+      "bounds_alpha_above_32": [
+        162,
+        168,
+        1088,
+        1086
+      ],
+      "bounds_format": "[left, top, right_exclusive, bottom_exclusive]",
+      "bytes": 837711,
+      "sha256": "1ff8dd710d28c4f1126429cf3a83377785f79d379233147e5f6ba22e259007a6"
+    },
+    {
+      "file": "storybook-object-assets/storybook-zh-family-first.png",
+      "width": 1024,
+      "height": 1536,
+      "mode": "RGBA",
+      "alpha_min": 0,
+      "alpha_max": 254,
+      "fully_transparent_pixels": 1084773,
+      "bounds_alpha_above_0": [
+        0,
+        19,
+        1006,
+        1520
+      ],
+      "bounds_alpha_above_32": [
+        195,
+        21,
+        847,
+        1516
+      ],
+      "bounds_format": "[left, top, right_exclusive, bottom_exclusive]",
+      "bytes": 1475585,
+      "sha256": "988527ed066db2ce09fe380ad143fb6ebe15e157ef97752f038a6a78e44858d5"
+    },
+    {
+      "file": "storybook-object-assets/storybook-zh-family-second.png",
+      "width": 1024,
+      "height": 1536,
+      "mode": "RGBA",
+      "alpha_min": 0,
+      "alpha_max": 254,
+      "fully_transparent_pixels": 1052033,
+      "bounds_alpha_above_0": [
+        0,
+        16,
+        1010,
+        1520
+      ],
+      "bounds_alpha_above_32": [
+        202,
+        19,
+        857,
+        1518
+      ],
+      "bounds_format": "[left, top, right_exclusive, bottom_exclusive]",
+      "bytes": 1528956,
+      "sha256": "f2d027e9559af41fd906aa2d5b6130e8acb1051a61f660ba8aa108e8fbe488d2"
+    },
+    {
+      "file": "storybook-object-assets/storybook-zh-serving-tray.png",
+      "width": 1536,
+      "height": 1024,
+      "mode": "RGBA",
+      "alpha_min": 0,
+      "alpha_max": 254,
+      "fully_transparent_pixels": 929677,
+      "bounds_alpha_above_0": [
+        55,
+        22,
+        1516,
+        1024
+      ],
+      "bounds_alpha_above_32": [
+        78,
+        244,
+        1456,
+        825
+      ],
+      "bounds_format": "[left, top, right_exclusive, bottom_exclusive]",
+      "bytes": 1275720,
+      "sha256": "2f6aef616e80d4613e6427be8fdd1ac6c23ef4dacdcfc6969e7c03246bfa977b"
+    }
+  ]
+}

@@ -119,15 +119,17 @@
               <linearGradient id="scene-dress" x2="0" y2="1"><stop stop-color="#ffbedb"/><stop offset="1" stop-color="#d981bd"/></linearGradient>
             </defs>
             <g id="scene-background">
-              <rect width="960" height="520" fill="url(#scene-sky)"/>
+              <rect data-story-scenery width="960" height="520" fill="url(#scene-sky)"/>
               <circle id="scene-sun" cx="775" cy="93" r="52" fill="#fff4b5"/>
-              <g id="cloud-a" fill="#ffffffd9"><ellipse cx="185" cy="87" rx="75" ry="22"/><ellipse cx="166" cy="68" rx="38" ry="29"/><ellipse cx="221" cy="70" rx="41" ry="27"/></g>
-              <g id="cloud-b" fill="#ffffffb8"><ellipse cx="690" cy="158" rx="67" ry="19"/><ellipse cx="668" cy="142" rx="36" ry="25"/><ellipse cx="716" cy="139" rx="37" ry="25"/></g>
-              <path d="M0 284 Q90 177 201 271 Q302 148 415 271 Q554 170 670 270 Q814 188 960 272 V520 H0Z" fill="#a6c4d4"/>
-              <path d="M0 316 Q185 280 355 311 T680 304 T960 314 V520 H0Z" fill="#95d7c7"/>
-              <path id="scene-water" d="M0 360 Q120 338 240 360 T480 360 T720 360 T960 360 V520 H0Z" fill="url(#scene-sea)"/>
-              <path id="scene-shore" d="M0 393 Q170 373 320 398 T650 391 T960 396 V520 H0Z" fill="#f8d9bd"/>
-              <g id="castle">
+              <g id="cloud-a" fill="#ffffffd9"><image data-story-object="cloud-left" href="/assetNEW/storybook-objects/storybook-cloud-left.png" x="105.2267" y="19.7658" width="161.4414" height="107.6276" preserveAspectRatio="xMidYMid meet" pointer-events="none"/></g>
+              <g id="cloud-b" fill="#ffffffb8"><image data-story-object="cloud-right" href="/assetNEW/storybook-objects/storybook-cloud-right.png" x="617.7519" y="98.5037" width="144.2146" height="96.1431" preserveAspectRatio="xMidYMid meet" pointer-events="none"/></g>
+              <path data-story-scenery d="M0 284 Q90 177 201 271 Q302 148 415 271 Q554 170 670 270 Q814 188 960 272 V520 H0Z" fill="#a6c4d4"/>
+              <path data-story-scenery d="M0 316 Q185 280 355 311 T680 304 T960 314 V520 H0Z" fill="#95d7c7"/>
+              <!-- Animate highlights over the illustrated sea, not an opaque
+                   water sheet covering the foreground beach and courtyard. -->
+              <path id="scene-water" d="M540 310 Q565 305 590 310 M700 300 Q725 295 750 300 M820 320 Q845 315 870 320" fill="none" stroke="#ffffff80" stroke-width="2" stroke-linecap="round"/>
+              <path data-story-scenery id="scene-shore" d="M0 393 Q170 373 320 398 T650 391 T960 396 V520 H0Z" fill="#f8d9bd"/>
+              <g data-story-scenery id="castle">
                 <rect x="54" y="246" width="293" height="118" rx="18" fill="#f8c5da" stroke="#99699d" stroke-width="6"/>
                 <rect x="86" y="204" width="56" height="159" rx="8" fill="#d7b9eb" stroke="#99699d" stroke-width="5"/>
                 <rect x="262" y="200" width="56" height="164" rx="8" fill="#d7b9eb" stroke="#99699d" stroke-width="5"/>
@@ -137,45 +139,29 @@
                 <path d="M162 247 L201 209 L240 247Z" fill="#ef9ac6"/>
                 <path d="M333 247 Q374 234 415 246" fill="none" stroke="#f7d87b" stroke-width="7"/>
               </g>
-              <path d="M0 450 Q275 412 493 447 T960 433 V520 H0Z" fill="#efd9b7"/>
-              <path d="M0 480 Q276 458 484 478 T960 466" fill="none" stroke="#fff3d5" stroke-width="10"/>
-              <g id="scene-plants" stroke-linecap="round">
-                <path d="M72 459 Q49 428 47 402 M72 459 Q91 423 91 402 M874 454 Q855 418 854 392 M874 454 Q895 427 912 404" fill="none" stroke="#49ad9e" stroke-width="11"/>
-                <circle cx="48" cy="399" r="10" fill="#f7a8d4"/><circle cx="92" cy="400" r="10" fill="#fae4a3"/>
-                <circle cx="854" cy="390" r="10" fill="#e1b4f5"/><circle cx="914" cy="401" r="10" fill="#f7a8d4"/>
-                <path d="M369 470 Q342 447 345 427 M369 470 Q388 435 394 420 M756 456 Q735 425 741 409 M756 456 Q778 428 787 416" fill="none" stroke="#50bda7" stroke-width="8"/>
-              </g>
-              <g id="scene-boat" class="chapter-4-choice" role="button" tabindex="-1" aria-label="Launch the festival boat"><circle cx="690" cy="328" r="66" fill="transparent"/><image href="/assets/learning/project/color/boat.svg" x="624" y="262" width="132" height="132"/></g>
+              <path data-story-scenery d="M0 450 Q275 412 493 447 T960 433 V520 H0Z" fill="#efd9b7"/>
+              <path data-story-scenery d="M0 480 Q276 458 484 478 T960 466" fill="none" stroke="#fff3d5" stroke-width="10"/>
+              <g id="scene-plants" stroke-linecap="round"><image data-story-object="id-plant-pink" href="/assetNEW/storybook-objects/storybook-id-plant-pink.png" x="34.1798" y="386.5802" width="74.2921" height="74.2921" preserveAspectRatio="xMidYMid meet" pointer-events="none"/><image data-story-object="id-plant-yellow" href="/assetNEW/storybook-objects/storybook-id-plant-yellow.png" x="835.1882" y="370.6207" width="95.6236" height="95.6236" preserveAspectRatio="xMidYMid meet" pointer-events="none"/><image data-story-object="id-plant-leafy-a" href="/assetNEW/storybook-objects/storybook-id-plant-leafy-a.png" x="336.7562" y="413.0597" width="62.3881" height="62.3881" preserveAspectRatio="xMidYMid meet" pointer-events="none"/><image data-story-object="id-plant-leafy-b" href="/assetNEW/storybook-objects/storybook-id-plant-leafy-b.png" x="727.9704" y="401.8896" width="61.9120" height="61.9120" preserveAspectRatio="xMidYMid meet" pointer-events="none"/></g>
+              <!-- PNG core alpha bounds: 238,42–1299,980. At 0.12 scale,
+                   the hull baseline (source y≈910) stays at local y≈383. -->
+              <g id="scene-boat" class="chapter-4-choice" role="button" tabindex="-1" aria-label="Launch the festival boat"><circle cx="690" cy="328" r="66" fill="transparent"/><image href="/assetNEW/perahu.png" x="597.72" y="274.2" width="184.32" height="122.88" preserveAspectRatio="xMidYMid meet" pointer-events="none"/></g>
             </g>
-            <g id="coast-flags" hidden>
-              <path d="M130 409 V279 M835 411 V285" stroke="#8c649f" stroke-width="8"/>
-              <path d="M133 286 Q180 281 199 303 Q168 324 133 312Z M839 291 Q795 284 771 304 Q800 326 839 317Z" fill="#f8a6cf" stroke="#a56a9f" stroke-width="4"/>
-            </g>
-            <g id="festival-decor" hidden>
-              <path d="M49 251 Q471 159 909 241" fill="none" stroke="#a46fbb" stroke-width="4"/>
-              <path d="M94 240 l19 31 19-34 M217 218 l19 32 19-35 M344 203 l19 32 19-34 M488 201 l19 31 19-31 M625 206 l19 33 19-31 M760 221 l19 32 19-29" fill="#ffb9d8" stroke="#a46fbb" stroke-width="3"/>
-              <path d="M44 391 L95 348 L150 391Z M787 393 L842 349 L901 393Z" fill="#d8b9ec" stroke="#9067a8" stroke-width="4"/>
-              <rect x="57" y="390" width="80" height="21" rx="6" fill="#f8c9db"/>
-              <rect x="800" y="391" width="86" height="21" rx="6" fill="#f8c9db"/>
-            </g>
+            <g id="coast-flags" hidden><image data-story-object="id-coastal-flag-left" href="/assetNEW/storybook-objects/storybook-id-coastal-flag-left.png" x="117.5630" y="276.0045" width="90.6606" height="135.9909" preserveAspectRatio="xMidYMid meet" pointer-events="none"/><image data-story-object="id-coastal-flag-right" href="/assetNEW/storybook-objects/storybook-id-coastal-flag-right.png" x="761.2553" y="284.1277" width="87.1489" height="130.7234" preserveAspectRatio="xMidYMid meet" pointer-events="none"/></g>
+            <g id="festival-decor" hidden><image data-story-object="id-festival-bunting" href="/assetNEW/storybook-objects/storybook-id-festival-bunting.png" x="340.6536" y="146.7229" width="276.6928" height="184.4619" preserveAspectRatio="xMidYMid meet" pointer-events="none"/><image data-story-object="id-canopy-left" href="/assetNEW/storybook-objects/storybook-id-canopy-left.png" x="40.9612" y="327.6172" width="112.0776" height="112.0776" preserveAspectRatio="xMidYMid meet" pointer-events="none"/><image data-story-object="id-canopy-right" href="/assetNEW/storybook-objects/storybook-id-canopy-right.png" x="792.7000" y="331.6545" width="102.6000" height="102.6000" preserveAspectRatio="xMidYMid meet" pointer-events="none"/></g>
             <g id="legend-stars" hidden fill="#fff2b5">
               <circle cx="165" cy="67" r="4"/><circle cx="323" cy="108" r="3"/><circle cx="554" cy="78" r="5"/><circle cx="741" cy="121" r="3"/><circle cx="881" cy="61" r="4"/>
             </g>
             <g id="coast-crowd" hidden>
-              <g id="crowd-one"><path d="M202 381 Q220 358 239 381 L243 420 H198Z" fill="#a79bdd"/><circle cx="220" cy="355" r="18" fill="#b77f6d"/><path d="M208 354 Q210 331 229 339" fill="none" stroke="#614d70" stroke-width="9"/><path d="M204 390 L186 367 M237 390 L254 368" fill="none" stroke="#b77f6d" stroke-width="8" stroke-linecap="round"/></g>
-              <g id="crowd-two"><path d="M305 384 Q327 359 347 384 L351 423 H301Z" fill="#ffc29e"/><circle cx="326" cy="355" r="18" fill="#dc9d78"/><path d="M313 353 Q320 333 340 343" fill="none" stroke="#735577" stroke-width="9"/><path d="M310 390 L291 369 M343 390 L358 368" fill="none" stroke="#dc9d78" stroke-width="8" stroke-linecap="round"/></g>
-              <g id="crowd-three"><path d="M735 382 Q757 358 778 382 L782 425 H730Z" fill="#f2a6ca"/><circle cx="756" cy="352" r="18" fill="#b77f6d"/><path d="M744 350 Q749 332 766 341" fill="none" stroke="#614d70" stroke-width="9"/><path d="M738 389 L721 370 M776 389 L793 368" fill="none" stroke="#b77f6d" stroke-width="8" stroke-linecap="round"/></g>
+              <g id="crowd-one"><image data-story-object="id-crowd-lilac" href="/assetNEW/storybook-objects/storybook-id-crowd-lilac.png" x="189.9799" y="334.0903" width="58.2207" height="87.3311" preserveAspectRatio="xMidYMid meet" pointer-events="none"/></g>
+              <g id="crowd-two"><image data-story-object="id-crowd-peach" href="/assetNEW/storybook-objects/storybook-id-crowd-peach.png" x="294.1275" y="333.6343" width="60.8043" height="91.2065" preserveAspectRatio="xMidYMid meet" pointer-events="none"/></g>
+              <g id="crowd-three"><image data-story-object="id-crowd-pink" href="/assetNEW/storybook-objects/storybook-id-crowd-pink.png" x="725.3320" y="332.7867" width="62.1227" height="93.1840" preserveAspectRatio="xMidYMid meet" pointer-events="none"/></g>
             </g>
             <g id="legend-mist" hidden>
               <ellipse cx="603" cy="364" rx="90" ry="52" fill="#fffce1b0"/>
               <ellipse cx="650" cy="342" rx="72" ry="42" fill="#e2f6ffbd"/>
               <ellipse cx="567" cy="338" rx="64" ry="40" fill="#fffce1a8"/>
             </g>
-            <g id="nyale-school" hidden>
-              <path id="nyale-a" d="M560 388 Q582 367 600 389 T644 383" fill="none" stroke="#e28fe6" stroke-width="17" stroke-linecap="round"/>
-              <path id="nyale-b" d="M690 408 Q715 385 735 409 T778 403" fill="none" stroke="#ffc17c" stroke-width="15" stroke-linecap="round"/>
-              <path id="nyale-c" d="M388 399 Q410 378 433 402 T475 396" fill="none" stroke="#bda1f6" stroke-width="15" stroke-linecap="round"/>
-            </g>
+            <g id="nyale-school" hidden><image id="nyale-a" data-story-object="id-nyale-school-pink" href="/assetNEW/storybook-objects/storybook-id-nyale-school-pink.png" x="572.0680" y="358.9840" width="60.1920" height="60.1920" preserveAspectRatio="xMidYMid meet" pointer-events="none"/><image id="nyale-b" data-story-object="id-nyale-school-peach" href="/assetNEW/storybook-objects/storybook-id-nyale-school-peach.png" x="692.1788" y="360.0000" width="83.0464" height="83.0464" preserveAspectRatio="xMidYMid meet" pointer-events="none"/><image id="nyale-c" data-story-object="id-nyale-school-lilac" href="/assetNEW/storybook-objects/storybook-id-nyale-school-lilac.png" x="391.8438" y="359.4375" width="78.3750" height="78.3750" preserveAspectRatio="xMidYMid meet" pointer-events="none"/></g>
             <g id="peace-ripple" class="scene-choice chapter-2-choice" role="button" tabindex="-1" aria-label="Send a peaceful ripple across the sea">
               <circle cx="723" cy="373" r="53" fill="transparent"/>
               <circle id="ripple-ring-a" cx="723" cy="373" r="18" fill="#fff8c667" stroke="#fff7c6" stroke-width="5"/>
@@ -184,6 +170,9 @@
             </g>
             <g id="villager-left" class="scene-character">
               <ellipse cx="0" cy="0" rx="32" ry="9" fill="#456c8660"/>
+              <!-- Original geometry is invisible: retains legacy IDs and prince hit areas.
+                   Single-pose PNGs use only the outer whole-character animation. -->
+              <g data-character-hit-area opacity="0" aria-hidden="true">
               <g id="villager-left-legs"><path id="left-leg-a" d="M-13-12 L-19 2" stroke="#825d81" stroke-width="11" stroke-linecap="round"/><path id="left-leg-b" d="M13-12 L19 2" stroke="#825d81" stroke-width="11" stroke-linecap="round"/></g>
               <path d="M-25-85 Q0-106 25-85 L28-14 H-28Z" fill="#8e9bd8" stroke="#6a6da8" stroke-width="4"/>
               <g id="villager-left-arm"><path d="M-22-76 Q-42-62-45-42" fill="none" stroke="#ae7968" stroke-width="11" stroke-linecap="round"/></g>
@@ -192,8 +181,14 @@
               <circle id="left-eye-a" cx="-10" cy="-113" r="2.6" fill="#514266"/><circle id="left-eye-b" cx="11" cy="-113" r="2.6" fill="#514266"/>
               <path d="M-7-103 Q0-97 7-103" fill="none" stroke="#754c69" stroke-width="2"/>
             </g>
+              <image data-story-object="id-neighbour-left" data-character-art href="/assetNEW/storybook-objects/storybook-id-neighbour-left.png" x="-52.2652" y="-151.8987" width="102.3318" height="153.4977" preserveAspectRatio="xMidYMid meet" pointer-events="none"/>
+
+            </g>
             <g id="villager-right" class="scene-character">
               <ellipse cx="0" cy="0" rx="32" ry="9" fill="#456c8660"/>
+              <!-- Original geometry is invisible: retains legacy IDs and prince hit areas.
+                   Single-pose PNGs use only the outer whole-character animation. -->
+              <g data-character-hit-area opacity="0" aria-hidden="true">
               <g id="villager-right-legs"><path id="right-leg-a" d="M-13-12 L-19 2" stroke="#6b80ad" stroke-width="11" stroke-linecap="round"/><path id="right-leg-b" d="M13-12 L19 2" stroke="#6b80ad" stroke-width="11" stroke-linecap="round"/></g>
               <path d="M-25-85 Q0-106 25-85 L28-14 H-28Z" fill="#f9b99f" stroke="#d8949f" stroke-width="4"/>
               <path d="M-23-77 Q-34-53-29-43" fill="none" stroke="#df9c77" stroke-width="10" stroke-linecap="round"/>
@@ -202,8 +197,14 @@
               <circle id="right-eye-a" cx="-10" cy="-113" r="2.6" fill="#514266"/><circle id="right-eye-b" cx="11" cy="-113" r="2.6" fill="#514266"/>
               <path d="M-7-102 Q0-96 7-102" fill="none" stroke="#754c69" stroke-width="2"/>
             </g>
+              <image data-story-object="id-neighbour-right" data-character-art href="/assetNEW/storybook-objects/storybook-id-neighbour-right.png" x="-52.4188" y="-153.2476" width="103.9242" height="155.8863" preserveAspectRatio="xMidYMid meet" pointer-events="none"/>
+
+            </g>
             <g id="prince-left" class="scene-character chapter-1-choice" role="button" tabindex="-1" aria-label="Give the invitation to the prince in blue" hidden>
               <ellipse cx="0" cy="0" rx="32" ry="9" fill="#456c8660"/>
+              <!-- Original geometry is invisible: retains legacy IDs and prince hit areas.
+                   Single-pose PNGs use only the outer whole-character animation. -->
+              <g data-character-hit-area opacity="0" aria-hidden="true">
               <g id="prince-left-legs"><path id="prince-left-leg-a" d="M-15-15 L-21 2" stroke="#5767a6" stroke-width="12" stroke-linecap="round"/><path id="prince-left-leg-b" d="M15-15 L21 2" stroke="#5767a6" stroke-width="12" stroke-linecap="round"/></g>
               <path d="M-29-94 Q0-109 29-94 L33-15 H-33Z" fill="#78a9dc" stroke="#5e73b3" stroke-width="4"/>
               <path d="M-24-64 H24" stroke="#ffdf9d" stroke-width="7"/>
@@ -213,10 +214,16 @@
               <path d="M-20-158 L-14-171 L0-159 L14-172 L21-158Z" fill="#ffdc89"/>
               <circle cx="-10" cy="-126" r="2.5" fill="#514266"/><circle cx="10" cy="-126" r="2.5" fill="#514266"/>
               <path id="prince-left-mouth" d="M-6-115 Q0-110 6-115" fill="none" stroke="#734d67" stroke-width="2"/>
-              <g id="prince-left-invite" hidden><rect x="-12" y="-71" width="28" height="20" rx="3" fill="#fff6d9" stroke="#a86aa5" stroke-width="2"/><circle cx="2" cy="-60" r="4" fill="#ef9ac6"/></g>
+
+            </g>
+              <image data-story-object="id-prince-blue" data-character-art href="/assetNEW/storybook-objects/storybook-id-prince-blue.png" x="-60.1069" y="-175.6076" width="119.1664" height="178.7497" preserveAspectRatio="xMidYMid meet" pointer-events="none"/>
+              <g id="prince-left-invite" hidden><image data-story-object="invitation" href="/assetNEW/storybook-objects/storybook-invitation.png" x="-13.9310" y="-77.2740" width="31.8621" height="31.8621" preserveAspectRatio="xMidYMid meet" pointer-events="none"/></g>
             </g>
             <g id="prince-right" class="scene-character chapter-1-choice" role="button" tabindex="-1" aria-label="Give the invitation to the prince in green" hidden>
               <ellipse cx="0" cy="0" rx="32" ry="9" fill="#456c8660"/>
+              <!-- Original geometry is invisible: retains legacy IDs and prince hit areas.
+                   Single-pose PNGs use only the outer whole-character animation. -->
+              <g data-character-hit-area opacity="0" aria-hidden="true">
               <g id="prince-right-legs"><path id="prince-right-leg-a" d="M-15-15 L-21 2" stroke="#4d8f91" stroke-width="12" stroke-linecap="round"/><path id="prince-right-leg-b" d="M15-15 L21 2" stroke="#4d8f91" stroke-width="12" stroke-linecap="round"/></g>
               <path d="M-29-94 Q0-109 29-94 L33-15 H-33Z" fill="#78c4ae" stroke="#56989e" stroke-width="4"/>
               <path d="M-24-64 H24" stroke="#ffe5a4" stroke-width="7"/>
@@ -226,10 +233,16 @@
               <path d="M-20-158 L-14-171 L0-159 L14-172 L21-158Z" fill="#ffdc89"/>
               <circle cx="-10" cy="-126" r="2.5" fill="#514266"/><circle cx="10" cy="-126" r="2.5" fill="#514266"/>
               <path id="prince-right-mouth" d="M-6-115 Q0-110 6-115" fill="none" stroke="#734d67" stroke-width="2"/>
-              <g id="prince-right-invite" hidden><rect x="-12" y="-71" width="28" height="20" rx="3" fill="#fff6d9" stroke="#a86aa5" stroke-width="2"/><circle cx="2" cy="-60" r="4" fill="#ef9ac6"/></g>
+
+            </g>
+              <image data-story-object="id-prince-green" data-character-art href="/assetNEW/storybook-objects/storybook-id-prince-green.png" x="-59.5296" y="-174.7742" width="118.3656" height="177.5484" preserveAspectRatio="xMidYMid meet" pointer-events="none"/>
+              <g id="prince-right-invite" hidden><image data-story-object="invitation" href="/assetNEW/storybook-objects/storybook-invitation.png" x="-13.9310" y="-77.2740" width="31.8621" height="31.8621" preserveAspectRatio="xMidYMid meet" pointer-events="none"/></g>
             </g>
             <g id="princess" class="scene-character">
               <ellipse cx="0" cy="0" rx="38" ry="10" fill="#456c8660"/>
+              <!-- Original geometry is invisible: retains legacy IDs and prince hit areas.
+                   Single-pose PNGs use only the outer whole-character animation. -->
+              <g data-character-hit-area opacity="0" aria-hidden="true">
               <g id="princess-legs"><path id="princess-leg-a" d="M-17-25 L-20 3" stroke="#8b5c91" stroke-width="12" stroke-linecap="round"/><path id="princess-leg-b" d="M17-25 L20 3" stroke="#8b5c91" stroke-width="12" stroke-linecap="round"/></g>
               <path d="M-31-173 Q-52-148-39-102 L-44-52 Q0-37 44-52 L38-104 Q53-148 29-173Z" fill="#86518e"/>
               <path d="M-24-92 Q0-108 24-92 L50-17 Q0 1-50-17Z" fill="url(#scene-dress)" stroke="#a45e9c" stroke-width="5"/>
@@ -243,26 +256,23 @@
               <ellipse id="princess-eye-a" cx="-11" cy="-149" rx="2.5" ry="3.5" fill="#554064"/><ellipse id="princess-eye-b" cx="11" cy="-149" rx="2.5" ry="3.5" fill="#554064"/>
               <path id="princess-mouth" d="M-7-135 Q0-128 7-135" fill="none" stroke="#8b526e" stroke-width="2.5" stroke-linecap="round"/>
             </g>
+              <image data-story-object="id-mandalika" data-character-art href="/assetNEW/storybook-objects/storybook-id-mandalika.png" x="-63.0383" y="-179.8534" width="122.3720" height="183.5581" preserveAspectRatio="xMidYMid meet" pointer-events="none"/>
+
+            </g>
             <g id="nyale-target" class="scene-choice chapter-3-choice" role="button" tabindex="-1" aria-label="Choose the colourful nyale">
               <circle cx="690" cy="412" r="51" fill="transparent"/>
-              <image id="nyale-target-body" href="/assets/learning/project/color/nyale.svg" x="645" y="365" width="90" height="90"/>
+              <image id="nyale-target-body" data-story-object="id-nyale-target" href="/assetNEW/storybook-objects/storybook-id-nyale-target.png" x="641.6980" y="353.3985" width="96.2969" height="96.2969" preserveAspectRatio="xMidYMid meet" pointer-events="none"/>
             </g>
             <g id="story-shell" class="scene-choice chapter-0-choice" role="button" tabindex="-1" aria-label="Choose the seashell">
               <circle cx="684" cy="443" r="45" fill="transparent"/>
-              <image href="/assets/learning/project/color/shell.svg" x="648" y="407" width="72" height="72"/>
+              <!-- Fit the conch's visible core (199,135,1172,772), not its
+                   full transparent canvas, around the existing 684,443 hit centre. -->
+              <image href="/assetNEW/seashell.png" x="639.844" y="413.694" width="86.4" height="57.6" preserveAspectRatio="xMidYMid meet" pointer-events="none"/>
             </g>
             <g id="story-fish" class="scene-choice chapter-0-choice chapter-3-choice" role="button" tabindex="-1" aria-label="Choose the fish">
-              <circle cx="563" cy="319" r="42" fill="transparent"/>
-              <path d="M536 320 Q559 291 588 319 Q559 347 536 320Z M539 319 L516 301 V339Z" fill="#f4b1d5" stroke="#ab6da9" stroke-width="4"/>
-              <circle cx="572" cy="315" r="3" fill="#554064"/>
-            </g>
+              <circle cx="563" cy="319" r="42" fill="transparent"/><image data-story-object="fish" href="/assetNEW/storybook-objects/storybook-fish.png" x="507.5960" y="289.3747" width="89.9297" height="59.9532" preserveAspectRatio="xMidYMid meet" pointer-events="none"/></g>
             <g id="story-flower" class="scene-choice chapter-0-choice" role="button" tabindex="-1" aria-label="Choose the flower">
-              <circle cx="816" cy="427" r="40" fill="transparent"/>
-              <path d="M816 433 V466" stroke="#439f96" stroke-width="6"/>
-              <circle cx="816" cy="420" r="12" fill="#ffe3a1"/>
-              <circle cx="816" cy="402" r="10" fill="#eaa5d7"/><circle cx="834" cy="420" r="10" fill="#eaa5d7"/>
-              <circle cx="816" cy="438" r="10" fill="#eaa5d7"/><circle cx="798" cy="420" r="10" fill="#eaa5d7"/>
-            </g>
+              <circle cx="816" cy="427" r="40" fill="transparent"/><image data-story-object="flower" href="/assetNEW/storybook-objects/storybook-flower.png" x="778.4973" y="392.4893" width="74.9456" height="74.9456" preserveAspectRatio="xMidYMid meet" pointer-events="none"/></g>
             <g id="scene-sparkles" fill="#fff7ba"><circle cx="637" cy="410" r="5"/><circle cx="735" cy="416" r="4"/><circle cx="703" cy="387" r="6"/></g>
           </svg>
           <div class="scene-prompt" id="scene-prompt" hidden>Can you tap the seashell? 🐚</div>

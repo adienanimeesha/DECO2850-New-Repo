@@ -31,9 +31,15 @@ test('all 30 real curriculum questions map to supported, parseable illustrations
       const local = 'public' + files[variant];
       assert.ok(fs.existsSync(local), `Broken ${variant} asset path: ${local}`);
       if(files.raster){
-       assert.match(local,/\.jpe?g$/);
-       assert.equal(fs.readFileSync(local).subarray(0,3).toString('hex'),'ffd8ff',`Invalid JPEG: ${local}`);
-       assert.ok(fs.statSync(local).size < 300000,`Oversized lesson picture: ${local}`);
+       const bytes=fs.readFileSync(local);
+       if(/\.png$/.test(local)){
+        assert.equal(bytes.subarray(0,8).toString('hex'),'89504e470d0a1a0a',`Invalid PNG: ${local}`);
+        assert.ok(bytes.readUInt32BE(16)>0&&bytes.readUInt32BE(20)>0);
+       }else{
+        assert.match(local,/\.jpe?g$/);
+        assert.equal(bytes.subarray(0,3).toString('hex'),'ffd8ff',`Invalid JPEG: ${local}`);
+       }
+       assert.ok(bytes.length < 3000000,`Oversized lesson picture: ${local}`);
       } else {
        const svg = new w.DOMParser().parseFromString(fs.readFileSync(local,'utf8'), 'image/svg+xml');
        assert.equal(svg.querySelector('parsererror'), null, local);
@@ -60,14 +66,15 @@ test('all 30 real curriculum questions map to supported, parseable illustrations
   assert.equal(picture.round,true);
   assert.notEqual(picture.color,picture.outline,'floating art is coloured; popup art is black and white');
  }
- // The same identities resolve to the same files in the story/festival scenes.
+ // Vocabulary and festival item keys continue to resolve consistently.
  for(const [language,track] of Object.entries(content))for(const item of track.festivalItems){
   const match=track.learningLevels.flatMap(level=>level.questions).find(q=>q.targetWord===item.word);
   if(match)assert.deepEqual(w.OceanArt.asset(item.icon),w.OceanArt.asset(match.colouringAsset),`${language}: ${item.word}`);
  }
  const storyMarkup=fs.readFileSync('public/mobile.html','utf8');
- for(const key of ['shell','nyale','boat'])
-  assert.ok(storyMarkup.includes(`href="${w.OceanArt.asset(key).color}"`),`storybook does not reuse ${key}`);
+ // Storybook wrappers reuse the supplied objects; nyale uses the new pack.
+ for(const [key,file]of [['shell','/assetNEW/seashell.png'],['boat','/assetNEW/perahu.png'],['nyale','/assetNEW/storybook-objects/storybook-id-nyale-target.png']])
+  assert.ok(storyMarkup.includes(`href="${file}"`),`storybook missing ${key}`);
 });
 
 test('every tutorial question gives a distinct cultural clue, with hunger only for food', () => {
@@ -590,7 +597,11 @@ test('reader waits for backend confirmation and rejected pages can be retried',a
  for(let beat=0;beat<3;beat++){p.click('#scene-continue');await p.advance(100);}
  p.click('#story-shell');p.click('#scene-continue');await p.advance(100);p.click('#scene-continue');await p.advance(100);
  assert.equal(held,0);assert.equal(api.journey.snapshot().storyPage,0);assert.equal(p.d.querySelector('#scene-next').disabled,true);
+ assert.equal(p.d.querySelector('#scene-continue').disabled,true);
+ assert.equal(p.d.querySelector('#scene-continue').textContent,'Saving page…');
  emit('journey-story-page',999);await waitFor(()=>/retry/.test(p.d.querySelector('#scene-status').textContent));
+ assert.equal(p.d.querySelector('#scene-continue').disabled,false);
+ assert.equal(p.d.querySelector('#scene-continue').textContent,'Retry saving →');
  assert.equal(p.d.querySelector('#scene-next').disabled,true);p.socket.emit=emit;
  p.click('#scene-continue');await p.advance(100);await waitFor(()=>p.w.JellyJourney.state.storyPage===1);
  await waitFor(()=>p.d.querySelector('#scene-next').disabled===false);

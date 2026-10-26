@@ -60,6 +60,23 @@ test('all three levels and both tracks place shared cultural objects in reachabl
  assert.throws(()=>p.w.VocabularyGameplay.placeObjects(Array.from({length:100},(_,id)=>({id})),geometry),/space/);
 });
 
+test('supplied vocabulary pictures use colour when floating and matching outlines only in the popup',t=>{
+ const p=setup(t);
+ const supplied={shell:'seashell.png',chicken:'ayam_taliwang.png',drum:'gendang.png',boat:'perahu.png',moon:'distractor-03-moon.png',mooncake:'mission-01-mooncake.png',lantern:'mission-02-lantern.png',rabbit:'mission-03-rabbit-decoration.png',stars:'distractor-01-star.png',pastry:'mission-01-mooncake.png'};
+ for(const [icon,file] of Object.entries(supplied)){
+  const pair=p.w.OceanArt.asset(icon);
+  assert.equal(pair.color,'/assetNEW/'+file);
+  assert.match(pair.outline,/\/assets\/learning\/derived\/.+\.png$/);
+  p.w.OceanArt.canvasIcon(p.ctx,icon,200,200,68);
+  assert.equal(p.draws.at(-1)[0].src,pair.color);
+  const popup=p.w.VocabularyColouring.mount(p.root,{icon},()=>{});
+  assert.equal(p.root.querySelector('.colour-base image').getAttribute('href'),pair.outline);
+  assert.equal(p.root.querySelector('.colour-lines image').getAttribute('href'),pair.outline);
+  popup.close();
+ }
+ assert.equal(p.w.OceanArt.asset('pastry').outline,p.w.OceanArt.asset('mooncake').outline);
+});
+
 test('proximity and backend confirmation gate colouring; wrong selections use contextual content',async t=>{
  const p=setup(t);let near=false,opened=0,selected=0;const response=deferred();
  const controller=p.w.VocabularyGameplay.create({root:p.root,room:{geometry:()=>geometry,isNear:()=>near,clearMovement(){}},adapter:{select(){selected++;return response.promise;},complete(){},exit(){}},colouring:{mount(){opened++;return{close(){}};}}});

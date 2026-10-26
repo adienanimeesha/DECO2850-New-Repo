@@ -8,6 +8,71 @@ let memoryProximityArmed = true;
 let wardrobeProximityArmed = true;
 let storyVoiceTimer = null, storyVoiceListener = null;
 const art = window.OceanArt;
+const storyBackgroundFiles = {
+ indonesian:['id-kingdom-day','id-kingdom-day','id-coast-day','id-coast-twilight','id-coast-day'],
+ chinese:['zh-moonlit-garden','zh-family-courtyard','zh-family-courtyard','zh-lantern-garden','zh-lantern-garden']
+};
+const storyPictures = new Map();
+function preloadStoryPicture(path) {
+ if(storyPictures.has(path))return storyPictures.get(path);
+ const entry={path,settled:false,data:null,image:null,snapshots:new Map()};storyPictures.set(path,entry);
+ entry.ready=new Promise(resolve=>{
+  const image=new Image();
+  image.onload=()=>{
+   entry.image=image;
+   try{
+    const buffer=document.createElement('canvas');buffer.width=image.naturalWidth;buffer.height=image.naturalHeight;
+    buffer.getContext('2d').drawImage(image,0,0);
+    // SVGs displayed as page-turn images cannot fetch external resources.
+    // Keep the original pixels embedded in both the live scene and snapshots.
+    entry.data=buffer.toDataURL('image/png');
+   }catch{} // Keep the original scenery available if loading/encoding fails.
+   entry.settled=true;resolve();
+  };
+  image.onerror=()=>{entry.settled=true;resolve();};image.src=path;
+ });
+ return entry;
+}
+function storyBackground(language=journey.state?.language,index=pageIndex) {
+ const name=storyBackgroundFiles[language]?.[index];
+ return name?preloadStoryPicture(`/assetNEW/storybook-${name}.png`):null;
+}
+// Generated object pixels remain local to the storybooks. Alpha >32 bounds
+// exclude the pack's soft transparent margins; scene boxes are logical fits.
+const storyObjectFiles = ["storybook-cloud-left.png","storybook-cloud-right.png","storybook-fish.png","storybook-flower.png","storybook-id-canopy-left.png","storybook-id-canopy-right.png","storybook-id-coastal-flag-left.png","storybook-id-coastal-flag-right.png","storybook-id-crowd-lilac.png","storybook-id-crowd-peach.png","storybook-id-crowd-pink.png","storybook-id-festival-bunting.png","storybook-id-nyale-school-lilac.png","storybook-id-nyale-school-peach.png","storybook-id-nyale-school-pink.png","storybook-id-nyale-target.png","storybook-id-plant-leafy-a.png","storybook-id-plant-leafy-b.png","storybook-id-plant-pink.png","storybook-id-plant-yellow.png","storybook-invitation.png","storybook-zh-family-first.png","storybook-zh-family-second.png","storybook-zh-serving-tray.png","storybook-id-mandalika.png","storybook-id-neighbour-left.png","storybook-id-neighbour-right.png","storybook-id-prince-blue.png","storybook-id-prince-green.png"];
+const storyObjectBounds = {"invitation":[1254,1254,76,249,1178,1032],"zh-family-first":[1024,1536,195,21,847,1516],"zh-family-second":[1024,1536,202,19,857,1518],"zh-serving-tray":[1536,1024,78,244,1456,825]};
+function storyObjectImage(name,x,y,width,height) {
+ const [w,h,l,t,r,b]=storyObjectBounds[name],scale=Math.min(width/(r-l),height/(b-t));
+ return `<image data-story-object="${name}" href="/assetNEW/storybook-objects/storybook-${name}.png" x="${x+(width-(r-l)*scale)/2-l*scale}" y="${y+(height-(b-t)*scale)/2-t*scale}" width="${w*scale}" height="${h*scale}" preserveAspectRatio="xMidYMid meet" pointer-events="none"/>`;
+}
+function storyObjectPictures(language) {
+ return storyObjectFiles.filter(name=>language==='indonesian'?!name.includes('-zh-'):name.includes('-zh-')||name==='storybook-invitation.png').map(name=>preloadStoryPicture('/assetNEW/storybook-objects/'+name));
+}
+for(const name of storyObjectFiles)preloadStoryPicture('/assetNEW/storybook-objects/'+name);
+function storyPagePictures(language,index) {
+ const pictures=[storyBackground(language,index),...storyObjectPictures(language)];
+ if(language==='indonesian'){
+  if([0,2,4].includes(index))pictures.push(preloadStoryPicture('/assetNEW/perahu.png'));
+  if(index===0)pictures.push(preloadStoryPicture('/assetNEW/seashell.png'));
+ }else if(language==='chinese'&&[2,4].includes(index))pictures.push(preloadStoryPicture('/assetNEW/table.png'));
+ return pictures.filter(Boolean);
+}
+for(const names of Object.values(storyBackgroundFiles))for(const name of names)preloadStoryPicture(`/assetNEW/storybook-${name}.png`);
+preloadStoryPicture('/assetNEW/table.png');
+for(const key of ['shell','boat','nyale','moon','rabbit','lantern','mooncake','letter']){
+ const picture=art.asset(key);if(picture)preloadStoryPicture(picture.color);
+}
+function configureStoryBackground() {
+ const stage=introElement('scene-stage');
+ const svg=stage.querySelector(journey.state.language==='chinese'?'.chinese-scene':':scope > svg:not(.chinese-scene)');
+ const entry=storyBackground();
+ svg.querySelector('[data-story-background]')?.remove();
+ svg.querySelectorAll('[data-story-scenery]').forEach(node=>{node.style.display=entry?.data?'none':'';});
+ if(!entry?.data)return;
+ const image=document.createElementNS('http://www.w3.org/2000/svg','image');
+ for(const [name,value]of Object.entries({x:0,y:0,width:960,height:520,href:entry.data,preserveAspectRatio:'xMidYMid meet','pointer-events':'none','aria-hidden':'true','data-story-background':entry.path}))image.setAttribute(name,String(value));
+ svg.insertBefore(image,svg.firstChild);
+}
 const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)');
 const wornJellyImages = new Map();
 const festivalImages = new Map();
@@ -103,7 +168,7 @@ let lastFocus = null;
 let chapters = window.JOURNEYS.indonesian.chapters;
 let storyChapterCount = chapters.length;
 let pageTurning = false;
-let pageTurnTimer = 0;
+let pageTurnTimer = 0, pageTurnVersion = 0;
 const introState = {
   active: false, playing: true, beat: 0, elapsed: 0, totalTime: 0, lastTime: 0,
   narrationDone: false, speechStarted: false, speaking: false, speechToken: 0,
@@ -368,6 +433,11 @@ function openStory(selected = false) {
   if (journey.state?.phase !== "room" || learning?.active || (learningOptions && !learningStoryUnlocked)) return;
   storyProximityArmed=false;
   if (!selected && learningOptions?.onStorybook) { clearMovement(); learningOptions.onStorybook(); return; }
+  const pictures=storyPagePictures(journey.state.language,Math.min(journey.state.storyPage,journey.content.chapters.length-1));
+  if(pictures.some(picture=>!picture.settled)){
+   const trip=journey.state.trip;clearMovement();
+   Promise.all(pictures.map(picture=>picture.ready)).then(()=>{if(journey.state.trip===trip)openStory(selected);});return;
+  }
   chapters = journey.content.chapters;storyChapterCount=chapters.length;
   pageIndex = Math.min(journey.state.storyPage, chapters.length-1);
   lastFocus = document.activeElement;
@@ -382,7 +452,9 @@ function openStory(selected = false) {
 function closeStory() {
   if (!storyOpen) return;
   clearTimeout(pageTurnTimer);
+  pageTurnVersion++;
   pageTurning = false;
+  document.querySelector(".storybook").removeAttribute("aria-busy");
   document.querySelector(".storybook").classList.remove("is-turning", "next", "previous");
   introElement("book-turn-still").replaceChildren();
   introElement("turn-front").replaceChildren();
@@ -396,17 +468,50 @@ function closeStory() {
   updateInteraction();
   (lastFocus || canvas).focus();
 }
-function captureStageImage() {
+// Turn pictures need screen-resolution pixels, not full 1536px canvases for
+// props that occupy a few dozen pixels. The live scene keeps the original PNGs.
+function storySnapshotPicture(entry,rect) {
+ const original=entry.image;
+ if(!original||!rect?.width||!rect?.height)return entry.data;
+ const density=window.devicePixelRatio||1;
+ const scale=Math.min(1,Math.max(rect.width*density/original.naturalWidth,rect.height*density/original.naturalHeight));
+ const width=Math.max(1,Math.ceil(original.naturalWidth*scale)),height=Math.max(1,Math.ceil(original.naturalHeight*scale));
+ if(width>=original.naturalWidth&&height>=original.naturalHeight)return entry.data;
+ const key=width+'x'+height;
+ if(entry.snapshots.has(key))return entry.snapshots.get(key);
+ try {
+  const buffer=document.createElement('canvas');buffer.width=width;buffer.height=height;
+  buffer.getContext('2d').drawImage(original,0,0,width,height);
+  const data=buffer.toDataURL('image/png');
+  if(entry.snapshots.size>=4)entry.snapshots.delete(entry.snapshots.keys().next().value);
+  entry.snapshots.set(key,data);return data;
+ }catch{return entry.data;}
+}
+async function captureStageImage() {
   const source = introElement("scene-stage").querySelector(journey.state?.language === "chinese" ? ".chinese-scene" : "svg");
   const copy = source.cloneNode(true);
   const sourceNodes = source.querySelectorAll("*");
   const copyNodes = copy.querySelectorAll("*");
+  const imageSizes=new Map();
   sourceNodes.forEach((node, index) => {
-    if (node.hasAttribute("hidden") || getComputedStyle(node).display === "none")
-      copyNodes[index].setAttribute("display", "none");
+    const style=getComputedStyle(node);
+    // A frozen page-turn picture needs only visible artwork. In particular,
+    // do not embed megabytes of hidden PNGs and invisible legacy hit geometry.
+    if (node.hasAttribute("hidden") || style.display === "none" || (style.opacity || node.getAttribute("opacity")) === "0" ||
+        node.matches("[data-character-hit-area], [data-family-hit-area], [data-table-hit-area]")) {
+      copyNodes[index].remove();return;
+    }
     if (node.classList.contains("scene-choice") || node.id === "scene-sparkles")
       copyNodes[index].setAttribute("opacity", getComputedStyle(node).opacity);
+    if(node.tagName.toLowerCase()==='image')imageSizes.set(copyNodes[index],node.getBoundingClientRect());
   });
+  // Also retain the existing image-backed props on outgoing/incoming leaves.
+  await Promise.all([...copy.querySelectorAll('image')].map(async image=>{
+    const path=image.getAttribute('data-story-background')||image.getAttribute('href');
+    if(!path||path.startsWith('data:'))return;
+    const entry=preloadStoryPicture(path);await entry.ready;
+    if(entry.data)image.setAttribute('href',storySnapshotPicture(entry,imageSizes.get(image)));
+  }));
   return "data:image/svg+xml;charset=utf-8," +
     encodeURIComponent(new XMLSerializer().serializeToString(copy));
 }
@@ -450,48 +555,71 @@ function makeTurnLeaf(container, half, imageSource) {
   container.replaceChildren(headingCopy, sceneCopy, copy);
   return picture.decode().catch(() => {});
 }
+function showPageTurning() {
+ document.querySelector('.storybook').setAttribute('aria-busy','true');
+ for(const id of ['scene-prev','scene-next','scene-continue','scene-play','scene-replay'])introElement(id).disabled=true;
+ introElement('scene-continue').textContent='Turning page…';
+ introStatus('Turning page…');
+}
 async function turnPage(target) {
   if (pageTurning || !storyOpen || target < 0 || target >= storyChapterCount) return;
   pageTurning = true;
-  leaveIntro();
-  stopNarration();
-  const book = document.querySelector(".storybook");
-  const direction = target > pageIndex ? "next" : "previous";
-  const imageSource = captureStageImage();
-  const fixedHalf = direction === "next" ? "left" : "right";
-  const turningHalf = direction === "next" ? "right" : "left";
-  const imagesReady = Promise.all([
-    makeTurnLeaf(introElement("book-turn-still"), fixedHalf, imageSource),
-    makeTurnLeaf(introElement("turn-front"), turningHalf, imageSource),
-  ]);
-  introElement("scene-prev").disabled = true;
-  introElement("scene-next").disabled = true;
-  await imagesReady;
-  if (!storyOpen || !pageTurning) return;
-  const current = pageIndex;
-  pageIndex = target;
-  renderPage(false); // The incoming page is visible beneath the turning leaf, but stays paused.
-  const incomingImage = captureStageImage();
-  pageIndex = current;
-  await makeTurnLeaf(document.querySelector(".turn-back"), fixedHalf, incomingImage);
-  if (!storyOpen || !pageTurning) return;
-  book.classList.remove("next", "previous");
-  void book.offsetWidth;
-  book.classList.add("is-turning", direction);
-  pageTurnTimer = setTimeout(() => {
-    pageIndex = target;
-    book.classList.remove("is-turning", "next", "previous");
-    introElement("book-turn-still").replaceChildren();
-    introElement("turn-front").replaceChildren();
-    document.querySelector(".turn-back").replaceChildren();
-    pageTurning = false;
-    renderPage();
-  }, 920);
+  const version=++pageTurnVersion,current=pageIndex;
+  const isCurrent=()=>storyOpen&&pageTurning&&pageTurnVersion===version;
+  const book=document.querySelector('.storybook');
+  showPageTurning();
+  // Freeze speech and movement as soon as the click is accepted, before images
+  // are prepared. A later click must not be silently accepted by stale controls.
+  leaveIntro();stopNarration();
+  try {
+    // Let the accepted-click feedback actually paint before synchronous SVG
+    // serialization/PNG work. Resolved promises alone only yield microtasks.
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    if(!isCurrent())return;
+    await Promise.all(storyPagePictures(journey.state.language,target).map(picture=>picture.ready));
+    if(!isCurrent())return;
+    const direction=target>current?'next':'previous';
+    const imageSource=await captureStageImage();
+    if(!isCurrent())return;
+    const fixedHalf=direction==='next'?'left':'right',turningHalf=direction==='next'?'right':'left';
+    await Promise.all([
+      makeTurnLeaf(introElement('book-turn-still'),fixedHalf,imageSource),
+      makeTurnLeaf(introElement('turn-front'),turningHalf,imageSource)
+    ]);
+    if(!isCurrent())return;
+    pageIndex=target;renderPage(false);
+    showPageTurning();
+    const incomingImage=await captureStageImage();
+    if(!isCurrent())return;
+    pageIndex=current;
+    await makeTurnLeaf(document.querySelector('.turn-back'),fixedHalf,incomingImage);
+    if(!isCurrent())return;
+    book.classList.remove('next','previous');void book.offsetWidth;
+    book.classList.add('is-turning',direction);
+    pageTurnTimer=setTimeout(()=>{
+      if(!isCurrent())return;
+      pageIndex=target;
+      book.classList.remove('is-turning','next','previous');book.removeAttribute('aria-busy');
+      introElement('book-turn-still').replaceChildren();introElement('turn-front').replaceChildren();
+      document.querySelector('.turn-back').replaceChildren();
+      pageTurning=false;renderPage();
+    },920);
+  } catch(error) {
+    if(!isCurrent())return;
+    pageIndex=current;pageTurning=false;book.removeAttribute('aria-busy');
+    book.classList.remove('is-turning','next','previous');
+    introElement('book-turn-still').replaceChildren();introElement('turn-front').replaceChildren();
+    document.querySelector('.turn-back').replaceChildren();renderPage();
+    introStatus('The page could not turn. Please try again.');
+  }
 }
 function previousPage() { if (pageIndex > 0) turnPage(pageIndex - 1); }
 function nextPage() {
-  if (pageTurning || !storyOpen ||
-      (!introState.completedChapters[pageIndex] && (!introState.completed || !introState.narrationDone))) return;
+  if(!storyOpen)return;
+  if(pageTurning){showPageTurning();return;}
+  // Completion is confirmed by the backend, not by the current audio/replay
+  // beat. Both visible Continue/Next and the alternate Next control use it.
+  if(!introState.completedChapters[pageIndex]&&!introState.completed)return;
   if (pageIndex < storyChapterCount - 1) {
     turnPage(pageIndex + 1);
   } else {
@@ -504,6 +632,7 @@ function renderPage(startNarration = true) {
   leaveIntro();
   stopNarration();
   const chapter = chapters[pageIndex];
+  for(const id of ["scene-continue","scene-play","scene-replay"])introElement(id).disabled=false;
   introElement("story-origin").textContent=journey.content.storyLabel;
   introElement("story-name").textContent=journey.content.storyTitle;
   document.querySelector(".storybook").setAttribute("aria-label",journey.content.storyTitle + " open storybook");
@@ -522,6 +651,7 @@ function renderPage(startNarration = true) {
   stage.dataset.chapter = String(pageIndex);
   configureChapterStage();
   configureChineseStage();
+  configureStoryBackground();
   stage.classList.remove("chapter-enter");
   document.querySelector(".storybook").scrollTop = 0;
   if (startNarration) enterIntro();
@@ -580,6 +710,8 @@ function configureChapterStage() {
   setSvgHidden("prince-right", chapter !== 1);
   setSvgHidden("scene-boat", chapter === 1 || chapter === 3);
   setSvgHidden("princess", chapter === 4);
+  // Flatten the water rings, while retaining the original circular hit area.
+  for(const id of ['ripple-ring-a','ripple-ring-b'])introElement(id).setAttribute('transform','translate(723 373) scale(1 .35) translate(-723 -373)');
   const sky = introElement("scene-sky").querySelectorAll("stop");
   const skyColors = [
     ["#a6eafb", "#d1e8ff", "#ffe4d2"],
@@ -644,7 +776,10 @@ function startIntroBeat(index, speak = true) {
   introElement("scene-beat-label").textContent = beat.label;
   introElement("scene-subtitle").textContent = beat.line;
   introElement("scene-play").textContent = "⏸ Pause";
-  introElement("scene-continue").textContent = index === 3 ? "Try the glowing object →" : "Continue story →";
+  introElement("scene-continue").disabled=false;
+  introElement("scene-continue").textContent = introState.completedChapters[pageIndex]
+    ? (pageIndex===storyChapterCount-1?'Finish story →':'Next page →')
+    : index===3?'Try the glowing object →':'Continue story →';
   introElement("scene-next").disabled = !introState.completedChapters[pageIndex];
   syncChineseChoices();
   const startingSide = pageIndex % 2 === 0 ? "left" : "right";
@@ -839,6 +974,41 @@ function completeIntroInteraction(message) {
   introElement("scene-prompt").hidden = true;
   introStatus(message);
 }
+function finishIntroPage() {
+ if(introState.completed)return; // Keep the ready button stable between mouse-down and mouse-up.
+ if(introState.completedChapters[pageIndex]) {
+  introState.completed=true;
+  introElement('scene-next').disabled=false;
+  introElement('scene-continue').disabled=false;
+  introElement('scene-continue').textContent=pageIndex===storyChapterCount-1?'Finish story →':'Next page →';
+  return;
+ }
+ if(storySubmission||storySaveError)return;
+ const submission={page:pageIndex,trip:journey.state.trip,story:journey.state.activeStoryId};
+ storySubmission=submission;
+ introElement('scene-next').disabled=true;
+ introElement('scene-continue').disabled=true;
+ introElement('scene-continue').textContent='Saving page…';
+ introStatus('Saving this page…');
+ journey.completeStoryPage(pageIndex).then(()=>{
+  if(storySubmission!==submission||!storyOpen)return;
+  storySubmission=null;introState.completed=true;introState.completedChapters[submission.page]=true;
+  introElement('scene-next').disabled=false;introElement('scene-continue').disabled=false;
+  introElement('scene-continue').textContent=submission.page===storyChapterCount-1?'Finish story →':'Next page →';
+  introStatus(submission.page===storyChapterCount-1?'Story complete · choose Finish story to return to the ocean':'Page complete · choose Next page');
+ }).catch(error=>{
+  if(storySubmission!==submission||!storyOpen)return;
+  storySubmission=null;storySaveError=true;introState.completed=false;
+  introElement('scene-next').disabled=true;introElement('scene-continue').disabled=false;
+  introElement('scene-continue').textContent='Retry saving →';
+  introStatus(error.message+' Use Continue narration to retry.');
+ });
+}
+function advanceIntroBeat() {
+ if(introState.beat<3)startIntroBeat(introState.beat+1);
+ else if(introState.beat===3&&introState.interactionDone)startIntroBeat(4);
+ else if(introState.beat===4)finishIntroPage();
+}
 function tickIntro(time) {
   if (!introState.active) return;
   const delta = Math.min((time - introState.lastTime) / 1000, .06);
@@ -856,30 +1026,7 @@ function tickIntro(time) {
       introState.speaking = false;
       if (introState.beat === 3) introStatus("Your turn · " + chapters[pageIndex].prompt);
     }
-    if (introState.narrationDone && introState.elapsed >= beat.minSeconds) {
-      if (introState.beat < 3) startIntroBeat(introState.beat + 1);
-      else if (introState.beat === 3 && introState.interactionDone) startIntroBeat(4);
-      else if (introState.beat === 4) {
-        if (introState.completedChapters[pageIndex]) {
-          introState.completed=true;introElement('scene-next').disabled=false;
-          introElement('scene-continue').textContent=pageIndex===storyChapterCount-1?'Finish story →':'Next page →';
-        } else if (!storySubmission && !storySaveError) {
-          const submission={page:pageIndex,trip:journey.state.trip,story:journey.state.activeStoryId};
-          storySubmission=submission;introElement('scene-next').disabled=true;introStatus('Saving this page…');
-          journey.completeStoryPage(pageIndex).then(()=>{
-            if(storySubmission!==submission||!storyOpen)return;
-            storySubmission=null;introState.completed=true;introState.completedChapters[submission.page]=true;
-            introElement('scene-next').disabled=false;
-            introElement('scene-continue').textContent=submission.page===storyChapterCount-1?'Finish story →':'Next page →';
-            introStatus(submission.page===storyChapterCount-1?'Story complete · choose Finish story to return to the ocean':'Page complete · choose Next page');
-          }).catch(error=>{
-            if(storySubmission!==submission||!storyOpen)return;
-            storySubmission=null;storySaveError=true;introState.completed=false;
-            introElement('scene-next').disabled=true;introStatus(error.message+' Use Continue narration to retry.');
-          });
-        }
-      }
-    }
+    if (introState.narrationDone && introState.elapsed >= beat.minSeconds) advanceIntroBeat();
     applyIntroVisual();
   }
   introState.frame = requestAnimationFrame(tickIntro);
@@ -924,8 +1071,9 @@ function applyIntroVisual() {
   introElement("cloud-a").setAttribute("transform", "translate(" + (worldTime * 5 % 38) + " 0)");
   introElement("cloud-b").setAttribute("transform", "translate(" + (-worldTime * 4 % 33) + " 0)");
   const sail = chapter === 4 && state.interactionDone
-    ? 180 * introEase((worldTime - state.reactionTime) / 2.5) : 0;
-  put("scene-boat", sail + Math.sin(worldTime * .8) * 9, Math.sin(worldTime * 1.3) * 3);
+    ? 120 * introEase((worldTime - state.reactionTime) / 2.5) : 0;
+  put("scene-boat", 70 + sail + Math.sin(worldTime * .8) * 9, -45 + Math.sin(worldTime * 1.3) * 3);
+  put("story-fish",0,-30);
   introElement("scene-water").setAttribute("transform", "translate(0 " + (Math.sin(worldTime * 1.4) * 2) + ")");
   introElement("scene-plants").setAttribute("transform", "rotate(" + (Math.sin(worldTime * 1.5) * 1.2) + " 480 450)");
   if (chapter === 0) {
@@ -969,10 +1117,12 @@ function applyIntroVisual() {
     const ripple = state.interactionDone ? introEase((worldTime - state.reactionTime) / 1.7) : 0;
     introElement("ripple-ring-a").setAttribute("r", 18 + ripple * 67);
     introElement("ripple-ring-b").setAttribute("r", 30 + ripple * 105);
-    introElement("peace-ripple").setAttribute("transform", `translate(0 ${Math.sin(worldTime * 3) * 3})`);
+    introElement("peace-ripple").setAttribute("transform", `translate(0 ${-70 + Math.sin(worldTime * 3) * 3})`);
   } else if (chapter === 3) {
     princessX = beat === 0 ? 315 + 250 * introEase(t / 3.6) : beat === 1 ? 565 + 95 * introEase(t / 3.2) : 660;
-    princessY = 430 + (beat === 1 ? 22 * introEase(t / 3.2) : beat > 1 ? 22 : 0);
+    // Only Mandalika enters the sea during the legend; everyone else stays
+    // on the illustrated sand. Keep the existing walk/fade beat durations.
+    princessY = beat === 0 ? 430 - 65 * introEase(t / 3.6) : beat === 1 ? 365 - 50 * introEase(t / 3.2) : 315;
     princessWalk = (beat === 0 && t < 3.6) || (beat === 1 && t < 3.2) ? 13 : 0;
     leftX = 260; rightX = 410;
     leftArm = beat >= 1 ? -35 - Math.sin(worldTime * 5) * 5 : 0;
@@ -980,10 +1130,9 @@ function applyIntroVisual() {
     const vanish = beat === 1 ? introEase(t / 3.3) : beat > 1 ? 1 : 0;
     introElement("princess").setAttribute("opacity", String(1 - vanish));
     introElement("legend-mist").setAttribute("opacity", String(beat === 0 ? .08 : beat === 1 ? .2 + Math.sin(Math.PI * vanish) * .65 : .16));
-    introElement("legend-mist").setAttribute("transform", `translate(${Math.sin(worldTime * 1.7) * 13} ${Math.sin(worldTime * 2) * 4})`);
+    introElement("legend-mist").setAttribute("transform", `translate(${Math.sin(worldTime * 1.7) * 13} ${-60 + Math.sin(worldTime * 2) * 4})`);
     introElement("nyale-school").setAttribute("opacity", String(beat < 2 ? 0 : Math.min(1, beat === 2 ? t / 1.3 : 1)));
-    put("nyale-school", Math.sin(worldTime * 1.9) * 9, Math.sin(worldTime * 2.6) * 7);
-    put("nyale-target", Math.sin(worldTime * 2.4) * 13, Math.sin(worldTime * 3.3) * 7 - (state.interactionDone ? Math.abs(Math.sin((worldTime - state.reactionTime) * 10)) * 13 : 0));
+    put("nyale-target", Math.sin(worldTime * 2.4) * 13, -120 + Math.sin(worldTime * 3.3) * 7 - (state.interactionDone ? Math.abs(Math.sin((worldTime - state.reactionTime) * 10)) * 13 : 0));
     introElement("nyale-target-body").setAttribute("transform", `translate(0 ${Math.sin(worldTime * 9) * 5})`);
   } else {
     leftX = beat === 0 ? -90 + 395 * introEase(t / 3.5) : 305;
@@ -992,6 +1141,7 @@ function applyIntroVisual() {
     leftArm = beat >= 1 ? 25 + Math.sin(worldTime * 7) * 14 : 0;
     rightArm = beat >= 1 ? -25 - Math.sin(worldTime * 7 + 1) * 14 : 0;
   }
+  put("nyale-school", Math.sin(worldTime * 1.9) * 9, -105 + Math.sin(worldTime * 2.6) * 7);
   introElement("princess").setAttribute("opacity", chapter === 3 ? introElement("princess").getAttribute("opacity") : "1");
   put("princess", princessX, princessY + bob - joy);
   put("villager-left", leftX, leftY + bob - joy * .65);
@@ -1018,8 +1168,9 @@ function applyIntroVisual() {
   ["left-eye-a", "left-eye-b", "right-eye-a", "right-eye-b"].forEach((id) =>
     introElement(id).setAttribute("r", neighbourBlink));
   introElement("princess-mouth").setAttribute("d", mouth);
-  introElement("story-shell").setAttribute("transform", "translate(0 " +
-    (beat === 4 ? -Math.max(0, Math.sin(worldTime * 10)) * 17 : 0) + ")");
+  introElement("story-shell").setAttribute("transform", "translate(-119 " +
+    (-30 + (beat === 4 ? -Math.max(0, Math.sin(worldTime * 10)) * 17 : 0)) + ")");
+  introElement("scene-sparkles").setAttribute("transform", "translate(-119 -30)");
   introElement("scene-sparkles").setAttribute("opacity", String(.55 + Math.sin(worldTime * 8) * .4));
 
 }
@@ -1440,7 +1591,9 @@ function configureChineseStage() {
  const icon=(id,x,y,size)=>`<svg x="${x}" y="${y}" width="${size}" height="${size}" viewBox="0 0 100 100" aria-hidden="true">${art.svg(id).split('>').slice(1).join('>').replace(/<\/svg>$/,'')}</svg>`;
  const choice=(name,label,artwork)=>`<g class="chinese-scene-choice" data-chinese-choice="${name}" role="button" tabindex="-1" aria-disabled="true" aria-label="${label}">${artwork}</g>`;
  const family=(name,x,colour,label,interactive=false)=>{
-  const drawing=`<ellipse cx="0" cy="445" rx="44" ry="12" fill="#75979d33"/><path d="M-33 354Q0 333 33 354L43 439H-43Z" fill="${colour}" stroke="#a382ac" stroke-width="3"/><circle cx="0" cy="328" r="30" fill="#f1c3a6" stroke="#b88a9e" stroke-width="3"/><path d="M-29 326Q-37 283 3 291Q34 290 29 319Q11 304-3 313Z" fill="#7b668f"/><circle cx="-10" cy="328" r="3" fill="#62517b"/><circle cx="10" cy="328" r="3" fill="#62517b"/><path d="M-7 342Q0 348 7 342" fill="none" stroke="#b27d98" stroke-width="2"/><path d="M-30 369L-46 395M30 369L46 395" stroke="#edbaa1" stroke-width="10" stroke-linecap="round"/>${interactive?`<g data-delivered="${name}" hidden>${icon('letter',14,372,45)}</g>`:''}`;
+  // Retain the original painted geometry invisibly for the exact hit area;
+  // the supplied complete pose replaces every visible body/face part.
+  const drawing=`<ellipse cx="0" cy="445" rx="44" ry="12" fill="#75979d33"/><g data-family-hit-area opacity="0"><path d="M-33 354Q0 333 33 354L43 439H-43Z" fill="${colour}" stroke="#a382ac" stroke-width="3"/><circle cx="0" cy="328" r="30" fill="#f1c3a6" stroke="#b88a9e" stroke-width="3"/><path d="M-29 326Q-37 283 3 291Q34 290 29 319Q11 304-3 313Z" fill="#7b668f"/><circle cx="-10" cy="328" r="3" fill="#62517b"/><circle cx="10" cy="328" r="3" fill="#62517b"/><path d="M-7 342Q0 348 7 342" fill="none" stroke="#b27d98" stroke-width="2"/><path d="M-30 369L-46 395M30 369L46 395" stroke="#edbaa1" stroke-width="10" stroke-linecap="round"/></g>${storyObjectImage(name==='prince-left'?'zh-family-first':'zh-family-second',-51,289,102,150)}${interactive?`<g data-delivered="${name}" hidden>${storyObjectImage('invitation',14,372,45,32)}</g>`:''}`;
   return `<g data-family="${name}" transform="translate(${x} 0)">${interactive?choice(name,label,drawing):`<g data-story-explore="family" role="button" tabindex="-1" aria-label="Family member">${drawing}</g>`}</g>`;
  };
  const moon=icon('moon',688,47,124);
@@ -1451,8 +1604,12 @@ function configureChineseStage() {
  const rabbitTarget=pageIndex===4?choice('scene-boat','Rabbit lantern',`<path d="M490 239V269" stroke="#b69bbc" stroke-width="3"/>${rabbit}`):`<g data-story-explore="rabbit" role="button" tabindex="-1" aria-label="Moon rabbit">${rabbit}</g>`;
  const prop=pageIndex===2?choice('peace-ripple','Mooncake',icon('mooncake',625,327,95)):pageIndex===3?choice('nyale-target','Lantern',icon('lantern',625,327,95)):'';
  const familyScene=[1,2,3,4].includes(pageIndex)?family('prince-left',265,'#c5a3da','First family member',pageIndex===1)+family('prince-right',700,'#eab4cc','Second family member',pageIndex===1):'';
- const table=[2,4].includes(pageIndex)?`<g data-story-explore="table" role="button" tabindex="-1" aria-label="Family table"><ellipse cx="490" cy="447" rx="148" ry="23" fill="#75979d44"/><path d="M376 390Q490 370 604 390L591 421Q490 438 389 421Z" fill="#f7dcdd" stroke="#9e78a8" stroke-width="5"/><path d="M404 420V461M576 420V461" stroke="#9e78a8" stroke-width="13"/><ellipse cx="490" cy="390" rx="114" ry="28" fill="#fff0d9" stroke="#9e78a8" stroke-width="5"/>${pageIndex===4?icon('mooncake',460,351,57):''}</g>`:'';
- svg.innerHTML=`<defs><linearGradient id="moon-sky" x2="0" y2="1"><stop stop-color="#858cc5"/><stop offset="1" stop-color="#ddd1ec"/></linearGradient></defs><rect width="960" height="520" fill="url(#moon-sky)"/>${moonTarget}${starsTarget}<path d="M0 340Q200 285 430 340T960 320V520H0Z" fill="#a5cecd"/><path d="M0 441Q300 365 500 455T960 418V520H0Z" fill="#d4e4d4"/><path d="M30 310H225L205 265H60Z" fill="#a288b8"/><path d="M60 310V399M205 310V399" stroke="#a288b8" stroke-width="14"/><path d="M0 230Q480 280 960 225" stroke="#b195bd" stroke-width="3" fill="none"/><g data-moon-lanterns>${[90,290,480,680,875].map(x=>`<g data-story-explore="lantern" role="button" tabindex="-1" aria-label="Lantern">${icon('lantern',x-23,230,45)}</g>`).join('')}</g>${familyScene}${table}${pageIndex===2?`<ellipse cx="670" cy="419" rx="64" ry="17" fill="#fff0d9" stroke="#a382ac" stroke-width="3"/>`:''}<ellipse cx="486" cy="438" rx="93" ry="16" fill="#8daeb544"/><g data-moon-rabbit>${rabbitTarget}</g><g data-moon-prop>${prop}</g><text data-chinese-success hidden x="480" y="480" text-anchor="middle" font-size="24" fill="#855d98" font-family="Trebuchet MS">A little discovery, a lovely memory ♡</text>`;
+ // Visible PNG core: (215,259)–(1329,854). Uniform 0.19 scale places
+ // its tabletop at y≈392–431 and its feet at y≈504. The small cake's base
+ // (≈399) and the delivered cake's base (≈422) both rest on that surface.
+ // Keep the original invisible exploration geometry and logical drop (490,390).
+ const table=[2,4].includes(pageIndex)?`<g data-story-explore="table" role="button" tabindex="-1" aria-label="Family table"><ellipse data-table-shadow cx="490" cy="497" rx="148" ry="23" fill="#75979d44" pointer-events="none"/><image data-story-table-art href="/assetNEW/table.png" x="343.7" y="342" width="291.84" height="194.56" preserveAspectRatio="xMidYMid meet" pointer-events="none"/><g data-table-hit-area opacity="0"><ellipse cx="490" cy="447" rx="148" ry="23" fill="#75979d44"/><path d="M376 390Q490 370 604 390L591 421Q490 438 389 421Z" fill="#f7dcdd" stroke="#9e78a8" stroke-width="5"/><path d="M404 420V461M576 420V461" stroke="#9e78a8" stroke-width="13"/><ellipse cx="490" cy="390" rx="114" ry="28" fill="#fff0d9" stroke="#9e78a8" stroke-width="5"/></g>${pageIndex===4?icon('mooncake',460,351,57):''}</g>`:'';
+ svg.innerHTML=`<defs><linearGradient id="moon-sky" x2="0" y2="1"><stop stop-color="#858cc5"/><stop offset="1" stop-color="#ddd1ec"/></linearGradient></defs><rect data-story-scenery width="960" height="520" fill="url(#moon-sky)"/>${moonTarget}${starsTarget}<path data-story-scenery d="M0 340Q200 285 430 340T960 320V520H0Z" fill="#a5cecd"/><path data-story-scenery d="M0 441Q300 365 500 455T960 418V520H0Z" fill="#d4e4d4"/><path data-story-scenery d="M30 310H225L205 265H60Z" fill="#a288b8"/><path data-story-scenery d="M60 310V399M205 310V399" stroke="#a288b8" stroke-width="14"/><path d="M0 230Q480 280 960 225" stroke="#b195bd" stroke-width="3" fill="none"/><g data-moon-lanterns>${[90,290,480,680,875].map(x=>`<g data-story-explore="lantern" role="button" tabindex="-1" aria-label="Lantern">${icon('lantern',x-23,230,45)}</g>`).join('')}</g>${familyScene}${table}${pageIndex===2?`<g data-story-tray><ellipse cx="670" cy="419" rx="64" ry="17" fill="transparent"/>${storyObjectImage('zh-serving-tray',606,402,128,34)}</g>`:''}<ellipse cx="486" cy="438" rx="93" ry="16" fill="#8daeb544"/><g data-moon-rabbit>${rabbitTarget}</g><g data-moon-prop>${prop}</g>`;
  // These are the objects in the illustration itself, with keyboard semantics
  // and a glow during the interaction beat. No separate choice controls.
  let draggedMooncake=false,mooncakeDrag=null;
@@ -1505,7 +1662,6 @@ function syncChineseChoices() {
   object.setAttribute('tabindex',active?'0':'-1');object.setAttribute('aria-disabled',String(!active));
  });
  svg.querySelectorAll('[data-delivered]').forEach(item=>item.toggleAttribute('hidden',!introState.invitedPrinces.has(item.dataset.delivered)));
- svg.querySelector('[data-chinese-success]').toggleAttribute('hidden',!introState.interactionDone);
 }
 function chooseChineseObject(name) {
  if(pageIndex===1) {
@@ -1532,10 +1688,24 @@ function applyChineseVisual() {
 // chapter's interaction is still required before Next page unlocks.
 const continueButton=introElement('scene-continue');
 continueButton.addEventListener('click',()=>{
+ if(!storyOpen)return;
+ if(pageTurning){showPageTurning();return;}
+ if(storySubmission)return;
+ if(introState.completedChapters[pageIndex]||introState.completed){nextPage();return;}
  if(!introState.active)return;
- if(introState.completed&&introState.beat===4){nextPage();return;}
  if(!introState.playing)toggleIntroPlayback();
- cancelIntroSpeech();storySaveError=false;introState.narrationDone=true;introState.elapsed=100;
+ cancelIntroSpeech();storySaveError=false;introState.narrationDone=true;
+ introState.elapsed=Math.max(introState.elapsed,chapters[pageIndex].beats[introState.beat].minSeconds);
+ if(introState.beat===3&&!introState.interactionDone){
+  const message=chapters[pageIndex].prompt;
+  introStatus('Your turn · '+message);introElement('scene-prompt').hidden=false;
+  const target=journey.state.language==='chinese'
+   ?document.querySelector('.chinese-scene [data-chinese-choice][aria-disabled="false"]')
+   :chapterChoiceIds[pageIndex].map(id=>introElement(id)).find(node=>node.getAttribute('tabindex')==='0');
+  target?.focus();speakIntroHint(message);return;
+ }
+ // Manual Continue advances synchronously; it does not depend on a later frame.
+ advanceIntroBeat();
 });
 window.OceanRoom={
  // Called by Person 3 after scripts and popup hosts are mounted. No wire events
@@ -1588,6 +1758,11 @@ window.OceanRoom={
    return true;
   });
   introState.completedChapters=chapters.map((_,i)=>i<next.storyPage);
+  if(storyOpen&&!pageTurning&&!storySubmission&&introState.completedChapters[pageIndex]){
+   const primary=introElement('scene-continue'),label=pageIndex===storyChapterCount-1?'Finish story →':'Next page →';
+   if(primary.disabled)primary.disabled=false;
+   if(primary.textContent!==label)primary.textContent=label;
+  }
   updateInteraction();
  }
 };

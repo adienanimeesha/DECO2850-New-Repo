@@ -4,6 +4,51 @@ const fs=require('node:fs');
 const path=require('node:path');
 const {JSDOM}=require('jsdom');
 const journeys=require('../public/js/journey-content');
+const objectManifest=JSON.parse(fs.readFileSync('public/assetNEW/storybook-objects/PNG-MANIFEST.json'));
+const objectAssets=new Map(objectManifest.assets.map(asset=>[path.basename(asset.file).replace(/^storybook-|\.png$/g,''),asset]));
+test('storybook pack imports supplied objects with original pixels',()=>{
+ const crypto=require('node:crypto');
+ assert.equal(objectManifest.count,29);
+ for(const asset of objectManifest.assets){
+  const name=path.basename(asset.file),bytes=fs.readFileSync('public/assetNEW/storybook-objects/'+name);
+  assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'),asset.sha256,name);
+  assert.doesNotMatch(name,/sun/);
+ }
+});
+function checkStoryObjectFits(svg){
+ for(const image of svg.querySelectorAll('[data-story-object]')){
+  const asset=objectAssets.get(image.dataset.storyObject);assert.ok(asset);
+  assert.equal(image.getAttribute('pointer-events'),'none');
+  assert.equal(image.getAttribute('preserveAspectRatio'),'xMidYMid meet');
+  const width=Number(image.getAttribute('width')),height=Number(image.getAttribute('height'));
+  assert.ok(Math.abs(width/height-asset.width/asset.height)<.00001,'PNG aspect ratio');
+  if(image.dataset.storyObject.startsWith('zh-family')){
+   const foot=Number(image.getAttribute('y'))+asset.bounds_alpha_above_32[3]*height/asset.height;
+   assert.ok(Math.abs(foot-439)<.001,'family feet stay at the original body baseline');
+   assert.equal(image.parentElement.querySelector('[data-family-hit-area]').getAttribute('opacity'),'0');
+  }
+ }
+}
+const storyBackgrounds={
+ indonesian:['id-kingdom-day','id-kingdom-day','id-coast-day','id-coast-twilight','id-coast-day'],
+ chinese:['zh-moonlit-garden','zh-family-courtyard','zh-family-courtyard','zh-lantern-garden','zh-lantern-garden']
+};
+function checkStoryBackground(svg,language,index){
+ const background=svg.querySelector('[data-story-background]');assert.ok(background);
+ assert.equal(background.getAttribute('data-story-background'),`/assetNEW/storybook-${storyBackgrounds[language][index]}.png`);
+ assert.equal(svg.firstElementChild,background,'background is below all foreground layers');
+ assert.equal(background.getAttribute('pointer-events'),'none');
+ assert.deepEqual(['x','y','width','height'].map(name=>background.getAttribute(name)),['0','0','960','520']);
+ assert.match(background.getAttribute('href'),/^data:image\/png;base64,/,'background is embedded for page turns');
+ svg.querySelectorAll('[data-story-scenery]').forEach(node=>assert.equal(node.style.display,'none'));
+}
+test('six supplied storybook backgrounds have the expected PNG dimensions',()=>{
+ for(const name of new Set(Object.values(storyBackgrounds).flat())){
+  const bytes=fs.readFileSync(`public/assetNEW/storybook-${name}.png`);
+  assert.equal(bytes.subarray(0,8).toString('hex'),'89504e470d0a1a0a');
+  assert.deepEqual([bytes.readUInt32BE(16),bytes.readUInt32BE(20)],[1920,1040]);
+ }
+});
 function page(t,name='mobile.html') {
  const source=fs.readFileSync(path.join(__dirname,'../public',name),'utf8').replace(/<script[\s\S]*?<\/script>/g,'');
  const dom=new JSDOM(source,{runScripts:'outside-only',url:'http://localhost:3000/'+name});t.after(()=>dom.window.close());
@@ -48,6 +93,71 @@ function page(t,name='mobile.html') {
  }
  return {w,events,draws,advance,click,walk,get state(){return state;},update(data){Object.assign(state,data);publish();}};
 }
+for(const language of ['indonesian','chinese'])test(`${language}: Continue responds without waiting for animation frames and page turns show a busy state`,async t=>{
+ const p=page(t),d=p.w.document;
+ p.update({phase:'room',language,trip:1});p.walk('book');await p.advance(6500);
+ const label=d.querySelector('#scene-beat-label');
+ for(let beat=0;beat<3;beat++){
+  const before=label.textContent;p.click('#scene-continue');
+  assert.notEqual(label.textContent,before,'a single click advances immediately, even without another frame');
+ }
+ p.click('#scene-continue');
+ assert.match(d.querySelector('#scene-status').textContent,/Your turn/,'required interaction has visible feedback');
+ const target=language==='chinese'?'[data-chinese-choice="story-shell"]':'#story-shell';
+ assert.equal(d.activeElement,d.querySelector(target),'Continue focuses the required object');
+ assert.equal(p.state.storyPage,0,'Continue cannot bypass the interaction');
+ p.click(target);p.click('#scene-continue');p.click('#scene-continue');
+ assert.equal(d.querySelector('#scene-continue').textContent,'Saving page…');
+ assert.equal(d.querySelector('#scene-continue').disabled,true);
+ await p.advance(100);
+ assert.equal(d.querySelector('#scene-continue').textContent,'Next page →');
+ assert.equal(p.events.filter(([event])=>event==='journey-story-page').length,1);
+ const primary=d.querySelector('#scene-continue'),mutations=[];
+ const observer=new p.w.MutationObserver(records=>mutations.push(...records));
+ observer.observe(primary,{childList:true,attributes:true,subtree:true});
+ await p.advance(300);p.update({});await p.advance(50);observer.disconnect();
+ assert.equal(mutations.length,0,'ready button is not rewritten every animation frame during a mouse press');
+ const decodes=[];p.w.HTMLImageElement.prototype.decode=()=>new Promise(resolve=>decodes.push(resolve));
+ p.click('#scene-continue');
+ assert.equal(d.querySelector('.storybook').getAttribute('aria-busy'),'true');
+ assert.equal(d.querySelector('#scene-continue').textContent,'Turning page…');
+ for(const id of ['scene-prev','scene-next','scene-continue','scene-play','scene-replay'])assert.equal(d.getElementById(id).disabled,true);
+ // Hold decoding across several frames: no repeated click should be required.
+ await p.advance(200);assert.equal(d.querySelector('#scene-stage').dataset.chapter,'0');
+ for(let step=0;step<18;step++){decodes.splice(0).forEach(resolve=>resolve());await p.advance(100);}
+ assert.equal(d.querySelector('#scene-stage').dataset.chapter,'1');
+ assert.equal(d.querySelector('.storybook').hasAttribute('aria-busy'),false);
+ assert.equal(d.querySelector('#scene-continue').disabled,false);
+});
+test('closing during page-image preparation cannot change a reopened story',async t=>{
+ const p=page(t),d=p.w.document;
+ p.update({phase:'room',language:'indonesian',trip:1,storyPage:5,storyDone:true});p.walk('book');await p.advance(6500);
+ const decodes=[];p.w.HTMLImageElement.prototype.decode=()=>new Promise(resolve=>decodes.push(resolve));
+ p.click('#scene-prev');await p.advance(100);
+ p.click('#close-story');p.w.OceanRoom.startStory();
+ assert.equal(d.querySelector('#scene-stage').dataset.chapter,'4');
+ decodes.splice(0).forEach(resolve=>resolve());await p.advance(2000);
+ assert.equal(d.querySelector('#scene-stage').dataset.chapter,'4','cancelled async turn stays cancelled');
+ assert.equal(d.querySelector('.storybook').hasAttribute('aria-busy'),false);
+});
+for(const language of ['indonesian','chinese'])test(`${language}: the visible Next button turns a confirmed page while narration is replaying or paused`,async t=>{
+ const p=page(t),d=p.w.document;
+ p.update({phase:'room',language,trip:1});p.walk('book');await p.advance(6500);
+ // Authoritative confirmation can arrive independently of the audio frame.
+ p.update({storyPage:1});
+ assert.equal(d.querySelector('#scene-continue').textContent,'Next page →');
+ p.click('#scene-replay');p.click('#scene-play');
+ p.click('#scene-continue');
+ assert.equal(d.querySelector('.storybook').getAttribute('aria-busy'),'true','one activation is accepted despite narration state');
+ await p.advance(2200);
+ assert.equal(d.querySelector('#scene-stage').dataset.chapter,'1');
+ p.click('#scene-prev');await p.advance(2200);
+ assert.equal(d.querySelector('#scene-stage').dataset.chapter,'0');
+ assert.equal(d.querySelector('#scene-continue').textContent,'Next page →','revisited completed pages do not require replaying all beats');
+ p.click('#scene-continue');await p.advance(2200);
+ assert.equal(d.querySelector('#scene-stage').dataset.chapter,'1');
+ assert.equal(p.events.some(([event])=>event==='journey-story-page'),false,'navigation never resubmits a confirmed page');
+});
 for(const language of ['indonesian','chinese'])test(`${language}: mobile completes a cultural story, accepts an invitation, dresses, and explores the festival`,async t=>{
  const p=page(t),d=p.w.document;
  p.click(`[data-language="${language}"]`);p.click('#start-adventure');assert.equal(d.querySelector('#travel-screen').hidden,false);
@@ -56,7 +166,53 @@ for(const language of ['indonesian','chinese'])test(`${language}: mobile complet
  assert.equal(d.querySelector('#mailbox-button').disabled,true);
  p.walk('book');await p.advance(6500);assert.equal(d.querySelector('#storybook-backdrop').hidden,false);
  for(let chapter=0;chapter<5;chapter++){
+  const scene=d.querySelector(language==='chinese'?'.chinese-scene':'#scene-stage > svg:not(.chinese-scene)');
+  checkStoryObjectFits(scene);
+  if(language==='indonesian'){
+   for(const id of ['princess-leg-a','princess-right-arm','princess-eye-a','princess-mouth','left-leg-a','right-eye-a','prince-left-arm','prince-right-mouth'])assert.equal(scene.querySelector('#'+id).closest('[data-character-hit-area]').getAttribute('opacity'),'0','legacy schematic parts stay invisible');
+   for(const id of ['princess','villager-left','villager-right','prince-left','prince-right']){
+    const wrapper=scene.querySelector('#'+id),image=wrapper.querySelector(':scope > [data-character-art]');
+    assert.ok(image,'supplied PNG replaces '+id);
+    assert.equal(wrapper.querySelector(':scope > ellipse').getAttribute('cy'),'0','separate original shadow');
+    const asset=objectAssets.get(image.dataset.storyObject),scale=Number(image.getAttribute('height'))/asset.height;
+    assert.ok(Math.abs(Number(image.getAttribute('y'))+asset.bounds_alpha_above_32[3]*scale)<.001,'feet stay at local ground anchor');
+    if(id.startsWith('prince-'))assert.equal(wrapper.querySelector('#'+id+'-invite').parentElement,wrapper,'invitation stays above character art');
+   }
+   assert.equal(scene.querySelector('#scene-sun').tagName.toLowerCase(),'circle');
+   assert.equal(scene.querySelector('#festival-decor').querySelectorAll('path').length,0,'bunting has no duplicate old cord');
+   for(const id of ['crowd-one','crowd-two','crowd-three'])assert.equal(scene.querySelector('#'+id).children.length,1,'crowd contains only the new full pose');
+   assert.equal(scene.querySelector('#nyale-school').querySelectorAll('image').length,3,'separate school colours');
+   assert.equal(scene.querySelector('#nyale-target-body').parentElement.id,'nyale-target');
+  }else{
+   assert.equal(scene.querySelectorAll('[data-story-tray]').length,chapter===2?1:0);
+   assert.equal(scene.querySelectorAll('[data-story-object^="zh-family-"]').length,chapter===0?0:2);
+  }
+  checkStoryBackground(d.querySelector(language==='chinese'?'.chinese-scene':'#scene-stage > svg:not(.chinese-scene)'),language,chapter);
+  if(language==='indonesian')for(const id of ['scene-background','scene-water','scene-plants','cloud-a','cloud-b','scene-sun','scene-boat','princess','nyale-target']){
+   assert.notEqual(d.getElementById(id).style.display,'none',`${id} was not disabled with static scenery`);
+   assert.equal(d.getElementById(id).closest('[data-story-scenery]'),null);
+  }
+  if(language==='indonesian')assert.equal(d.querySelector('#scene-water').getAttribute('fill'),'none','animated water must not cover the illustrated sand');
+  else assert.equal(d.querySelector('.chinese-scene [data-chinese-success]'),null,'no decorative completion text over the artwork');
+  if(language==='indonesian')for(const [id,file,cx,cy,r]of [['scene-boat','perahu.png','690','328','66'],['story-shell','seashell.png','684','443','45']]){
+   const wrapper=d.getElementById(id),image=wrapper.querySelector('image'),hit=wrapper.querySelector('circle');
+   assert.equal(image.getAttribute('href'),'/assetNEW/'+file);
+   assert.equal(image.getAttribute('pointer-events'),'none','PNG padding must not enlarge the hit target');
+   assert.deepEqual(['cx','cy','r'].map(name=>hit.getAttribute(name)),[cx,cy,r]);
+   assert.ok(Math.abs(Number(image.getAttribute('width'))/Number(image.getAttribute('height'))-1.5)<.001,'original PNG aspect ratio');
+  }
+  if(language==='chinese')assert.equal(d.querySelectorAll('[data-story-table-art]').length,[2,4].includes(chapter)?1:0);
   for(let beat=0;beat<3;beat++){p.click('#scene-continue');await p.advance(100);}
+  if(language==='indonesian'){
+   const translation=id=>d.getElementById(id).getAttribute('transform').match(/translate\(([-\d.]+) ([-\d.]+)\)/).slice(1).map(Number);
+   assert.ok(translation('scene-boat')[1]<-40,'boat sits in the illustrated sea');
+   assert.equal(translation('story-fish')[1],-30);
+   assert.ok(translation('story-shell')[1]<=-30,'shell clears the lower-right prompt');
+   if(chapter===3){
+    assert.equal(d.getElementById('princess').getAttribute('opacity'),'0','Mandalika still disappears at the legend beat');
+    assert.ok(translation('nyale-target')[1]<-110,'target nyale stays in water');
+   }
+  }
   if(language==='chinese'){
    assert.equal(d.querySelector('.chinese-choices'),null,'no separate Chinese choice controls');
    assert.equal(d.querySelector('.chinese-scene button'),null);
@@ -69,7 +225,15 @@ for(const language of ['indonesian','chinese'])test(`${language}: mobile complet
   p.click('#scene-continue');await p.advance(100);
   p.click('#scene-continue');await p.advance(100);
   assert.equal(p.state.storyPage,chapter+1,`chapter ${chapter+1} awards vocabulary`);
-  p.click('#scene-next');await p.advance(2000);
+  p.click('#scene-next');await p.advance(1000);
+  if(chapter<4)for(const [selector,index]of [['#book-turn-still img',chapter],['#turn-front img',chapter],['.turn-back img',chapter+1]]){
+   const image=d.querySelector(selector);assert.ok(image,selector);
+   const snapshot=new p.w.DOMParser().parseFromString(decodeURIComponent(image.src.split(',').slice(1).join(',')),'image/svg+xml');
+   checkStoryBackground(snapshot.documentElement,language,index);
+   assert.equal(snapshot.querySelector('[hidden], [data-character-hit-area], [data-family-hit-area]'),null,'invisible art and hit geometry are omitted from turn pictures: '+snapshot.querySelector('[hidden], [data-character-hit-area], [data-family-hit-area]')?.outerHTML?.slice(0,240));
+   snapshot.querySelectorAll('image').forEach(node=>assert.match(node.getAttribute('href'),/^data:/,'snapshot props have no external dependencies'));
+  }
+  await p.advance(1000);
  }
  assert.equal(p.state.storyDone,true);assert.equal(d.querySelector('#storybook-backdrop').hidden,true);
  assert.equal(d.querySelector('#mission-step').textContent,'MISSION 3 OF 5');
@@ -119,6 +283,21 @@ test('Moon Festival chapter three shows the family table and supports exploring 
  assert.equal(scene.querySelectorAll('[data-family]').length,2,'the family appears with the table');
  assert.ok(scene.querySelector('[data-story-explore="table"]'));
  assert.ok(scene.querySelector('[data-chinese-choice="peace-ripple"]'));
+ const table=scene.querySelector('[data-story-explore="table"]'),tableImage=table.querySelector('[data-story-table-art]');
+ assert.equal(tableImage.getAttribute('href'),'/assetNEW/table.png');
+ assert.equal(tableImage.getAttribute('pointer-events'),'none');
+ assert.equal(table.querySelector('[data-table-hit-area]').getAttribute('opacity'),'0');
+ assert.ok(table.querySelector('[data-table-shadow]'),'table shadow remains a separate layer');
+ assert.equal(table.querySelectorAll('[data-table-hit-area] path').length,2,'original exploration paths are retained');
+ // Measured corners of the supplied PNG's flat top surface (source pixels).
+ // Test food contact points, including both extremes of the delivered bob,
+ // rather than assuming that the transparent image box is the tabletop.
+ const top=[[219,351],[855,264],[1324,355],[662,464]],scale=Number(tableImage.getAttribute('width'))/1536;
+ for(const [x,y]of [[488.5,398.53],[490.5,418.21],[490.5,426.21]]){
+  const point=[(x-Number(tableImage.getAttribute('x')))/scale,(y-Number(tableImage.getAttribute('y')))/scale];
+  const sides=top.map(([ax,ay],i)=>{const [bx,by]=top[(i+1)%top.length];return(bx-ax)*(point[1]-ay)-(by-ay)*(point[0]-ax);});
+  assert.ok(sides.every(side=>side>=0)||sides.every(side=>side<=0),'mooncake base stays on the measured tabletop');
+ }
  assert.equal(d.querySelector('.story-audio-options').open,false,'audio controls are tucked away');
  assert.equal(d.querySelector('#scene-next').hidden,true,'Back and Continue are the main reading controls');
  for(let beat=0;beat<3;beat++){p.click('#scene-continue');await p.advance(100);}
@@ -129,7 +308,9 @@ test('Moon Festival chapter three shows the family table and supports exploring 
  mooncake.dispatchEvent(new p.w.MouseEvent('pointerdown',{bubbles:true,clientX:672,clientY:374}));
  scene.dispatchEvent(new p.w.MouseEvent('pointermove',{bubbles:true,clientX:490,clientY:390}));
  scene.dispatchEvent(new p.w.MouseEvent('pointerup',{bubbles:true,clientX:490,clientY:390}));
- assert.equal(scene.querySelector('[data-chinese-success]').hasAttribute('hidden'),false);
+ assert.equal(mooncake.getAttribute('transform'),'translate(-182 16)','logical drop target is unchanged');
+ assert.equal(scene.querySelector('[data-chinese-success]'),null,'decorative success text is removed');
+ assert.equal(d.querySelector('#scene-stage').classList.contains('choice-complete'),true);
 });
 test('refresh restores completed activity and memory book; aquarium displays returned collections',async t=>{
  const p=page(t);p.update({language:'chinese',phase:'room',trip:2,storyPage:5,storyDone:true,invited:true,bag:[{...journeys.chinese.storyRewards[0],source:'story',language:'chinese'}]});
@@ -365,4 +546,14 @@ for(const language of ['indonesian','chinese'])test(`${language}: reconnect rest
  p.w.dispatchEvent(new p.w.KeyboardEvent('keyup',{code:'ArrowRight'}));
  p.walk('area-left');await p.advance(2000);assert.equal(p.state.festivalArea,0,'can revisit the previous area');
  assert.equal(p.state.festivalMission,1,'changing map does not skip a mission');
+});
+
+for(const language of ['indonesian','chinese'])test(`${language}: completed story reuses the correct backgrounds when browsing backwards and forwards`,async t=>{
+ const p=page(t),d=p.w.document;
+ p.update({phase:'room',language,trip:1,storyPage:5,storyDone:true});p.walk('book');await p.advance(6500);
+ const scene=()=>d.querySelector(language==='chinese'?'.chinese-scene':'#scene-stage > svg:not(.chinese-scene)');
+ checkStoryBackground(scene(),language,4);
+ for(let index=3;index>=0;index--){p.click('#scene-prev');await p.advance(2200);assert.equal(d.querySelector('#scene-stage').dataset.chapter,String(index));checkStoryBackground(scene(),language,index);}
+ for(let index=1;index<5;index++){p.click('#scene-next');await p.advance(2200);assert.equal(d.querySelector('#scene-stage').dataset.chapter,String(index));checkStoryBackground(scene(),language,index);}
+ assert.equal(p.events.some(([event])=>event==='journey-story-page'),false,'browsing does not award duplicate story progress');
 });

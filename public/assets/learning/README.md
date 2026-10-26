@@ -1,5 +1,7 @@
 # Learning sticker artwork
 
+Vocabulary now prioritises matching `assetNEW` colour images through `OceanArt.asset()`. Nine matching colouring PNGs are stored in [derived/](derived/). Existing local SVG pairs remain in use where no suitable supplied standalone illustration exists; the source attribution below still applies to those retained assets.
+
 The colour and outline SVGs in `openmoji/` are from [OpenMoji release 17.0.0](https://github.com/hfg-gmuend/openmoji/releases/tag/17.0.0), created by the OpenMoji contributors. They are licensed [Creative Commons Attribution-ShareAlike 4.0](https://creativecommons.org/licenses/by-sa/4.0/). The files are stored locally; no runtime network request is made. The app uses both OpenMoji's colour and black-line variants. Files were not redrawn; presentation sizing is normalised in `OceanArt`. OpenMoji's own [attribution guidance](https://github.com/hfg-gmuend/openmoji#attribution-requirements) applies.
 
 Imported codepoints: `1F3D6` beach, `1F30A` water wave, `1F4A7` droplet, `1F389` celebration popper, `1F315` full moon, `1F407` rabbit, `1F96E` mooncake, `1F46A` family, and `2B50` star. The artwork for `pastry` deliberately reuses the mooncake and `reunion` deliberately reuses the family; those are relevant to this Mid-Autumn story.

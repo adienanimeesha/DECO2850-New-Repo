@@ -1,0 +1,28 @@
+/* Only the opt-in physical display uses these rules. Black remains black even
+   when the calibrated canvas is translated, scaled, mirrored or flipped. */
+body.aquarium-page.ghost-display,
+.ghost-display .game-shell,
+.ghost-display .aquarium-frame { background: #000; }
+.ghost-display .aquarium-frame { display: grid; place-items: center; }
+.ghost-display .aquarium-frame > canvas {
+ width: min(100vw, calc(100dvh * 48 / 31));
+ height: auto;
+ aspect-ratio: 48 / 31;
+ object-fit: contain;
+ cursor: none;
+ transform-origin: center;
+}
+.display-calibration {
+ position: fixed; z-index: 50; top: 16px; left: 16px;
+ width: min(330px, calc(100vw - 32px)); max-height: calc(100dvh - 32px);
+ overflow: auto; box-sizing: border-box; padding: 18px;
+ background: #121522; color: #eee9ff; border: 1px solid #65567e;
+ border-radius: 14px; font: 14px/1.4 "Trebuchet MS", sans-serif;
+}
+.display-calibration p { margin: 8px 0; font-size: 12px; }
+.display-calibration label { display: block; margin: 12px 0; }
+.display-calibration output { float: right; }
+.display-calibration input[type=range] { display: block; width: 100%; accent-color: #c6a3e5; }
+.display-calibration .display-check { display: flex; gap: 8px; align-items: center; }
+.display-calibration button { padding: 8px; margin: 3px; border: 1px solid #9b85b8; border-radius: 8px; background: #30253e; color: #fff; cursor: pointer; }
+.display-calibration small { display: block; margin-top: 10px; color: #b6acc8; }

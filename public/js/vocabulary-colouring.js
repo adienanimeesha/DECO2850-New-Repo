@@ -34,7 +34,9 @@ function mount(root, item, onDone, onCancel = () => {}) {
     if(!active||busy||stamp!==revision)return;
     drawSticker(ctx,colourShape);
     ctx.globalCompositeOperation='source-in';ctx.fillStyle=colour;ctx.fillRect(0,0,400,400);
-    ctx.globalCompositeOperation='source-over';drawSticker(ctx,lines);
+    // White paper in a raster outline must not erase the chosen colour.
+    ctx.globalCompositeOperation='multiply';drawSticker(ctx,lines);
+    ctx.globalCompositeOperation='source-over';
    } else {
     const image=await imageFor(art.outline(item.icon,colour));
     if(!active||busy||stamp!==revision)return;
@@ -51,9 +53,10 @@ function mount(root, item, onDone, onCancel = () => {}) {
    const snapshot=document.createElement('canvas');snapshot.width=snapshot.height=400;const out=snapshot.getContext('2d');
    if(sticker){
     const silhouette=await imageFor(sticker.color,true);if(!active)return;
-    out.drawImage(canvas,0,0);out.globalCompositeOperation='destination-in';
-    drawSticker(out,silhouette);out.globalCompositeOperation='source-over';
     drawSticker(out,base);
+    out.globalCompositeOperation='multiply';out.drawImage(canvas,0,0);
+    out.globalCompositeOperation='destination-in';drawSticker(out,silhouette);
+    out.globalCompositeOperation='source-over';
    } else {
     out.drawImage(base,0,0,400,400);out.globalCompositeOperation='multiply';out.drawImage(canvas,0,0);out.globalCompositeOperation='destination-in';out.drawImage(base,0,0,400,400);out.globalCompositeOperation='multiply';out.drawImage(base,0,0,400,400);
    }
