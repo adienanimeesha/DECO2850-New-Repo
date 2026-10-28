@@ -348,3 +348,77 @@ body.immersive-page{display:block;width:100%;height:100dvh;min-height:0;margin:0
 .memory-guidance-arrow{position:absolute;display:block;line-height:1;text-align:center;transform-origin:50% 100%;animation:room-guide-pulse 1.4s ease-in-out infinite;pointer-events:none}
 #continue-memory-guide{align-self:center;border:2px solid #b491c8;border-radius:10px;background:#fff9ed;color:#654b7e;padding:7px 16px;font:inherit;font-weight:bold}
 @media(prefers-reduced-motion:reduce){.memory-guidance-arrow{animation:none}}
+
+/* Fit the whole adventure to the visible viewport, including Safari toolbars. */
+.mobile-page .language-backdrop,.mobile-page .travel-backdrop,.mobile-page .activity-backdrop,
+.mobile-page .learning-backdrop,.mobile-page .unlock-backdrop,.mobile-page .storybook-backdrop,
+.mobile-page .vocabulary-colouring-host{box-sizing:border-box;height:100dvh;padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));overscroll-behavior:none}
+.mobile-page .storybook-backdrop{place-items:center;align-items:center;overflow:hidden}
+.mobile-page .storybook.is-animated{width:min(1050px,calc(100vw - 150px));max-height:100%;padding:14px 18px 18px;margin:0}
+.mobile-page .story-top{padding-bottom:5px;min-height:32px}
+.mobile-page .scene-heading{padding:0 3px 6px;font-size:.68rem}
+.mobile-page .scene-stage{width:min(100%,calc((100dvh - 330px) * 24 / 13));margin-inline:auto;aspect-ratio:24 / 13}
+.mobile-page .narrator-strip{grid-template-columns:minmax(110px,.28fr) minmax(0,1fr);gap:12px;margin:10px 0;align-items:center}
+.mobile-page .book-margin-note{padding:4px 6px;gap:3px}
+.mobile-page .book-margin-note strong{font-size:1.1rem}
+.mobile-page .book-margin-note small{font-size:.72rem}
+.mobile-page .subtitle-bubble{min-height:0;padding:10px 12px}
+.mobile-page #scene-subtitle{font-size:clamp(.85rem,1.5vw,1rem);line-height:1.3}
+.mobile-page #scene-status{font-size:.7rem}
+.mobile-page .scene-controls{display:flex;flex-wrap:nowrap;gap:8px;padding:9px 0 0}
+.mobile-page .scene-controls button,.mobile-page .story-audio-options summary{min-height:44px;padding:8px 12px}
+.mobile-page .story-audio-options[open]>button{display:block}
+.mobile-page .story-audio-options[open]{position:relative}
+.mobile-page .story-audio-options[open]::before{content:'';position:absolute;inset:0 -5px -5px;background:#fffaf0;border:2px solid #e6c4db;border-radius:12px;z-index:-1}
+.mobile-page .story-audio-options[open]>button{position:absolute;bottom:calc(100% + 8px);left:0;width:145px;margin:0}
+.mobile-page .story-audio-options[open]>button+button{bottom:calc(100% + 60px)}
+.mobile-page .jade-rabbit-discovery{grid-column:1 / -1;margin:0;font-size:.75rem;padding:6px 10px}
+.mobile-page .jade-rabbit-discovery p{margin:4px 0}
+.mobile-page .storybook:has(.jade-rabbit-discovery[open]) .scene-stage{width:min(100%,calc((100dvh - 440px) * 24 / 13))}
+.mobile-page .welcome-panel{padding:20px 28px;max-height:100%}
+.mobile-page .welcome-jelly{width:76px;height:84px;margin-bottom:8px}
+.mobile-page .welcome-panel p{margin-block:10px}
+.mobile-page .language-choices{margin:16px 0}
+.mobile-page .language-choices button{padding:12px 10px}
+.mobile-page .activity-panel{max-height:100%;padding:20px 26px}
+.mobile-page .activity-panel h2{font-size:1.5rem;margin:8px 0}
+.mobile-page .activity-panel p{margin:10px 0;line-height:1.4}
+.mobile-page .wardrobe-preview,.mobile-page .wardrobe-preview.bau-nyale-preview,.mobile-page .wardrobe-preview.moon-festival-preview{width:125px;height:140px;margin:10px auto}
+.mobile-page .outfit-choices{gap:10px;margin:10px 0}
+.mobile-page .outfit-choices button{padding:8px;gap:5px}
+.mobile-page .outfit-thumbnail{width:72px;height:80px}
+.mobile-page .memory-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}
+.mobile-page .memory-card{padding:8px;gap:3px}
+.mobile-page .memory-card>div{width:48px;height:48px}
+.mobile-page .memory-card strong{font-size:1rem}
+.mobile-page .memory-card span{font-size:.75rem}
+.mobile-page .memory-card small{font-size:.65rem}
+.memory-pagination{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:12px}
+.memory-pagination button{min-height:44px;padding:8px 14px}
+.mobile-page .learning-menu{max-height:100%;padding:22px 24px}
+.mobile-page .learning-card{min-height:64px}
+.mobile-page .vocabulary-colouring{width:min(680px,100%);padding:16px 22px;overflow:visible;display:flex;flex-direction:column;align-items:center;gap:10px}
+.mobile-page .vocabulary-colouring>p,.mobile-page .vocabulary-colouring>h2{margin:0}
+.mobile-page .vocabulary-colouring>p:not(.eyebrow){font-size:.9rem}
+.mobile-page .vocabulary-colouring .rhyme-paper{flex:none;width:min(330px,calc(100dvh - 285px),calc(100vw - 100px));margin:0}
+.mobile-page .vocabulary-colouring .rhyme-palette{margin:0;padding:4px;gap:14px}
+.mobile-page .vocabulary-colouring .rhyme-palette button{width:44px;height:44px}
+.mobile-page .vocabulary-colouring .paint-tools button{min-width:100px;min-height:44px}
+@media(max-height:720px) and (min-width:700px){
+ .mobile-page .welcome-jelly{width:55px;height:61px}
+ .mobile-page .welcome-panel{padding:14px 26px}
+ .mobile-page .welcome-panel h1{font-size:1.8rem}
+ .mobile-page .welcome-note{margin-top:10px!important}
+ .mobile-page .language-choices{margin:12px 0}
+ .mobile-page .activity-panel{padding:16px 24px}
+ .mobile-page .wardrobe-preview,.mobile-page .wardrobe-preview.bau-nyale-preview,.mobile-page .wardrobe-preview.moon-festival-preview{width:95px;height:105px;margin:6px auto}
+ .mobile-page .outfit-thumbnail{width:56px;height:62px}
+ .mobile-page .memory-card>div{width:36px;height:36px}
+ .mobile-page .memory-card{padding:5px;gap:2px}
+}
+.mobile-page .storybook>.narrator-avatar{left:-72px;width:82px}
+.mobile-page .storybook[data-narrator-side="right"]>.narrator-avatar{left:calc(100% - 10px)}
+.mobile-page .storybook>.narrator-avatar svg{width:82px;height:85px}
+.mobile-page .narrator-strip>.book-margin-note{grid-column:1;grid-row:1}
+.mobile-page .narrator-strip>.subtitle-bubble{grid-column:2;grid-row:1}
+.mobile-page .narrator-strip>.jade-rabbit-discovery{grid-row:2}

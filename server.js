@@ -21,10 +21,7 @@ app.get('/', (_request, response) => response.redirect('/mobile.html'));
 // the local generation command, never by a browser or an HTTP generation route.
 app.get('/api/voice/manifest', async (_request, response) => {
   response.setHeader('Cache-Control', 'no-store');
-  try {
-    const file = await require('node:fs/promises').readFile(path.join(__dirname, 'public/audio/elevenlabs/manifest.json'), 'utf8');
-    response.json({clips: JSON.parse(file).clips});
-  } catch { response.json({clips: {}}); }
+  response.json(await require('./voice-manifest').publicVoiceManifest(path.join(__dirname,'public/audio/elevenlabs')));
 });
 
 // One shared, in-memory adventure for the robot and mobile devices.

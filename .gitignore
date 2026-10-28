@@ -1,7 +1,8 @@
 node_modules/
 .DS_Store
 .env
-/public/audio/elevenlabs/
+/public/audio/elevenlabs/*
+!/public/audio/elevenlabs/deploy/
 
 # Local source copy; integrated files live at the repository root.
 /catherine-folders/

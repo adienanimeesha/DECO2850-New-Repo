@@ -11,7 +11,8 @@
     "voice:generate": "node scripts/generate-voice.js --all",
     "voice:guidance": "node scripts/generate-voice.js --guidance",
     "assets:vocabulary": "python3 scripts/prepare-vocabulary-assets.py",
-    "voice:assemble": "node scripts/assemble-voice.js"
+    "voice:assemble": "node scripts/assemble-voice.js",
+    "voice:package": "node scripts/package-voice.js"
   },
   "keywords": [],
   "author": "",

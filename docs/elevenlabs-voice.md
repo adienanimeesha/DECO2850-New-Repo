@@ -76,7 +76,7 @@ and allowing the next request or unlock. A failed save keeps the drawing in
 memory and offers Try saving again in the room.
 Leaving the activity cancels the pending thank-you without submitting stale work.
 
-Files and their manifest are saved in `public/audio/elevenlabs/`, ignored by Git.
+Source recordings and their generation manifest are saved in `public/audio/elevenlabs/`, ignored by Git except for the compressed `deploy/` bundle.
 Generation is sequential and saves progress after each clip. Rerun the command
 after an interruption to reuse cached clips. Changing voice, model, content or
 settings produces new files. Changing the narrator voice preserves Jelly's cache,
@@ -140,3 +140,18 @@ pointers share larger yellow arrows with purple outlines and a white glow.
 On the Chang’e flight page, the mooncake and plate remain hidden until the food
 request begins. Chang’e is hidden and removed from exploration at that point,
 after her flight, while Hou Yi remains to remember her.
+
+
+For Koyeb and other Git deployments, run `npm run voice:package` locally after
+changing narration. This packages only existing runtime clips into
+`public/audio/elevenlabs/deploy/` with a public manifest. WAV sentences become
+96 kbps AAC/M4A; existing MP3 clips are copied. The complete sentence and its
+pauses remain in one file. Packaging never calls ElevenLabs and uses no key.
+On macOS it uses afconvert; other systems require ffmpeg.
+
+Commit the deploy folder, `.gitignore`, `voice-manifest.js`, and the server
+changes, then push and redeploy on Koyeb. Keep the Koyeb run command `npm start`.
+The server uses its local generation manifest when present, otherwise the
+packaged deployment manifest. No API key is required on Koyeb for these saved
+recordings. Do not commit `.env`. After future voice changes, regenerate locally,
+run `npm run voice:package`, and commit the refreshed deployment recordings.

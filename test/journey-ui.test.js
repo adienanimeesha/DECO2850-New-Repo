@@ -834,3 +834,24 @@ test('remembering Chang’e shows Hou Yi returning, then offerings before the mo
  assert.equal(scene.querySelector('[data-modern-family]').hasAttribute('hidden'),false);
  assert.equal(scene.querySelector('[data-moon-prop]').hasAttribute('hidden'),false);
 });
+
+test('memory book pages every earned item with six cards per screen and preserves replay',async t=>{
+ const p=page(t),d=p.w.document;
+ const memories=Array.from({length:15},(_,i)=>({id:`earned-${i}`,word:`word ${i+1}`,meaning:'collected discovery',icon:'book',source:'learning',language:'indonesian'}));
+ p.update({phase:'room',language:'indonesian',trip:1,memories});
+ p.w.JellyJourney.openActivity('memories');
+ assert.equal(d.querySelectorAll('.memory-card').length,6);
+ assert.equal(d.querySelector('#memory-prev').disabled,true);
+ assert.match(d.querySelector('.memory-pagination').textContent,/Page 1 of 3/);
+ const seen=[...d.querySelectorAll('.memory-card strong')].map(e=>e.textContent);
+ p.click('#memory-next');assert.match(d.querySelector('.memory-pagination').textContent,/Page 2 of 3/);
+ seen.push(...[...d.querySelectorAll('.memory-card strong')].map(e=>e.textContent));
+ p.click('#memory-next');assert.equal(d.querySelectorAll('.memory-card').length,3);
+ assert.equal(d.querySelector('#memory-next').disabled,true);
+ seen.push(...[...d.querySelectorAll('.memory-card strong')].map(e=>e.textContent));
+ assert.deepEqual(seen,memories.map(m=>m.word));
+ assert.equal(d.querySelectorAll('.word-replay').length,3);
+ p.click('#memory-prev');assert.equal(d.querySelector('.memory-card strong').textContent,'word 7');
+ p.update({memories:[memories[0]]});
+ assert.equal(d.querySelectorAll('.memory-card').length,1);assert.equal(d.querySelector('.memory-pagination'),null);
+});

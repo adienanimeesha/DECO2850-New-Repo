@@ -2,7 +2,7 @@
 'use strict';
 const socket = io({ auth: { journey: true } });
 let state = null, selectedLanguage = null, activity = null, outfitChoice = null, activityFocus = null;
-let collectedMemories = [];
+let collectedMemories = [], memoryPage = 0;
 let learningInterface = null, awaitingSnapshot = true, invitationGuidePending = false;
 let wordSpeech = null, wordAudioStatus = null;
 let lastFestivalCue = null;
@@ -137,7 +137,9 @@ function renderActivity() {
   body.querySelectorAll('[data-outfit]').forEach(b => b.addEventListener('click', () => { outfitChoice = b.dataset.outfit; send('journey-try-outfit', outfitChoice); renderActivity(); body.querySelector(`[data-outfit="${outfitChoice}"]`)?.focus(); }));
   $('outfit-done')?.addEventListener('click', () => { closeActivity(); send('journey-festival'); });
  } else if (activity === 'memories') {
-  body.innerHTML = `<p class="eyebrow">LITTLE DISCOVERIES, BIG MEMORIES</p><h2 id="activity-title">My memory book</h2><p>Your learned words and collected items travel home with Jelly.</p><div class="memory-grid">${collectedMemories.map(card).join('') || '<p class="memory-empty">No discoveries yet. Words and items appear here after you earn them in vocabulary levels, stories, or festivals.</p>'}</div>`;
+  memoryPage=Math.min(memoryPage,Math.max(0,Math.ceil(collectedMemories.length/6)-1));
+  body.innerHTML = `<p class="eyebrow">LITTLE DISCOVERIES, BIG MEMORIES</p><h2 id="activity-title">My memory book</h2><p>Your learned words and collected items travel home with Jelly.</p><div class="memory-grid">${collectedMemories.slice(memoryPage*6,memoryPage*6+6).map(card).join('') || '<p class="memory-empty">No discoveries yet. Words and items appear here after you earn them in vocabulary levels, stories, or festivals.</p>'}</div>${collectedMemories.length>6?`<nav class="memory-pagination" aria-label="Memory pages"><button class="secondary" id="memory-prev" ${memoryPage===0?'disabled':''}>← Back</button><span role="status">Page ${memoryPage+1} of ${Math.ceil(collectedMemories.length/6)}</span><button class="secondary" id="memory-next" ${(memoryPage+1)*6>=collectedMemories.length?'disabled':''}>Next →</button></nav>`:''}`;
+  for(const [id,step]of [['memory-prev',-1],['memory-next',1]])$(id)?.addEventListener('click',()=>{memoryPage+=step;renderActivity();$(id)?.focus();});
   body.querySelectorAll('.word-replay').forEach(b => b.addEventListener('click', () => speak(b.dataset.word,window.JOURNEYS[b.dataset.lang].speech,b)));
  } else if (activity === 'festival-feedback') {
   const item=c.festivalItems[state.festivalMission||0];
