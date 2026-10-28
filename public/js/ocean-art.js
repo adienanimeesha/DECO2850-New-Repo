@@ -110,7 +110,18 @@ const lessonPictures = Object.freeze({
   raster:true,
  }])),
 });
+// Prepared images contain the complete artwork, no captions, and safe padding.
+const vocabularyPictures = Object.freeze(Object.fromEntries([
+ ['book','ball','cup','chair','apple'],
+ ['table','pencil','bag','shoe','hat'],
+ ['fish','rabbit','water','rice','vegetables'],
+].flatMap((items, index) => items.map(name => [`vocabulary-${name}`, {
+ color:`/jelly_vocabulary_assets/prepared/color/level_${index+1}/${name}.png`,
+ outline:`/jelly_vocabulary_assets/prepared/black_and_white/level_${index+1}/${name}.png`,
+ raster:true,
+}]))));
 function asset(icon) {
+ if(vocabularyPictures[icon])return vocabularyPictures[icon];
  if(lessonPictures[icon])return lessonPictures[icon];
  const code=openMoji[icon],project=projectStickers.has(icon);
  if(!code&&!project)return null;
@@ -238,15 +249,16 @@ function canvasIcon(ctx, icon, x, y, size) {
  if(asset(icon)?.raster){
   // Fit the complete source illustration; portrait lanterns and rabbits must
   // retain their proportions inside the existing floating interaction disc.
-  const ratio=Math.min(w/im.naturalWidth,h/(im.naturalHeight||im.naturalWidth));
-  const width=im.naturalWidth*ratio,height=(im.naturalHeight||im.naturalWidth)*ratio;
+  const sourceWidth=im.naturalWidth,sourceHeight=im.naturalHeight||im.naturalWidth;
+  const ratio=Math.min(w/sourceWidth,h/sourceHeight);
+  const width=sourceWidth*ratio,height=sourceHeight*ratio;
   ctx.drawImage(im,x-width/2,y-height/2,width,height);
   return;
  }
  ctx.drawImage(im,x-w/2,y-h/2,w,h);
 }
 const images = {};
-for (const key of new Set([...Object.keys(icons),...Object.keys(openMoji),...projectStickers])) {
+for (const key of new Set([...Object.keys(icons),...Object.keys(openMoji),...projectStickers,...Object.keys(vocabularyPictures)])) {
  const im = new Image(),sticker=asset(key);
  im.src = sticker ? sticker.color : 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg(key));
  images[key]=im;

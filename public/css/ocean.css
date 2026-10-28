@@ -274,7 +274,7 @@ body.immersive-page{display:block;width:100%;height:100dvh;min-height:0;margin:0
 .chinese-scene [data-chinese-choice]{cursor:default;outline:none}
 .chinese-scene .choice-active{cursor:pointer;filter:drop-shadow(0 0 11px #fff4a8)}
 .chinese-scene .choice-active:focus-visible{filter:drop-shadow(0 0 17px #fff) drop-shadow(0 0 8px #e59bd7)}
-.rhyme-paper{position:relative;width:min(330px,100%);aspect-ratio:1;margin:17px auto;border:3px solid #e0cce8;border-radius:22px;overflow:hidden;background:#fff;touch-action:none}.rhyme-paper .colour-base,.rhyme-paper .colour-lines,.rhyme-paper canvas{position:absolute;inset:0;width:100%;height:100%;aspect-ratio:1;margin:0}.colour-base{z-index:1}.rhyme-paper canvas{z-index:2;touch-action:none}.colour-lines{z-index:3;pointer-events:none}.colour-base svg,.colour-lines svg{display:block;width:100%;height:100%;padding:22px}.rhyme-paper canvas{padding:22px}.rhyme-palette{display:flex;justify-content:center;gap:12px;margin:16px 0}.rhyme-palette button{width:34px;height:34px;border:3px solid #fff;border-radius:50%;box-shadow:0 0 0 1px #d6c0e3}.rhyme-palette button[aria-pressed=true]{box-shadow:0 0 0 3px #9f7ab5;transform:scale(1.08)}.paint-tools{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}.paint-tools button{font-size:.8rem;padding:10px 14px}#change-rhyme-object{margin-top:16px;font-size:.78rem}.memory-card img{display:block;width:100%;height:100%;object-fit:contain}
+.rhyme-paper{position:relative;width:min(330px,100%);aspect-ratio:1;margin:17px auto;border:3px solid #e0cce8;border-radius:22px;overflow:hidden;background:#fff;touch-action:none}.rhyme-paper .colour-base,.rhyme-paper .colour-lines,.rhyme-paper canvas{position:absolute;inset:0;width:100%;height:100%;aspect-ratio:1;margin:0}.colour-base{z-index:1}.rhyme-paper canvas{z-index:2;touch-action:none}.colour-lines{z-index:3;pointer-events:none}.colour-base>svg,.colour-lines>svg{display:block;width:100%;height:100%;padding:22px}.rhyme-paper canvas{padding:22px}.rhyme-palette{display:flex;justify-content:center;gap:12px;margin:16px 0}.rhyme-palette button{width:34px;height:34px;border:3px solid #fff;border-radius:50%;box-shadow:0 0 0 1px #d6c0e3}.rhyme-palette button[aria-pressed=true]{box-shadow:0 0 0 3px #9f7ab5;transform:scale(1.08)}.paint-tools{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}.paint-tools button{font-size:.8rem;padding:10px 14px}#change-rhyme-object{margin-top:16px;font-size:.78rem}.memory-card img{display:block;width:100%;height:100%;object-fit:contain}
 .rhyme-paper canvas{padding:0;inset:22px;width:calc(100% - 44px);height:calc(100% - 44px)}
 
 .festival-discovery{display:flex;justify-content:center;align-items:center;gap:24px;margin:12px auto}.festival-discovery svg{width:110px;height:126px}.festival-discovery svg+svg{width:85px;height:85px}
@@ -322,6 +322,29 @@ body.immersive-page{display:block;width:100%;height:100dvh;min-height:0;margin:0
 .unlock-copy h2{font-size:clamp(1.6rem,4vw,2.6rem)}
 @media(max-height:500px) and (orientation:landscape){.unlock-burst{padding:18px;width:min(580px,calc(100vw - 24px))}.unlock-copy{padding:16px 24px}.unlock-book,.unlock-copy .eyebrow{display:none}.unlock-copy h2{font-size:1.8rem}.unlock-actions{flex-direction:row;flex-wrap:wrap;justify-content:center;gap:6px 14px}.unlock-copy p:not(.eyebrow){margin:7px auto 12px}}
 
-.festival-story-button{z-index:6;background:#fff5e9;border:2px solid #c4a9d5;border-radius:20px;font-size:2rem;box-shadow:0 3px 10px #63899f33}
+.festival-story-button{z-index:6;background:transparent;border:0;box-shadow:none}.festival-story-button img{display:block;width:100%;height:100%;object-fit:contain}
 
 .jade-rabbit-discovery{margin:8px 16px;padding:10px 14px;border:1px solid #c5aed6;border-radius:14px;background:#fff7e9;color:#574366;font-size:.85rem;line-height:1.5}.jade-rabbit-discovery summary{cursor:pointer;font-weight:700}.jade-rabbit-discovery p{margin:8px 0}.jade-rabbit-discovery small{display:block}
+
+.learning-guidance #hear-learning-guidance{pointer-events:auto;align-self:center;border:1px solid #d6c3e4;border-radius:9px;padding:6px 10px;background:#fff9ed;color:#654b7e;font:inherit;font-size:.72rem;cursor:pointer}
+
+#hear-festival-instructions{pointer-events:auto;align-self:flex-start;border:1px solid #c3dfe4;border-radius:8px;background:#e6f2f2;color:#548394;padding:5px 9px;font:inherit;font-size:.72rem;cursor:pointer}
+
+.room-music-toggle{position:fixed;z-index:60;left:max(80px,env(safe-area-inset-left));bottom:max(18px,env(safe-area-inset-bottom));border:1px solid #cdb8e0;border-radius:12px;padding:9px 12px;background:#fff9eff0;color:#654b7e;font-size:.78rem;font-weight:800;min-height:40px;cursor:pointer}
+
+.wardrobe-guide{position:absolute;left:84%;top:28%;transform:translateX(-50%);z-index:8;pointer-events:none;text-align:center;color:#654b7e;font-weight:bold}.wardrobe-guide span{display:block;font-size:clamp(38px,6vw,72px);line-height:1;color:#fff193;filter:drop-shadow(0 2px 2px #72568a);animation:wardrobe-point 1.2s ease-in-out infinite}.wardrobe-guide small{display:block;background:#fffbea;border:2px solid #dfc6e8;border-radius:12px;padding:5px 8px;max-width:170px}@keyframes wardrobe-point{50%{transform:translateY(8px)}}@media(prefers-reduced-motion:reduce){.wardrobe-guide span{animation:none}}
+
+/* Arrow tips use the same fitted sprite bounds as the canvas furniture. */
+.learning-guidance,.storybook-guidance,.wardrobe-guide{animation:none}
+.learning-guidance::after{display:none}
+.guidance-arrow,.storybook-guidance-arrow,.wardrobe-guide>span{position:absolute;display:block;margin:0;line-height:1;text-align:center;transform:none;transform-origin:50% 100%;animation:room-guide-pulse 1.4s ease-in-out infinite;pointer-events:none}
+
+@keyframes room-guide-pulse{0%,100%{transform:scale(1);opacity:.85}50%{transform:scale(1.08,1.16);opacity:1}}
+@media(prefers-reduced-motion:reduce){.guidance-arrow,.storybook-guidance-arrow,.wardrobe-guide>span{animation:none!important;transform:none}}
+
+/* High contrast pointers keep their tip anchored while pulsing. */
+.guidance-arrow,.storybook-guidance-arrow,.wardrobe-guide>span,.memory-guidance-arrow{z-index:10;color:#fff23f;font-weight:1000;-webkit-text-stroke:2px #57326f;text-shadow:0 3px 0 #57326f,0 0 5px #fff,0 0 15px #fff69c;filter:drop-shadow(0 2px 3px #422352);opacity:1}
+.memory-shelf-guidance{position:absolute;z-index:9;box-sizing:border-box;width:min(310px,calc(100% - 24px));padding:12px 16px;border:3px solid #fff8e8;border-radius:20px;background:#fff9e8f5;color:#654b7e;box-shadow:0 6px 0 #9d76ad55;display:flex;flex-direction:column;gap:6px;text-align:center;font-size:clamp(.75rem,1.3vw,.95rem)}
+.memory-guidance-arrow{position:absolute;display:block;line-height:1;text-align:center;transform-origin:50% 100%;animation:room-guide-pulse 1.4s ease-in-out infinite;pointer-events:none}
+#continue-memory-guide{align-self:center;border:2px solid #b491c8;border-radius:10px;background:#fff9ed;color:#654b7e;padding:7px 16px;font:inherit;font-weight:bold}
+@media(prefers-reduced-motion:reduce){.memory-guidance-arrow{animation:none}}

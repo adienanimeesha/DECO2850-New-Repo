@@ -5,7 +5,8 @@ let roomLocked = false, activeTrip = -1, activePhase = null, autoPath = [], auto
 let festivalApproach = null, areaPending = false;
 let storyProximityArmed = true;
 let memoryProximityArmed = true;
-let wardrobeProximityArmed = true;
+let wardrobeProximityArmed = true,jellySpeaking=false;
+window.addEventListener('jelly-speech',event=>{jellySpeaking=event.detail.speaking&&event.detail.role==='jelly';});
 let storyVoiceTimer = null, storyVoiceListener = null;
 const art = window.OceanArt;
 const storyBackgroundFiles = {
@@ -41,6 +42,15 @@ function storyBackground(language=journey.state?.language,index=pageIndex) {
 // exclude the pack's soft transparent margins; scene boxes are logical fits.
 const storyObjectFiles = ["storybook-cloud-left.png","storybook-cloud-right.png","storybook-fish.png","storybook-flower.png","storybook-id-canopy-left.png","storybook-id-canopy-right.png","storybook-id-coastal-flag-left.png","storybook-id-coastal-flag-right.png","storybook-id-crowd-lilac.png","storybook-id-crowd-peach.png","storybook-id-crowd-pink.png","storybook-id-festival-bunting.png","storybook-id-nyale-school-lilac.png","storybook-id-nyale-school-peach.png","storybook-id-nyale-school-pink.png","storybook-id-nyale-target.png","storybook-id-plant-leafy-a.png","storybook-id-plant-leafy-b.png","storybook-id-plant-pink.png","storybook-id-plant-yellow.png","storybook-invitation.png","storybook-zh-family-first.png","storybook-zh-family-second.png","storybook-zh-serving-tray.png","storybook-id-mandalika.png","storybook-id-neighbour-left.png","storybook-id-neighbour-right.png","storybook-id-prince-blue.png","storybook-id-prince-green.png"];
 const storyObjectBounds = {"invitation":[1254,1254,76,249,1178,1032],"zh-family-first":[1024,1536,195,21,847,1516],"zh-family-second":[1024,1536,202,19,857,1518],"zh-serving-tray":[1536,1024,78,244,1456,825]};
+const storyPropAssets={
+ elixir:{path:'/assetNEW/magical-elixir.png',size:[1310,1200],bounds:[375,80,934,1085]},
+ heart:{path:'/assetNEW/heart-storybook.png',size:[1310,1200],bounds:[195,214,1114,994]}
+};
+function storyPropImage(name,x,y,width,height){
+ const {path,size:[w,h],bounds:[l,t,r,b]}=storyPropAssets[name],scale=Math.min(width/(r-l),height/(b-t));
+ return `<image data-story-prop="${name}" href="${path}" x="${x+(width-(r-l)*scale)/2-l*scale}" y="${y+(height-(b-t)*scale)/2-t*scale}" width="${w*scale}" height="${h*scale}" preserveAspectRatio="xMidYMid meet" pointer-events="none"/>`;
+}
+for(const prop of Object.values(storyPropAssets))preloadStoryPicture(prop.path);
 function storyObjectImage(name,x,y,width,height) {
  const [w,h,l,t,r,b]=storyObjectBounds[name],scale=Math.min(width/(r-l),height/(b-t));
  return `<image data-story-object="${name}" href="/assetNEW/storybook-objects/storybook-${name}.png" x="${x+(width-(r-l)*scale)/2-l*scale}" y="${y+(height-(b-t)*scale)/2-t*scale}" width="${w*scale}" height="${h*scale}" preserveAspectRatio="xMidYMid meet" pointer-events="none"/>`;
@@ -55,7 +65,11 @@ function storyPagePictures(language,index) {
  if(language==='indonesian'){
   if([0,2,4].includes(index))pictures.push(preloadStoryPicture('/assetNEW/perahu.png'));
   if(index===0)pictures.push(preloadStoryPicture('/assetNEW/seashell.png'));
- }else if(language==='chinese'&&[2,4].includes(index))pictures.push(preloadStoryPicture('/assetNEW/table.png'));
+ }else if(language==='chinese'){
+  if([1,2,4].includes(index))pictures.push(preloadStoryPicture('/assetNEW/table.png'));
+  if([1,2].includes(index))pictures.push(preloadStoryPicture(storyPropAssets.elixir.path));
+  if(index===1)pictures.push(preloadStoryPicture(storyPropAssets.heart.path));
+ }
  return pictures.filter(Boolean);
 }
 for(const names of Object.values(storyBackgroundFiles))for(const name of names)preloadStoryPicture(`/assetNEW/storybook-${name}.png`);
@@ -114,10 +128,61 @@ let learning = null, learningOptions = null, learningApproach = null;
 let learningStoryUnlocked = false;
 const learningBusy = () => Boolean(learning?.blocked);
 
-// The original prototype's canvas loop, axis-by-axis movement, collision boxes,
-// and pointer D-pad are kept here. Art is drawn directly so no assets are needed.
+// Interaction geometry stays in scene coordinates while the supplied room art
+// replaces the background and furniture, with drawn fallbacks during loading.
 const canvas = document.querySelector("#game");
 const context = canvas.getContext("2d");
+const commonRoomPictures={
+ background:{path:'/underwater_commonroom/commonroombackground.png'},
+ 'background-indonesian':{path:'/assetNEW/underwater-room-nusantara-balanced.png'},
+ 'background-chinese':{path:'/assetNEW/underwater-room-chinese-balanced.png'},
+ 'pearl-shelf':{path:'/underwater_commonroom/bookshelf.png',x:77,y:267,width:180,height:153},
+ 'memory-shelf':{path:'/underwater_commonroom/memory-shelf.png',x:72,y:449,width:201,height:108},
+ vanity:{path:'/underwater_commonroom/wardrobe.png',x:717,y:257,width:180,height:179},
+ 'story-table':{path:'/underwater_commonroom/storybook.png',x:395,y:295,width:182,height:164},
+};
+let roomSceneReady=false;
+for(const picture of Object.values(commonRoomPictures)){picture.image=new Image();picture.image.onload=()=>{if(roomSceneReady)draw();};picture.image.src=picture.path;}
+function pictureReady(picture){return picture.image.complete&&picture.image.naturalWidth>0;}
+function roomPictureBounds(picture){
+ const image=picture.image,scale=art.screenScale(canvas);
+ const width=image.naturalWidth,height=image.naturalHeight||width;
+ const fit=Math.min(picture.width*scale.x/width,picture.height*scale.y/height);
+ const w=width*fit/scale.x,h=height*fit/scale.y;
+ return{x:picture.x+(picture.width-w)/2,y:picture.y+(picture.height-h)/2,width:w,height:h};
+}
+function drawRoomPicture(picture){
+ const box=roomPictureBounds(picture);
+ context.drawImage(picture.image,box.x,box.y,box.width,box.height);
+}
+function positionRoomGuides(){
+ const rect=canvas.getBoundingClientRect(),parent=canvas.parentElement.getBoundingClientRect();
+ if(!rect.width||!rect.height)return;
+ const sx=rect.width/960,sy=rect.height/620,size=Math.max(54,Math.min(88,rect.width*.075));
+ for(const[id,key,selector]of [['learning-guidance','pearl-shelf','.guidance-arrow'],['storybook-guidance','story-table','.storybook-guidance-arrow'],['wardrobe-guide','vanity','span'],['memory-shelf-guidance','memory-shelf','.memory-guidance-arrow']]){
+  const guide=document.getElementById(id),picture=commonRoomPictures[key];
+  if(!guide||guide.hidden||!pictureReady(picture))continue;
+  const arrow=guide.querySelector(selector);if(!arrow)continue;
+  const box=roomPictureBounds(picture),targetX=(box.x+box.width/2)*sx,targetY=(box.y+box.height*.08)*sy;
+  const measured=guide.getBoundingClientRect(),width=measured.width,height=measured.height;
+  let left=Math.max(8,Math.min(rect.width-width-8,targetX-width/2));
+  let top=Math.max(8,targetY-size-height-16);
+  const mission=document.getElementById('mission-panel');
+  if(mission&&!mission.hidden&&mission.getClientRects().length){
+   const r=mission.getBoundingClientRect(),m={x:r.left-rect.left,y:r.top-rect.top,width:r.width,height:r.height};
+   const overlapsMission=(x,y)=>x<m.x+m.width+8&&x+width>m.x-8&&y<m.y+m.height+8&&y+height>m.y-8;
+   if(overlapsMission(left,top)){
+    const y=Math.max(8,Math.min(rect.height-height-8,Math.max(m.y+m.height+12,targetY-height/2)));
+    for(const x of [targetX+size/2+16,targetX-size/2-width-16])if(x>=8&&x+width<=rect.width-8&&!overlapsMission(x,y)){left=x;top=y;break;}
+   }
+  }
+  guide.style.left=(rect.left-parent.left+left)+'px';guide.style.top=(rect.top-parent.top+top)+'px';guide.style.transform='none';
+  arrow.textContent='↓';arrow.style.left=(targetX-left-size/2)+'px';arrow.style.top=(targetY-top-size)+'px';
+  arrow.style.width=arrow.style.height=arrow.style.fontSize=size+'px';
+  arrow.dataset.targetX=targetX;arrow.dataset.targetY=targetY;arrow.dataset.furniture=key;
+ }
+}
+
 const dPad = document.querySelector("#d-pad");
 const dPadButtons = dPad.querySelectorAll("[data-direction]");
 const interaction = document.querySelector("#interaction");
@@ -127,32 +192,39 @@ const backdrop = document.querySelector("#storybook-backdrop");
 const progressCount = document.querySelector("#progress-count");
 const objective = document.querySelector("#objective");
 const world = { width: 960, height: 620, bounds: { left: 49, right: 911, top: 127, bottom: 567 } };
-const player = { x: 486, y: 408, radius: 21, speed: 215, facingX: 0, facingY: 1, moving: false };
+const player = { x: 486, y: 515, radius: 21, speed: 215, facingX: 0, facingY: 1, moving: false };
 const roomFurniture = [
-  { id: "memory-shelf", x: 83, y: 348, width: 179, height: 81 },
-  { id: "pearl-shelf", x: 77, y: 155, width: 180, height: 63 },
-  { id: "vanity", x: 731, y: 164, width: 152, height: 76 },
-  { id: "story-table", x: 413, y: 239, width: 145, height: 77 },
-  { id: "anemone-pot", x: 785, y: 441, width: 65, height: 63 },
+  { id: "memory-shelf", x: 83, y: 489, width: 179, height: 58 },
+  { id: "pearl-shelf", x: 89, y: 354, width: 156, height: 60 },
+  { id: "vanity", x: 731, y: 367, width: 152, height: 63 },
+  { id: "story-table", x: 433, y: 395, width: 105, height: 59 },
+  { id: "anemone-pot", x: 850, y: 441, width: 55, height: 63 },
 ];
 let furniture = roomFurniture;
 // Painted silhouettes extend beyond the physical collision boxes. Include the
-// book's label/glow, furniture shadows, swaying plants, shells and floor coral.
+// book's label/glow, furniture shadows and the swaying anemone plant.
 const roomVisualObstacles = [
- {x:62,y:337,width:221,height:117}, {x:77,y:110,width:180,height:112},
- {x:717,y:103,width:180,height:179}, {x:373,y:196,width:226,height:184},
- {x:774,y:397,width:88,height:130}, {x:20,y:450,width:97,height:130},
- {x:812,y:452,width:116,height:130}, {x:278,y:500,width:515,height:80},
- ...Array.from({length:11},(_,i)=>({x:77+i*77,y:274+(i%3)*95,width:12,height:12}))
+ {x:62,y:441,width:221,height:126}, {x:77,y:267,width:180,height:153},
+ {x:717,y:257,width:180,height:179}, {x:385,y:285,width:202,height:184},
+ {x:839,y:397,width:77,height:130}
 ];
+function roomBackgroundFrame(){
+ const selected=commonRoomPictures['background-'+journey.state?.language];
+ const picture=selected&&pictureReady(selected)?selected:commonRoomPictures.background;
+ const image=picture.image,scale=art.screenScale(canvas),aspect=960*scale.x/(620*scale.y);
+ const iw=image.naturalWidth||1672,ih=image.naturalHeight||941;
+ const sw=Math.min(iw,ih*aspect),sh=Math.min(ih,iw/aspect);
+ // Keep the floor visible on wide screens, and use the same crop for placement.
+ return{picture,sourceX:(iw-sw)/2,sourceY:ih-sh,sourceWidth:sw,sourceHeight:sh,floorTop:Math.max(127,Math.ceil((ih*.66-(ih-sh))*620/sh)+4)};
+}
 function learningGeometry() {
  const rect=canvas.getBoundingClientRect();
- const ui=[...document.querySelectorAll('.d-pad,.journey-tools,.mailbox-button,.mission-panel,.vocabulary-controls')]
+ const ui=[...document.querySelectorAll('.d-pad,.journey-tools,.mailbox-button,.mission-panel,.vocabulary-controls,#music-toggle')]
   .filter(node=>!node.hidden&&node.getClientRects().length).map(node=>{
    const box=node.getBoundingClientRect();
    return {x:(box.left-rect.left)*960/rect.width,y:(box.top-rect.top)*620/rect.height,width:box.width*960/rect.width,height:box.height*620/rect.height};
   });
- return {bounds:world.bounds,furniture,player:{...player},visualObstacles:roomVisualObstacles,reserved:ui};
+ return {bounds:world.bounds,placementBounds:{...world.bounds,top:roomBackgroundFrame().floorTop,bottom:world.height},furniture,player:{...player},visualObstacles:roomVisualObstacles,reserved:ui};
 }
 const keysDown = new Set();
 const touchPointers = new Map();
@@ -173,7 +245,7 @@ let pageTurnTimer = 0, pageTurnVersion = 0;
 const introState = {
   active: false, playing: true, beat: 0, elapsed: 0, totalTime: 0, lastTime: 0,
   narrationDone: false, speechStarted: false, speaking: false, speechToken: 0,
-  interactionDone: false, invitedPrinces: new Set(), completed: false,
+  elixirGiven:false,elixirWaiting:false, interactionDone: false, invitedPrinces: new Set(), completed: false,
   completedChapters: chapters.map(() => false), reactionTime: 0, audioUnavailable: false, frame: 0,
 };
 
@@ -198,7 +270,7 @@ window.addEventListener("keydown", (event) => {
 window.addEventListener("keyup", (event) => keysDown.delete(event.code));
 window.addEventListener("blur", clearMovement);
 window.addEventListener('pagehide',()=>learning?.stop());
-document.addEventListener('visibilitychange',()=>{if(document.hidden)learning?.cancelNarration();});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)learning?.pauseNarration();else learning?.resumeNarration();});
 function clearMovement() {
   learning?.setTarget(null);
   autoPath = []; autoTarget = null;
@@ -295,10 +367,10 @@ function stations() {
  }
  if(learning?.active) return learning.objects.map(item=>({...item,id:'@vocabulary/'+item.id,vocabularyId:item.id}));
  const common = [
-  {id:'book',kind:'book',label:'Read the cultural story',x:486,y:269,radius:104},
-  {id:'learning-bookshelf',kind:'learning-bookshelf',label:'Choose a vocabulary level',x:180,y:214,radius:95},
-  {id:'wardrobe',kind:'wardrobe',label:'Try on a festival outfit',x:810,y:212,radius:100},
-  ...(journey.memories.length?[{id:'memories',kind:'memories',label:'Open your memory book',x:190,y:413,radius:112}]:[])
+  {id:'book',kind:'book',label:'Read the cultural story',x:486,y:393,radius:104},
+  {id:'learning-bookshelf',kind:'learning-bookshelf',label:'Choose a vocabulary level',x:167,y:400,radius:95},
+  {id:'wardrobe',kind:'wardrobe',label:'Try on a festival outfit',x:807,y:396,radius:100},
+  ...(journey.memories.length?[{id:'memories',kind:'memories',label:'Open your memory book',x:172,y:510,radius:130}]:[])
  ];
  if(!learningOptions)return common.filter(s=>s.kind!=='wardrobe'||(journey.wardrobeReady ?? (journey.state?.storyDone&&journey.state?.invited)));
  return common.filter(s=>(s.kind!=='book'||learningStoryUnlocked) && (s.kind!=='wardrobe'||journey.wardrobeReady));
@@ -422,6 +494,11 @@ canvas.addEventListener('pointerup', e => {
  if(journey.locked||storyOpen||roomLocked||learningBusy()) return;
  const rect=canvas.getBoundingClientRect(),p={x:(e.clientX-rect.left)*960/rect.width,y:(e.clientY-rect.top)*620/rect.height};
  if(learning?.active){const item=learning.hitTest(p);if(item)walkTo('@vocabulary/'+item.id);return;}
+ if(journey.state?.phase==='room'){
+  const ids={book:'story-table','learning-bookshelf':'pearl-shelf',wardrobe:'vanity',memories:'memory-shelf'};
+  const hit=stations().find(station=>{const picture=commonRoomPictures[ids[station.kind]];return picture&&p.x>=picture.x&&p.x<=picture.x+picture.width&&p.y>=picture.y&&p.y<=picture.y+picture.height;});
+  if(hit){walkTo(hit.id);return;}
+ }
  const closest=stations().map(s=>({...s,d:distance(p,s)})).sort((a,b)=>a.d-b.d)[0];
  if(closest&&closest.d<85) walkTo(closest.id);
 });
@@ -447,6 +524,7 @@ function openStory(selected = false) {
   clearMovement();
   stopNarration();
   backdrop.hidden = false;
+  window.dispatchEvent(new CustomEvent('jelly-story-visibility',{detail:{open:true,language:journey.state?.language}}));
   interaction.hidden = true;
   renderPage();
   document.querySelector("#close-story").focus();
@@ -466,6 +544,7 @@ function closeStory() {
   clearMovement();
   backdrop.hidden = true;
   leaveIntro();
+  window.dispatchEvent(new CustomEvent('jelly-story-visibility',{detail:{open:false}}));
   stopNarration();
   updateInteraction();
   (lastFocus || canvas).focus();
@@ -646,7 +725,7 @@ function renderPage(startNarration = true) {
   document.querySelector(".storybook").classList.add("is-animated");
   introElement("animated-scene").hidden = false;
   introElement("scene-chapter-title").textContent =
-    "CHAPTER " + (pageIndex + 1) + " · " + chapter.title.toUpperCase();
+    "PAGE " + (pageIndex + 1) + " · " + chapter.title.toUpperCase();
   introElement("scene-next").textContent =
     pageIndex === storyChapterCount - 1 ? "Finish story →" : "Next page →";
   introElement("book-page-marker").textContent = "PAGE " + (pageIndex + 1) + " OF " + storyChapterCount;
@@ -730,9 +809,11 @@ function configureChapterStage() {
   introElement("scene-sun").setAttribute("fill", chapter === 3 ? "#fff7e5" : "#fff4b5");
   introElement("scene-sun").setAttribute("cy", chapter === 4 ? "142" : "93");
   introElement("scene-stage").querySelector("svg").setAttribute("aria-label",
-    "Animated chapter " + (chapter + 1) + ": " + chapters[chapter].title);
+    "Animated page " + (chapter + 1) + ": " + chapters[chapter].title);
 }
 function cancelIntroSpeech() {
+  recordedStorySpeech?.cancel();
+  recordedStoryActive=false;
   introState.speechToken += 1;
   introState.speaking = false;
   introState.continueSpeech = null;
@@ -750,7 +831,7 @@ function enterIntro() {
   introState.lastTime = performance.now();
   introState.audioUnavailable = false;
   introState.completed = false;
-  introState.interactionDone = false;
+  introState.interactionDone = false;introState.elixirGiven=false;introState.elixirWaiting=false;
   introState.invitedPrinces = new Set();
   setSvgHidden("prince-left-invite", !introState.invitedPrinces.has("prince-left"));
   setSvgHidden("prince-right-invite", !introState.invitedPrinces.has("prince-right"));
@@ -806,6 +887,7 @@ function startIntroBeat(index, speak = true) {
     introStatus("Page complete · choose where to go next");
     introElement("scene-next").disabled = false;
   }
+  if(journey.state.language==='chinese'&&pageIndex===2&&index===1&&!introState.elixirGiven)showElixirPrompt();
   applyIntroVisual();
 }
 function replayIntroNarration() {
@@ -825,6 +907,7 @@ function replayIntroNarration() {
   speakIntroLine(chapters[pageIndex].beats[introState.beat].line);
 }
 function storySpeechParts(line) {
+  line=window.JellyGuidanceContent?.spokenText(line)||line;
   // Pinyin remains in the subtitle, but is not sent to an English voice.
   // Pronounce the Hanzi itself once with a Mandarin voice instead.
   if(journey.state?.language==='chinese') {
@@ -850,8 +933,35 @@ function storyVoice(lang) {
   }
   return voices.find(voice=>normalize(voice)==='en-us') || voices.find(voice=>/^en(-|$)/.test(normalize(voice)));
 }
-function speakIntroLine(line,{hint=false}={}) {
+let recordedStorySpeech=null,recordedStoryActive=false;
+function speakIntroLine(line,{hint=false,after=null,forceRole=null}={}) {
+  const role=forceRole||(hint?'narrator':'jelly');
+  const recording=window.VocabularySpeech?.recordingFor(line,journey.content.speech,role);
+  if(recording && !introState.audioUnavailable){
+    const token=introState.speechToken;
+    recordedStorySpeech ||= window.VocabularySpeech.create({
+      onSpeaking(value,role='jelly'){
+        introState.speaking=value&&role==='jelly';
+        if(value){introState.speechStarted=true;introStatus(role==='jelly'?'Jelly is speaking':'Listen to the guide');}
+      },
+      onStatus(message){if(message)introStatus(message);}
+    });
+    // The recording covers the full line. Preserve language segmentation if
+    // playback fails rather than reading English with a Mandarin device voice.
+    recordedStoryActive=true;
+    recordedStorySpeech.play([{text:line,lang:journey.content.speech,role,audio:recording,fallbackParts:storySpeechParts(line).map(part=>({...part,role}))}],{onComplete({unavailable}){
+      if(!introState.active||token!==introState.speechToken)return;
+      recordedStoryActive=false;
+      if(unavailable){introState.audioUnavailable=true;}
+      if(hint){introState.speaking=false;applyNarratorVisual();}
+      else finishIntroSpeech(token);
+      if(after&&!unavailable)speakIntroLine(after,{hint:true,forceRole:'jelly'});
+    }});
+    if(!introState.playing)recordedStorySpeech.pause();
+    return;
+  }
   if (!("speechSynthesis" in window) || introState.audioUnavailable) return;
+  window.VocabularySpeech?.cancelActive?.();
   const token=introState.speechToken,parts=storySpeechParts(line);
   let index=0;
   const current=()=>introState.active && token===introState.speechToken;
@@ -865,6 +975,7 @@ function speakIntroLine(line,{hint=false}={}) {
     if(index>=parts.length) {
       if(hint){introState.speaking=false;applyNarratorVisual();}
       else finishIntroSpeech(token);
+      if(after)speakIntroLine(after,{hint:true,forceRole:'jelly'});
       return;
     }
     const part=parts[index],voice=storyVoice(part.lang);
@@ -894,7 +1005,7 @@ function speakIntroLine(line,{hint=false}={}) {
       speech.pitch=part.lang!=='en-US'?1:1.15;
       let ended=false;
       speech.onstart=()=>{
-        if(current()){introState.speechStarted=true;introState.speaking=true;introStatus('Jelly is speaking');}
+        if(current()){introState.speechStarted=true;introState.speaking=role==='jelly';introStatus('Jelly is speaking');}
       };
       speech.onend=()=>{
         if(ended||!current())return;
@@ -918,6 +1029,7 @@ function finishIntroSpeech(token) {
 function toggleIntroPlayback() {
   if (!introState.active) return;
   introState.playing = !introState.playing;
+  if(recordedStorySpeech){if(introState.playing)recordedStorySpeech.resume();else recordedStorySpeech.pause();}
   if ("speechSynthesis" in window) {
     if (introState.playing) window.speechSynthesis.resume();
     else window.speechSynthesis.pause();
@@ -954,12 +1066,12 @@ function chooseIntroObject(name) {
   }
   if (pageIndex === 0 && name !== "story-shell") {
     introStatus(name === "story-fish" ? "That's a fish. Try the seashell!" : "That's a flower. Try the seashell!");
-    speakIntroHint("Good try! Look for the seashell near the path.");
+    speakIntroHint("Good try! Look for the seashell near the path.",{repeatRequest:true});
     return;
   }
   if (pageIndex === 3 && name !== "nyale-target") {
     introStatus("That's a fish. Look for the colourful nyale!");
-    speakIntroHint("Good try! The nyale is the colourful wiggling creature.");
+    speakIntroHint("Good try! The nyale is the colourful wiggling creature.",{repeatRequest:true});
     return;
   }
   if (pageIndex === 0) completeIntroInteraction("Great find! Jelly has a new word for you.");
@@ -967,11 +1079,11 @@ function chooseIntroObject(name) {
   if (pageIndex === 3) completeIntroInteraction("You spotted a nyale! Watch it wiggle.");
   if (pageIndex === 4) completeIntroInteraction("The boat is sailing! The coast is celebrating.");
 }
-function speakIntroHint(message) {
+function speakIntroHint(message,{repeatRequest=false,role='narrator'}={}) {
   if (!introState.narrationDone || !("speechSynthesis" in window) ||
       introState.audioUnavailable || window.speechSynthesis.speaking) return;
   cancelIntroSpeech();
-  speakIntroLine(message,{hint:true});
+  speakIntroLine(message,{hint:true,forceRole:role,after:repeatRequest?chapters[pageIndex].beats[3].line:null});
 }
 function completeIntroInteraction(message) {
   introState.interactionDone = true;
@@ -1014,6 +1126,7 @@ function finishIntroPage() {
  });
 }
 function advanceIntroBeat() {
+ if(journey.state.language==='chinese'&&pageIndex===2&&introState.beat===1&&!introState.elixirGiven){showElixirPrompt();return;}
  if(introState.beat<3)startIntroBeat(introState.beat+1);
  else if(introState.beat===3&&introState.interactionDone)startIntroBeat(4);
  else if(introState.beat===4)finishIntroPage();
@@ -1030,7 +1143,7 @@ function tickIntro(time) {
     // case subtitles still progress; an utterance that is speaking is never cut off.
     const fallbackSeconds = Math.max(7, beat.line.length * .095);
     if (!introState.narrationDone && introState.elapsed >= fallbackSeconds &&
-        (!("speechSynthesis" in window) || !window.speechSynthesis.speaking)) {
+        !recordedStoryActive && !introState.speaking && (!("speechSynthesis" in window) || !window.speechSynthesis.speaking)) {
       introState.narrationDone = true;
       introState.speaking = false;
       if (introState.beat === 3) introStatus("Your turn · " + chapters[pageIndex].prompt);
@@ -1049,7 +1162,7 @@ function introEase(value) {
 }
 function applyNarratorVisual() {
   const state=introState,worldTime=state.totalTime;
-  const speaking=state.active && state.playing && (state.speaking || ((!("speechSynthesis" in window) || state.audioUnavailable) && !state.narrationDone));
+  const speaking=state.active && state.playing && state.speaking;
   introElement('narrator-mouth').setAttribute('ry',String(speaking?3+Math.abs(Math.sin(worldTime*13))*5:2));
   introElement('narrator-eye-a').setAttribute('ry',worldTime%4.6<.13?.6:4);
   introElement('narrator-eye-b').setAttribute('ry',worldTime%4.6<.13?.6:4);
@@ -1209,8 +1322,25 @@ function line(points, color, width = 4) {
   context.lineJoin = "round";
   context.stroke();
 }
+function drawRoomBubbles(time){
+ const scale=art.screenScale(canvas),seconds=reducedMotion?.matches?0:time/1000;
+ for(let i=0;i<64;i++){
+  const bubble=art.roomBubble(i,seconds);if(!bubble.alpha)continue;
+  const rx=bubble.radius*scale.unit/scale.x,ry=bubble.radius*scale.unit/scale.y;
+  context.save();context.globalAlpha=bubble.alpha;
+  ellipse(bubble.x,bubble.y,rx,ry,'#ffffff18','#eaffff99',1.5);
+  ellipse(bubble.x-rx*.3,bubble.y-ry*.35,rx*.2,ry*.2,'#ffffffaa');
+  context.restore();
+ }
+}
 function drawRoom(time) {
   if (journey.state?.phase === "festival") { drawFestival(time); return; }
+  const frame=roomBackgroundFrame(),picture=frame.picture;
+  if(pictureReady(picture)){
+    context.drawImage(picture.image,frame.sourceX,frame.sourceY,frame.sourceWidth,frame.sourceHeight,0,0,960,620);
+    drawRoomBubbles(time);
+    return;
+  }
   const water = context.createLinearGradient(0, 0, 0, 620);
   water.addColorStop(0, "#b7f5f7");
   water.addColorStop(0.4, "#84dce9");
@@ -1245,13 +1375,7 @@ function drawRoom(time) {
   roundedRect(906, 114, 21, 465, 10, "#a792d5");
   drawWindow(time);
   drawRoomDecor(time);
-  for (let i = 0; i < 18; i += 1) {
-    const bubble=art.roomBubble(i,time/1000);
-    if(!bubble.alpha)continue;
-    context.save();context.globalAlpha=bubble.alpha;
-    ellipse(bubble.x,bubble.y,bubble.radius,bubble.radius,"#ffffff18","#eaffff66",1.5);
-    context.restore();
-  }
+  drawRoomBubbles(time);
 }
 function drawWindow(time) {
   ellipse(483, 67, 105, 60, "#f5d2f2", "#916cb0", 6);
@@ -1333,6 +1457,18 @@ function drawCoralCluster(x, y, scale) {
   ellipse(0, 3, 45, 14, "#cc9bd9"); context.restore();
 }
 function drawFurniture(item, time) {
+  const picture=commonRoomPictures[item.id];
+  if(picture&&pictureReady(picture)){
+    context.save();
+    if(nearTarget&&({book:'story-table','learning-bookshelf':'pearl-shelf',wardrobe:'vanity',memories:'memory-shelf'}[nearTarget.kind]===item.id)){
+      context.shadowColor='#fff0ba';context.shadowBlur=14;
+    }
+    drawRoomPicture(picture);context.restore();
+    if(item.id==='memory-shelf')journey.memories.slice(-6).forEach((entry,index)=>art.canvasMemory(context,entry,107+(index%3)*59,496+Math.floor(index/3)*26,25));
+    if(item.id==='vanity')stationLabel('WARDROBE',807,245);
+    if(item.id==='story-table')stationLabel('STORYBOOK',486,283);
+    return;
+  }
   if(item.id === "vanity") {drawWardrobe(item,time);return;}
   const { x, y, width, height } = item;
   if (item.id === "memory-shelf") {
@@ -1413,7 +1549,7 @@ function drawJellyfish(time) {
       context.scale(scale.unit/scale.x,scale.unit/scale.y);context.scale(pulse,1/pulse);
       const festival=journey.state?.phase==='festival';
       context.drawImage(image,festival?-58:-44,festival?-69:-55,festival?116:88,festival?133:101);
-      if(learning?.speaking)ellipse(0,-7,2.6,3+Math.sin(time/85)**2*2,'#544770');
+      if(jellySpeaking||learning?.speaking)ellipse(0,-7,2.6,3+Math.sin(time/85)**2*2,'#544770');
       context.restore();
       return;
     }
@@ -1442,7 +1578,7 @@ function drawJellyfish(time) {
   const lookY = player.facingY;
   ellipse(-10 + lookX, -15 + lookY, 2.8, 3.5, "#544770");
   ellipse(10 + lookX, -15 + lookY, 2.8, 3.5, "#544770");
-  if(learning?.speaking) ellipse(lookX,-3+lookY,3.5,2+Math.sin(time/85)**2*2,'#544770');
+  if(jellySpeaking||learning?.speaking) ellipse(lookX,-3+lookY,3.5,2+Math.sin(time/85)**2*2,'#544770');
   else {
    context.beginPath(); context.moveTo(-4 + lookX, -5 + lookY);
    context.quadraticCurveTo(0 + lookX, 1 + lookY, 4 + lookX, -5 + lookY);
@@ -1470,6 +1606,7 @@ function gameLoop(time) {
   draw();
   requestAnimationFrame(gameLoop);
 }
+roomSceneReady=true;
 updateHud();
 updateInteraction();
 draw();
@@ -1492,9 +1629,12 @@ function stationLabel(text,x,y) {
  context.strokeText(text,0,0);context.fillText(text,0,0);context.restore();
 }
 function drawStations(time) {
+ const guide=document.getElementById('wardrobe-guide');
+ if(guide)guide.hidden=!(journey.state?.phase==='room'&&journey.wardrobeReady&&!journey.outfit&&!journey.locked&&!storyOpen&&!learning?.active);
  if(journey.state?.phase === 'festival') return;
- stationLabel('LEARNING BOOKSHELF',180,161);
- if(journey.memories.length) stationLabel('MEMORY SHELF',179,347);
+ positionRoomGuides();
+ stationLabel('LEARNING BOOKSHELF',pictureReady(commonRoomPictures['pearl-shelf'])?167:180,pictureReady(commonRoomPictures['pearl-shelf'])?255:161);
+ if(journey.memories.length) stationLabel('MEMORY SHELF',172,pictureReady(commonRoomPictures['memory-shelf'])?441:347);
 }
 function drawWornOutfit(time) {
  const o=journey.outfit; if(!o||o.id.startsWith('sasak-')||o.id.startsWith('hanfu-')) return;
@@ -1606,7 +1746,7 @@ function configureChineseStage() {
   // Retain the original painted geometry invisibly for the exact hit area;
   // the supplied complete pose replaces every visible body/face part.
   const character=[1,2].includes(pageIndex)?`<image data-legend-character="${name==='prince-left'?'change':'houyi'}" href="/assetNEW/storybook-zh-${name==='prince-left'?'change':'houyi'}.png" x="-65" y="245" width="130" height="200" preserveAspectRatio="xMidYMax meet"/>`:storyObjectImage(name==='prince-left'?'zh-family-first':'zh-family-second',-51,289,102,150);
-  const drawing=`<ellipse cx="0" cy="445" rx="44" ry="12" fill="#75979d33"/><g data-family-hit-area opacity="0"><path d="M-33 354Q0 333 33 354L43 439H-43Z" fill="${colour}" stroke="#a382ac" stroke-width="3"/><circle cx="0" cy="328" r="30" fill="#f1c3a6" stroke="#b88a9e" stroke-width="3"/><path d="M-29 326Q-37 283 3 291Q34 290 29 319Q11 304-3 313Z" fill="#7b668f"/><circle cx="-10" cy="328" r="3" fill="#62517b"/><circle cx="10" cy="328" r="3" fill="#62517b"/><path d="M-7 342Q0 348 7 342" fill="none" stroke="#b27d98" stroke-width="2"/><path d="M-30 369L-46 395M30 369L46 395" stroke="#edbaa1" stroke-width="10" stroke-linecap="round"/></g>${character}${interactive?`<g data-delivered="${name}" hidden><path d="M14 380Q10 365 24 372Q38 365 34 380L24 390Z" fill="#edb5d5"/></g>`:''}`;
+  const drawing=`<ellipse cx="0" cy="445" rx="44" ry="12" fill="#75979d33"/><g data-family-hit-area opacity="0"><path d="M-33 354Q0 333 33 354L43 439H-43Z" fill="${colour}" stroke="#a382ac" stroke-width="3"/><circle cx="0" cy="328" r="30" fill="#f1c3a6" stroke="#b88a9e" stroke-width="3"/><path d="M-29 326Q-37 283 3 291Q34 290 29 319Q11 304-3 313Z" fill="#7b668f"/><circle cx="-10" cy="328" r="3" fill="#62517b"/><circle cx="10" cy="328" r="3" fill="#62517b"/><path d="M-7 342Q0 348 7 342" fill="none" stroke="#b27d98" stroke-width="2"/><path d="M-30 369L-46 395M30 369L46 395" stroke="#edbaa1" stroke-width="10" stroke-linecap="round"/></g>${character}${interactive?`<g data-delivered="${name}" hidden>${storyPropImage('heart',11,366,26,24)}</g>`:''}`;
   return `<g data-family="${name}" transform="translate(${x} 0)">${interactive?choice(name,label,drawing):`<g data-story-explore="family" role="button" tabindex="-1" aria-label="Family member">${drawing}</g>`}</g>`;
  };
  const moon=icon(pageIndex===0?'sun':'moon',688,47,124);
@@ -1615,19 +1755,24 @@ function configureChineseStage() {
  const moonTarget=pageIndex===0?choice('story-shell','Sun',moon):`<g data-story-explore="moon" role="button" tabindex="-1" aria-label="Moon">${moon}</g>`;
  const rabbit=pageIndex!==4?'':icon('rabbit',pageIndex===4?420:400,255,140);
  const rabbitTarget=pageIndex===4?choice('scene-boat','Rabbit lantern',`<path d="M490 239V269" stroke="#b69bbc" stroke-width="3"/>${rabbit}`):`<g data-story-explore="rabbit" role="button" tabindex="-1" aria-label="Moon rabbit">${rabbit}</g>`;
- const prop=pageIndex===2?choice('peace-ripple','Mooncake',icon('mooncake',625,327,95)):pageIndex===3?choice('nyale-target','Lantern',icon('lantern',625,327,95)):'';
- const familyScene=[1,2,3,4].includes(pageIndex)?family('prince-left',265,'#c5a3da',[1,2].includes(pageIndex)?'Chang’e':'Family member',pageIndex===1)+family('prince-right',700,'#eab4cc',[1,2].includes(pageIndex)?'Hou Yi':'Family member',pageIndex===1):'';
+ const platedMooncake=`<g data-story-tray>${storyObjectImage('zh-serving-tray',606,402,128,34)}<ellipse data-cake-contact-shadow cx="670" cy="419" rx="27" ry="5" fill="#9a652844"/></g><g data-story-mooncake>${icon('mooncake',622.5,340,95)}</g>`;
+ const prop=pageIndex===2?choice('peace-ripple','Mooncake on a plate',platedMooncake):pageIndex===3?choice('nyale-target','Lantern',icon('lantern',625,327,95)):'';
+ const familyDrawing=[1,2,3,4].includes(pageIndex)?family('prince-left',265,'#c5a3da',[1,2].includes(pageIndex)?'Chang’e':'Family member',pageIndex===1)+family('prince-right',700,'#eab4cc',[1,2].includes(pageIndex)?'Hou Yi':'Family member',pageIndex===1):'';
+ const familyScene=pageIndex===3?`<g data-modern-family hidden>${familyDrawing}</g><g data-remembering-houyi role="img" aria-label="Hou Yi returns home and looks up at the Moon"><ellipse cx="0" cy="445" rx="44" ry="12" fill="#75979d33"/><image href="/assetNEW/storybook-zh-houyi.png" x="-65" y="245" width="130" height="200" preserveAspectRatio="xMidYMax meet"/></g>`:familyDrawing;
+ const remembranceOfferings=pageIndex===3?`<g data-remembrance-offerings hidden transform="translate(-180 -10)" role="img" aria-label="Hou Yi’s mooncake offering on a plate beneath the Moon">${platedMooncake}</g>`:'';
  // Visible PNG core: (215,259)–(1329,854). Uniform 0.19 scale places
- // its tabletop at y≈392–431 and its feet at y≈504. The small cake's base
- // (≈399) and the delivered cake's base (≈422) both rest on that surface.
+ // its tabletop at y≈392–431 and its feet at y≈504. The plate and cake
+ // move as one unit; the delivered plate rests at y≈392–426 on that surface.
  // Keep the original invisible exploration geometry and logical drop (490,390).
- const table=[2,4].includes(pageIndex)?`<g data-story-explore="table" role="button" tabindex="-1" aria-label="Family table"><ellipse data-table-shadow cx="490" cy="497" rx="148" ry="23" fill="#75979d44" pointer-events="none"/><image data-story-table-art href="/assetNEW/table.png" x="343.7" y="342" width="291.84" height="194.56" preserveAspectRatio="xMidYMid meet" pointer-events="none"/><g data-table-hit-area opacity="0"><ellipse cx="490" cy="447" rx="148" ry="23" fill="#75979d44"/><path d="M376 390Q490 370 604 390L591 421Q490 438 389 421Z" fill="#f7dcdd" stroke="#9e78a8" stroke-width="5"/><path d="M404 420V461M576 420V461" stroke="#9e78a8" stroke-width="13"/><ellipse cx="490" cy="390" rx="114" ry="28" fill="#fff0d9" stroke="#9e78a8" stroke-width="5"/></g>${pageIndex===4?icon('mooncake',460,351,57):''}</g>`:'';
+ const table=[1,2,3,4].includes(pageIndex)?`<g data-story-explore="table" role="button" tabindex="-1" aria-label="Family table"><ellipse data-table-shadow cx="490" cy="497" rx="148" ry="23" fill="#75979d44" pointer-events="none"/><image data-story-table-art href="/assetNEW/table.png" x="343.7" y="342" width="291.84" height="194.56" preserveAspectRatio="xMidYMid meet" pointer-events="none"/><g data-table-hit-area opacity="0"><ellipse cx="490" cy="447" rx="148" ry="23" fill="#75979d44"/><path d="M376 390Q490 370 604 390L591 421Q490 438 389 421Z" fill="#f7dcdd" stroke="#9e78a8" stroke-width="5"/><path d="M404 420V461M576 420V461" stroke="#9e78a8" stroke-width="13"/><ellipse cx="490" cy="390" rx="114" ry="28" fill="#fff0d9" stroke="#9e78a8" stroke-width="5"/></g>${pageIndex===4?icon('mooncake',460,351,57):''}</g>`:'';
  const figure=(x,y,colour,label)=>`<image href="/assetNEW/storybook-zh-${label.startsWith('Hou Yi')?'houyi':'change'}.png" x="${x-65}" y="${y-38}" width="130" height="195" preserveAspectRatio="xMidYMax meet" role="img" aria-label="${label}"/>`;
- const legendArt=pageIndex===0?`${figure(450,285,'','Hou Yi, the archer')}<g data-legend-arrow aria-label="Hou Yi’s flying arrow"><path d="M-34 0H4M-5-7L4 0L-5 7M-29 0L-37-6M-29 0L-37 6" fill="none" stroke="#795f83" stroke-width="4" stroke-linecap="round"/></g><g aria-label="Nine suns Hou Yi removes">${Array.from({length:9},(_,i)=>`<g data-extra-sun="${i}">${icon('sun',45+i*65,45+(i%2)*55,40)}</g>`).join('')}</g>`:pageIndex===2?`<g data-peng-meng role="img" aria-label="Peng Meng, the apprentice trying to take the elixir"><image href="/assetNEW/storybook-zh-pengmeng.png" x="-65" y="245" width="130" height="200" preserveAspectRatio="xMidYMax meet"/></g><g data-flight-trail fill="#fff2c9">${[0,1,2,3,4].map(i=>`<circle cx="${300+i*90}" cy="${390-i*48}" r="${5-i*.6}"/>`).join('')}</g><g data-legend-elixir role="img" aria-label="The magical elixir"><path d="M451 334H469V352L482 378Q490 401 460 403Q430 401 438 378L451 352Z" fill="#c5e9ef" stroke="#8769a0" stroke-width="3"/><path d="M448 332H472" stroke="#b3966c" stroke-width="7"/></g>`:pageIndex===1?`<g data-gift-elixir aria-label="The precious elixir kept safe at home"><path d="M451 334H469V352L482 378Q490 401 460 403Q430 401 438 378L451 352Z" fill="#c5e9ef" stroke="#8769a0" stroke-width="3"/></g>`:pageIndex===3?figure(755,92,'','Chang’e on the Moon'):'';
- svg.innerHTML=`<defs><linearGradient id="moon-sky" x2="0" y2="1"><stop stop-color="#858cc5"/><stop offset="1" stop-color="#ddd1ec"/></linearGradient></defs><rect data-story-scenery width="960" height="520" fill="url(#moon-sky)"/>${moonTarget}${starsTarget}<path data-story-scenery d="M0 340Q200 285 430 340T960 320V520H0Z" fill="#a5cecd"/><path data-story-scenery d="M0 441Q300 365 500 455T960 418V520H0Z" fill="#d4e4d4"/><path data-story-scenery d="M30 310H225L205 265H60Z" fill="#a288b8"/><path data-story-scenery d="M60 310V399M205 310V399" stroke="#a288b8" stroke-width="14"/><path d="M0 230Q480 280 960 225" stroke="#b195bd" stroke-width="3" fill="none"/><g data-moon-lanterns>${[90,290,480,680,875].map(x=>`<g data-story-explore="lantern" role="button" tabindex="-1" aria-label="Lantern">${icon('lantern',x-23,230,45)}</g>`).join('')}</g>${familyScene}${legendArt}${table}${pageIndex===2?`<g data-story-tray><ellipse cx="670" cy="419" rx="64" ry="17" fill="transparent"/>${storyObjectImage('zh-serving-tray',606,402,128,34)}</g>`:''}<ellipse cx="486" cy="438" rx="93" ry="16" fill="#8daeb544"/><g data-moon-rabbit opacity="0" style="pointer-events:none">${rabbitTarget}</g><g data-moon-prop>${prop}</g>`;
+ // Draw the bottle after the tabletop. Fit its visible pixels, not its wide transparent margins.
+ const elixirArt=[1,2].includes(pageIndex)?`<g ${pageIndex===1?'data-gift-elixir':'data-legend-elixir'} role="button" tabindex="-1" aria-disabled="true" aria-label="Drag the magical elixir to Chang’e"><ellipse data-elixir-contact-shadow cx="490" cy="408" rx="17" ry="4" fill="#795f833d"/>${storyPropImage('elixir',468,328,44,80)}<rect data-elixir-hit-area x="462" y="322" width="56" height="92" fill="transparent"/></g>`:'';
+ const legendArt=pageIndex===0?`${figure(450,285,'','Hou Yi, the archer')}<g data-legend-arrow aria-label="Hou Yi’s flying arrow"><path d="M-34 0H4M-5-7L4 0L-5 7M-29 0L-37-6M-29 0L-37 6" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></g><g aria-label="Nine suns Hou Yi removes">${Array.from({length:9},(_,i)=>`<g data-extra-sun="${i}">${icon('sun',45+i*65,45+(i%2)*55,40)}</g>`).join('')}</g>`:pageIndex===2?`<g data-peng-meng role="img" aria-label="Peng Meng, the apprentice trying to take the elixir"><image href="/assetNEW/storybook-zh-pengmeng.png" x="-65" y="245" width="130" height="200" preserveAspectRatio="xMidYMax meet"/></g><g data-flight-trail fill="#fff2c9">${[0,1,2,3,4].map(i=>`<circle cx="${300+i*90}" cy="${390-i*48}" r="${5-i*.6}"/>`).join('')}</g>`:pageIndex===3?figure(755,92,'','Chang’e on the Moon'):'';
+ svg.innerHTML=`<defs><linearGradient id="moon-sky" x2="0" y2="1"><stop stop-color="#858cc5"/><stop offset="1" stop-color="#ddd1ec"/></linearGradient></defs><rect data-story-scenery width="960" height="520" fill="url(#moon-sky)"/>${moonTarget}${starsTarget}<path data-story-scenery d="M0 340Q200 285 430 340T960 320V520H0Z" fill="#a5cecd"/><path data-story-scenery d="M0 441Q300 365 500 455T960 418V520H0Z" fill="#d4e4d4"/><path data-story-scenery d="M30 310H225L205 265H60Z" fill="#a288b8"/><path data-story-scenery d="M60 310V399M205 310V399" stroke="#a288b8" stroke-width="14"/><path d="M0 230Q480 280 960 225" stroke="#b195bd" stroke-width="3" fill="none"/><g data-moon-lanterns>${[90,290,480,680,875].map(x=>`<g data-story-explore="lantern" role="button" tabindex="-1" aria-label="Lantern">${icon('lantern',x-23,230,45)}</g>`).join('')}</g>${familyScene}${legendArt}${table}${remembranceOfferings}${elixirArt}<ellipse cx="486" cy="438" rx="93" ry="16" fill="#8daeb544"/><g data-moon-rabbit opacity="0" style="pointer-events:none">${rabbitTarget}</g><g data-moon-prop>${prop}</g>`;
  // These are the objects in the illustration itself, with keyboard semantics
  // and a glow during the interaction beat. No separate choice controls.
- let draggedMooncake=false,mooncakeDrag=null;
+ let draggedMooncake=false,mooncakeDrag=null,elixirDrag=null;
  const exploreMessages={moon:'The full moon shines above everyone at the festival.',rabbit:'This rabbit-shaped lantern reminds us of related tales about the Jade Rabbit. The extra discovery on the last page explains more.',lantern:'A lantern lights the garden path.',family:'A family member is ready to celebrate together.',table:'The family shares mooncakes at this table.'};
  const exploreObject=kind=>{const message=exploreMessages[kind];if(!message)return;introStatus(message);speakIntroHint(message);};
  svg.addEventListener('click',event=>{
@@ -1642,12 +1787,16 @@ function configureChineseStage() {
   if(object?.getAttribute('aria-disabled')==='false'){event.preventDefault();chooseIntroObject(object.dataset.chineseChoice);}
   else {const decoration=event.target.closest('[data-story-explore]');if(decoration?.getAttribute('aria-disabled')==='false'){event.preventDefault();exploreObject(decoration.dataset.storyExplore);}}
  });
+ svg.addEventListener('keydown',event=>{if(['Enter',' '].includes(event.key)&&event.target.closest('[data-legend-elixir]')&&introState.elixirWaiting){event.preventDefault();deliverElixir();}});
  svg.addEventListener('pointerdown',event=>{
+  const elixir=event.target.closest('[data-legend-elixir]');
+  if(elixir&&introState.elixirWaiting&&introState.playing){event.preventDefault();elixirDrag={object:elixir,x:event.clientX,y:event.clientY,dx:0,dy:0};svg.setPointerCapture?.(event.pointerId);return;}
   const object=event.target.closest('[data-chinese-choice="peace-ripple"]');
   if(pageIndex!==2||object?.getAttribute('aria-disabled')!=='false')return;
   mooncakeDrag={object,x:event.clientX,y:event.clientY,dx:0,dy:0};svg.setPointerCapture?.(event.pointerId);
  });
  svg.addEventListener('pointermove',event=>{
+  if(elixirDrag){const r=svg.getBoundingClientRect();elixirDrag.dx=(event.clientX-elixirDrag.x)*960/r.width;elixirDrag.dy=(event.clientY-elixirDrag.y)*520/r.height;elixirDrag.object.setAttribute('transform',`translate(${elixirDrag.dx} ${elixirDrag.dy})`);return;}
   if(!mooncakeDrag)return;
   const rect=svg.getBoundingClientRect();
   mooncakeDrag.dx=(event.clientX-mooncakeDrag.x)*960/rect.width;
@@ -1656,24 +1805,43 @@ function configureChineseStage() {
    mooncakeDrag.object.setAttribute('transform',`translate(${mooncakeDrag.dx} ${mooncakeDrag.dy})`);
  });
  svg.addEventListener('pointerup',()=>{
+  if(elixirDrag){const {object,dx,dy}=elixirDrag;elixirDrag=null;
+   if(Math.hypot((490+dx-265)/75,(368+dy-345)/100)<=1)deliverElixir();
+   else {object.removeAttribute('transform');introStatus('Bring the elixir to Chang’e on the left.');}return;}
   if(!mooncakeDrag)return;
   const {object,dx,dy}=mooncakeDrag;mooncakeDrag=null;
   if(Math.hypot(dx,dy)<=10)return;
   draggedMooncake=true;setTimeout(()=>{draggedMooncake=false;},0);
-  if(Math.hypot(672+dx-490,374+dy-390)<125){object.setAttribute('transform','translate(-182 16)');chooseIntroObject('peace-ripple');}
+  if(Math.hypot(672+dx-490,374+dy-390)<125){chooseIntroObject('peace-ripple');}
   else {object.removeAttribute('transform');introStatus('The family table is in the middle. Try bringing the mooncake there.');}
  });
- svg.addEventListener('pointercancel',()=>{mooncakeDrag?.object.removeAttribute('transform');mooncakeDrag=null;});
+ svg.addEventListener('pointercancel',()=>{mooncakeDrag?.object.removeAttribute('transform');mooncakeDrag=null;elixirDrag?.object.removeAttribute('transform');elixirDrag=null;});
  stage.insertBefore(svg,stage.firstChild);syncChineseChoices();
+}
+function showElixirPrompt(){
+ introState.elixirWaiting=true;
+ const message='Drag the elixir to Chang’e before continuing.';
+ introElement('scene-prompt').hidden=false;introElement('scene-prompt').textContent=message;
+ introElement('scene-continue').textContent='Give the elixir to Chang’e first';
+ introStatus(message);syncChineseChoices();
+}
+function deliverElixir(){
+ if(!introState.elixirWaiting||introState.elixirGiven||!introState.playing)return;
+ introState.elixirGiven=true;introState.elixirWaiting=false;
+ document.querySelector('.chinese-scene [data-legend-elixir]')?.setAttribute('opacity','0');
+ startIntroBeat(2);
 }
 function syncChineseChoices() {
  const svg=document.querySelector('.chinese-scene');if(!svg)return;
+ const elixir=svg.querySelector('[data-legend-elixir]'),waiting=introState.elixirWaiting&&!introState.elixirGiven&&introState.playing;
+ if(elixir){elixir.setAttribute('tabindex',waiting?'0':'-1');elixir.setAttribute('aria-disabled',String(!waiting));elixir.classList.toggle('choice-active',waiting);elixir.style.pointerEvents=waiting?'auto':'none';}
+ svg.querySelector('[data-family="prince-left"]')?.classList.toggle('choice-active',waiting);
  svg.querySelectorAll('[data-chinese-choice]').forEach(object=>{
   const active=introState.active && introState.playing && introState.beat===3 && !introState.interactionDone && !introState.invitedPrinces.has(object.dataset.chineseChoice);
   object.setAttribute('tabindex',active?'0':'-1');object.setAttribute('aria-disabled',String(!active));object.classList.toggle('choice-active',active);
  });
  svg.querySelectorAll('[data-story-explore]').forEach(object=>{
-  const active=introState.active&&introState.playing&&introState.beat===3&&!introState.interactionDone;
+  const active=introState.active&&introState.playing&&introState.beat===3&&!introState.interactionDone&&!object.closest('[hidden]');
   object.setAttribute('tabindex',active?'0':'-1');object.setAttribute('aria-disabled',String(!active));
  });
  svg.querySelectorAll('[data-delivered]').forEach(item=>item.toggleAttribute('hidden',!introState.invitedPrinces.has(item.dataset.delivered)));
@@ -1685,8 +1853,9 @@ function chooseChineseObject(name) {
   if(introState.invitedPrinces.size<2){introStatus('You met one person! Tap the other to meet Chang’e and Hou Yi.');return;}
  } else if(name!==chapterChoiceIds[pageIndex][0]) {
   const message=pageIndex===0?'You found the stars. Look for the one bright sun Hou Yi left in the sky.':'You found a star beside the lantern. Look along the garden path.';
-  introStatus(message);speakIntroHint(message);return;
+  introStatus(message);speakIntroHint(message,{repeatRequest:true});return;
  }
+ if(pageIndex===2)document.querySelector('.chinese-scene [data-chinese-choice="peace-ripple"]').setAttribute('transform','translate(-180 -10)');
  completeIntroInteraction('Wonderful! You helped our story along.');syncChineseChoices();
 }
 function applyChineseVisual() {
@@ -1715,10 +1884,22 @@ function applyChineseVisual() {
   svg.querySelector('[data-legend-elixir]').setAttribute('opacity',beat<2?'1':'0');
   svg.querySelectorAll('[data-family]').forEach((person,i)=>{
    person.setAttribute('transform',i===0?`translate(${265+440*flight} ${-245*flight})`:`translate(700 0)`);
-   person.setAttribute('opacity',i===1&&beat<3?'0':'1');
+   person.toggleAttribute('hidden',i===0&&beat>=3);
+   person.setAttribute('opacity',(i===1&&beat<3)||(i===0&&beat>=3)?'0':'1');
   });
  }
 
+ if(pageIndex===3){
+  const remembering=beat<2;
+  const houyi=svg.querySelector('[data-remembering-houyi]');
+  houyi.toggleAttribute('hidden',!remembering);
+  // Return home during the search, then stand beside the offerings table.
+  const arrival=reduce||beat>0?1:introEase(elapsed/3);
+  houyi.setAttribute('transform',`translate(${900-200*arrival} 0)`);
+  svg.querySelector('[data-modern-family]').toggleAttribute('hidden',remembering);
+  svg.querySelector('[data-story-explore="table"]').toggleAttribute('hidden',beat===0);
+  svg.querySelector('[data-remembrance-offerings]').toggleAttribute('hidden',beat===0);
+ }
  const rabbitVisible=pageIndex===4&&beat>=2;
  const rabbitGroup=svg.querySelector('[data-moon-rabbit]');
  rabbitGroup.setAttribute('opacity',rabbitVisible?'1':'0');
@@ -1727,7 +1908,8 @@ function applyChineseVisual() {
  introElement('jade-rabbit-discovery').hidden=!rabbitVisible;
  const travel=pageIndex===4&&introState.interactionDone?180*introEase((t-introState.reactionTime)/3):0;
  svg.querySelector('[data-moon-rabbit]').setAttribute('transform',`translate(${travel} ${-bob})`);
- svg.querySelector('[data-moon-prop]').setAttribute('transform',`translate(0 ${bob})`);
+ svg.querySelector('[data-moon-prop]').toggleAttribute('hidden',(pageIndex===2&&beat<3)||(pageIndex===3&&beat<2));
+ svg.querySelector('[data-moon-prop]').setAttribute('transform',`translate(0 ${pageIndex===2?0:bob})`);
  svg.querySelector('[data-moon-lanterns]').setAttribute('transform',`translate(0 ${Math.sin(t)*2})`);
  if(pageIndex!==2)svg.querySelectorAll('[data-family]').forEach((person,i)=>person.setAttribute('transform',`translate(${i===0?265:700} ${i===0?bob:-bob})`));
  syncChineseChoices();
@@ -1753,7 +1935,7 @@ continueButton.addEventListener('click',()=>{
   const target=journey.state.language==='chinese'
    ?document.querySelector('.chinese-scene [data-chinese-choice][aria-disabled="false"]')
    :chapterChoiceIds[pageIndex].map(id=>introElement(id)).find(node=>node.getAttribute('tabindex')==='0');
-  target?.focus();speakIntroHint(message);return;
+  target?.focus();speakIntroHint(message,{role:'jelly'});return;
  }
  // Manual Continue advances synchronously; it does not depend on a later frame.
  advanceIntroBeat();
@@ -1795,7 +1977,7 @@ window.OceanRoom={
   if (storyOpen && (next.activeStoryId !== prev?.activeStoryId || next.storyPage < (prev?.storyPage || 0) || next.learning?.active)) closeStory();
   if(next.trip!==activeTrip) {
    activeTrip=next.trip;festivalApproach=null;areaPending=false;closeStory();pageIndex=0;introState.completedChapters=chapters.map((_,i)=>i<next.storyPage);
-   player.x=486;player.y=408;clearMovement();storyProximityArmed=true;memoryProximityArmed=true;wardrobeProximityArmed=true;
+   player.x=486;player.y=515;clearMovement();storyProximityArmed=true;memoryProximityArmed=true;wardrobeProximityArmed=true;
   }
   if(next.phase!==activePhase){clearMovement();if(next.phase==='festival'){player.x=480;player.y=450;}activePhase=next.phase;}
   if(next.phase==='festival'&&prev?.phase==='festival'&&next.festivalArea!==prev.festivalArea){

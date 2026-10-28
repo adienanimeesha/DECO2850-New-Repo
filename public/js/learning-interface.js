@@ -12,6 +12,37 @@ function create({ action, getContent, room = () => window.OceanRoom }) {
  const guidance = $('learning-guidance');
  const storybookGuidance = $('storybook-guidance');
  const gameplayRoot = $('vocabulary-gameplay');
+ let guidanceSpeech=null,guidanceActive=false;
+ const memoryGuide=$('memory-shelf-guidance');
+ let memoryIntro=null,memorySpeech=null;
+ const memoryIntrosShown=new Set();
+ function finishMemoryIntro(resume=true){
+  if(!memoryIntro)return;
+  memoryIntro=null;memoryGuide.hidden=true;memorySpeech?.cancel();room()?.lock?.(false);
+  if(resume&&state?.phase==='room'){
+   learningRoom?.sync(presentation(state),{storyUnlocked:levelOneComplete(state)});
+   $('game')?.focus();
+  }
+ }
+ function startMemoryIntro(){
+  memoryIntro={language:state.language,trip:state.trip,attemptId:learning(state)?.active?.attemptId};
+  learningRoom?.stop();room()?.clearMovement?.();room()?.lock?.(true);
+  memoryGuide.hidden=false;$('continue-memory-guide')?.focus();
+  const text=window.JellyGuidanceContent?.memoryShelf;
+  if(text&&window.VocabularySpeech){
+   memorySpeech ||= window.VocabularySpeech.create({role:'narrator'});
+   memorySpeech.play([{text,lang:'en-US'}],{onComplete:()=>finishMemoryIntro(),onCancel:()=>finishMemoryIntro()});
+  }
+ }
+ $('continue-memory-guide')?.addEventListener('click',()=>finishMemoryIntro());
+ function stopGuidance(){if(guidanceActive){guidanceActive=false;guidanceSpeech?.cancel();}}
+ function announce(name){
+  const text=window.JellyGuidanceContent?.[name];
+  if(!text||!window.VocabularySpeech)return;
+  guidanceSpeech ||= window.VocabularySpeech.create({role:'narrator'});
+  guidanceActive=true;
+  guidanceSpeech.play([{text,lang:'en-US'}],{onComplete(){guidanceActive=false;}});
+ }
 
  const learning = value => value?.learning || value?.vocabularyLearning || null;
  const enabled = value => Boolean(learning(value) || value?.vocabularyLevels || getContent(value)?.vocabularyLevels);
@@ -73,8 +104,10 @@ function create({ action, getContent, room = () => window.OceanRoom }) {
   room()?.clearMovement?.();
   room()?.lock?.(true);
   screen.querySelector('button:not(:disabled)')?.focus();
+  announce({levels:'levels',stories:'stories',unlock:'unlock'}[name]);
  }
  function closePopup(restore = true) {
+  stopGuidance();
   levelScreen.hidden = true;
   storyScreen.hidden = true;
   unlockScreen.hidden = true;
@@ -198,10 +231,20 @@ function create({ action, getContent, room = () => window.OceanRoom }) {
   const hasLearning = enabled(next), inRoom = next?.phase === 'room';
   const view = hasLearning ? presentation(next) : null;
   const unlocked = hasLearning && levelOneComplete(next);
+  const guidanceWasHidden=guidance.hidden;
   guidance.hidden = !(hasLearning && inRoom && !tutorialStarted(next));
+  if(!inRoom||view||(guidance.hidden&&!activePopup))stopGuidance();
   document.body.classList.toggle('is-vocabulary-active', Boolean(inRoom && view));
   $('mission-panel').classList.toggle('learning-guided', hasLearning && inRoom && !tutorialStarted(next));
-  if (learningRoom) learningRoom.sync(inRoom ? view : null, { storyUnlocked: unlocked });
+  if(memoryIntro&&(!inRoom||next.language!==memoryIntro.language||next.trip!==memoryIntro.trip||learning(next)?.active?.attemptId!==memoryIntro.attemptId||learning(next)?.active?.questionIndex!==1))finishMemoryIntro(false);
+  const memoryIntroKey=`${next?.language}:${next?.trip}:${learning(next)?.active?.attemptId}`;
+  const firstCollection=inRoom&&prior?.language===next.language&&prior.trip===next.trip&&
+   learning(prior)?.active?.level===1&&learning(prior)?.active?.questionIndex===0&&
+   learning(next)?.active?.level===1&&learning(next)?.active?.questionIndex===1;
+  // Each question receives a new attemptId from the server. Detect the
+  // tutorial transition by index, including when revisiting with old memories.
+  if(firstCollection&&!memoryIntro&&!memoryIntrosShown.has(memoryIntroKey)){memoryIntrosShown.add(memoryIntroKey);startMemoryIntro();}
+  if (learningRoom) {if(!memoryIntro)learningRoom.sync(inRoom ? view : null, { storyUnlocked: unlocked });}
   else gameplayRoot.hidden = !view;
   if (view && !learningRoom) gameplayRoot.textContent = 'Your vocabulary activity is getting ready…';
   if (!inRoom && activePopup) closePopup(false);
@@ -214,12 +257,15 @@ function create({ action, getContent, room = () => window.OceanRoom }) {
    : model?.showStoryUnlockCelebration === true || (prior && !wasUnlocked);
   if (inRoom && unlocked && !unlockShown && firstUnlock) showUnlock();
   storybookGuidance.hidden = !(storybookCuePending && inRoom && unlocked && !activePopup);
+  if(!guidance.hidden&&guidanceWasHidden&&!activePopup)announce('bookshelf');
  }
  function approach(id) {
   if (id === 'learning-bookshelf') openLevels();
   if (['learning-storybook','storybook','book'].includes(id)) openStories();
  }
- function stop() { closePopup(false); storybookCuePending = false; storybookGuidance.hidden = true; learningRoom?.stop(); document.body.classList.remove('is-vocabulary-active'); gameplayRoot.hidden = true; }
+ function stop() { finishMemoryIntro(false); closePopup(false); guidance.hidden=true;storybookCuePending = false; storybookGuidance.hidden = true; learningRoom?.stop(); document.body.classList.remove('is-vocabulary-active'); gameplayRoot.hidden = true; }
+
+ $('hear-learning-guidance')?.addEventListener('click',()=>announce('bookshelf'));
 
  $('close-level-select').addEventListener('click', closePopup);
  $('close-story-select').addEventListener('click', closePopup);
@@ -231,6 +277,7 @@ function create({ action, getContent, room = () => window.OceanRoom }) {
   closePopup();
   // The unlock is permanent backend state; dismissing it is a local UI action.
   storybookGuidance.hidden = !storybookCuePending;
+  if(storybookCuePending)announce('storybook');
  });
  [levelScreen, storyScreen].forEach(screen => screen.addEventListener('pointerdown', event => { if (event.target === screen) closePopup(); }));
  window.addEventListener('ocean-room-ready', configureRoom);

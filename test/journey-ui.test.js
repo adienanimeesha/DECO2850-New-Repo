@@ -60,7 +60,7 @@ function page(t,name='mobile.html') {
  w.HTMLElement.prototype.setPointerCapture=()=>{};
  w.HTMLElement.prototype.getBoundingClientRect=function(){return {left:0,top:0,width:960,height:520,right:960,bottom:520};};
  w.Path2D=class{constructor(d){this.d=d;}};
- w.Image=class{constructor(){this.complete=true;this.naturalWidth=100;this.naturalHeight=100;}set src(s){this._src=s;this.onload?.();}get src(){return this._src;}};
+ w.Image=class{constructor(){this.complete=true;this.naturalWidth=100;this.naturalHeight=100;}set src(s){this._src=s;if(/underwater-room-|commonroombackground/.test(s)){this.naturalWidth=1672;this.naturalHeight=941;}this.onload?.();}get src(){return this._src;}};
  Object.defineProperty(w.performance,'now',{value:()=>now});
  w.requestAnimationFrame=fn=>{const id=++sequence;frames.set(id,fn);return id;};w.cancelAnimationFrame=id=>frames.delete(id);
  w.setTimeout=(fn,delay)=>{const id=++sequence;timers.set(id,{fn,at:now+delay});return id;};w.clearTimeout=id=>timers.delete(id);
@@ -88,12 +88,77 @@ function page(t,name='mobile.html') {
  async function advance(ms){for(let i=0;i<Math.ceil(ms/50);i++){now+=50;for(const[id,task]of [...timers])if(task.at<=now){timers.delete(id);task.fn();}const current=[...frames];frames.clear();current.forEach(([,fn])=>fn(now));await Promise.resolve();}}
  function click(selector){const el=w.document.querySelector(selector);assert.ok(el,`Missing ${selector}`);assert.notEqual(el.disabled,true,`${selector} disabled`);if(typeof el.click === "function")el.click();else el.dispatchEvent(new w.MouseEvent("click",{bubbles:true}));}
  function walk(id){
-  const item=state.phase==='festival'?([...journeys[state.language].festivalItems,...journeys[state.language].festivalAreas[state.festivalArea].distractors,{id:'area-right',x:880,y:450},{id:'area-left',x:80,y:450}].find(i=>i.id===id)):{book:{x:486,y:269},wardrobe:{x:810,y:212},memories:{x:190,y:413}}[id];
+  const item=state.phase==='festival'?([...journeys[state.language].festivalItems,...journeys[state.language].festivalAreas[state.festivalArea].distractors,{id:'area-right',x:880,y:450},{id:'area-left',x:80,y:450}].find(i=>i.id===id)):{book:{x:486,y:393},wardrobe:{x:807,y:396},memories:{x:172,y:510}}[id];
   assert.ok(item,'Unknown world station '+id);
   w.document.getElementById('game').dispatchEvent(new w.MouseEvent('pointerup',{bubbles:true,clientX:item.x,clientY:item.y*520/620}));
  }
- return {w,events,draws,advance,click,walk,get state(){return state;},update(data){Object.assign(state,data);publish();}};
+ return {w,events,draws,advance,click,walk,giveElixir(){const e=w.document.querySelector('[data-legend-elixir][aria-disabled="false"]');if(e)e.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Enter',bubbles:true}));},get state(){return state;},update(data){Object.assign(state,data);publish();}};
 }
+for(const language of ['indonesian','chinese'])test(`${language}: common room renders its cultural background and all four supplied furniture pictures`,async t=>{
+ const p=page(t);
+ p.update({phase:'room',language,trip:1,storyDone:true,invited:true,memories:[{id:'moon',word:'moon',icon:'moon'}]});await p.advance(100);
+ const images=p.draws.map(draw=>draw[0]?.src);
+ assert.ok(images.includes(`/assetNEW/underwater-room-${language==='chinese'?'chinese':'nusantara'}-balanced.png`));
+ for(const name of ['bookshelf','memory-shelf','storybook','wardrobe'])assert.ok(images.includes(`/underwater_commonroom/${name}.png`),name+' is rendered');
+});
+
+for(const language of ['indonesian','chinese'])test(`${language}: festival requests and retries use narrator; thanks use Jelly; snapshots do not repeat cues`,async t=>{
+ const p=page(t),spoken=[];
+ p.w.JellyGuidanceContent=require('../public/js/guidance-content');
+ p.w.VocabularySpeech={create:()=>({play(parts){spoken.push(parts);},cancel(){}})};
+ const content=journeys[language];
+ p.update({phase:'festival',language,trip:1,storyDone:true,invited:true,festivalMission:0,festivalArea:0,festivalFeedback:false});
+ assert.equal(spoken.at(-1)[0].role,'narrator');
+ assert.equal(spoken.at(-1).at(-1).text,p.w.JellyGuidanceContent.festivalRequest(content.festivalItems[0],content.festivalAreas[0]));
+ const count=spoken.length;p.update({});assert.equal(spoken.length,count);
+ p.walk(content.festivalAreas[0].distractors[0].id);await p.advance(6500);
+ assert.equal(spoken.at(-1)[0].role,'narrator');assert.match(spoken.at(-1)[0].text,/Good try/);
+ assert.equal(spoken.at(-1)[1].role,'jelly');assert.equal(spoken.at(-1)[1].text,content.festivalItems[0].request,'Jelly repeats the current request after feedback');
+ p.walk(content.festivalItems[0].id);await p.advance(6500);
+ assert.equal(spoken.at(-1)[0].text,content.festivalItems[0].thanks);
+ assert.equal(spoken.at(-1)[0].role,'jelly');assert.equal(spoken.at(-1)[1].role,'narrator');
+ p.click('#festival-next');assert.equal(spoken.at(-1)[0].role,'narrator');
+ assert.equal(spoken.at(-1)[0].text,p.w.JellyGuidanceContent.festivalRequest(content.festivalItems[1],content.festivalAreas[1]));
+});
+
+for(const language of ['indonesian','chinese'])test(`${language}: wrong story choice gives narrator feedback then Jelly repeats the task without progressing`,async t=>{
+ const p=page(t),recordings=[],lookups=[];
+ p.w.speechSynthesis={speaking:false,cancel(){},getVoices:()=>[]};
+ p.w.eval(fs.readFileSync('public/js/vocabulary-speech.js','utf8'));
+ p.w.VocabularySpeech.recordingFor=(text,lang,role)=>{lookups.push({text,role});return '/audio/'+role+'.mp3';};
+ p.w.Audio=class{constructor(src){this.src=src;recordings.push(this);}play(){this.onplaying?.();return Promise.resolve();}pause(){this.onpause?.();}};
+ p.update({phase:'room',language,trip:1});p.walk('book');await p.advance(6500);
+ for(let i=0;i<3;i++)p.click('#scene-continue');
+ assert.equal(lookups.at(-1).role,'jelly','Jelly voices the story interaction request');
+ recordings.at(-1).onended();
+ p.click(language==='chinese'?'.chinese-scene [data-chinese-choice="story-fish"]':'#story-fish');
+ assert.match(recordings.at(-1).src,/narrator\.mp3$/);
+ await p.advance(100);assert.equal(p.w.document.querySelector('.narrator-avatar').classList.contains('is-speaking'),false,'Jelly does not lip-sync narrator feedback');
+ recordings.at(-1).onended();
+ assert.match(recordings.at(-1).src,/jelly\.mp3$/);
+ assert.equal(lookups.at(-1).text,journeys[language].chapters[0].beats[3].line);
+ assert.equal(p.state.storyPage,0,'a retry does not complete the task');
+ p.click('#close-story');
+});
+
+test('saved story narration supports mouth animation, pause, replay, long playback and cancellation',async t=>{
+ const p=page(t),recordings=[];
+ p.w.eval(fs.readFileSync('public/js/vocabulary-speech.js','utf8'));
+ p.w.VocabularySpeech.recordingFor=()=>'/audio/elevenlabs/test.mp3';
+ p.w.Audio=class{constructor(src){this.src=src;recordings.push(this);}play(){this.onplaying?.();return Promise.resolve();}pause(){this.onpause?.();}};
+ p.update({phase:'room',language:'chinese',trip:1});p.walk('book');await p.advance(6500);
+ assert.equal(recordings.length,1);
+ assert.equal(p.w.document.querySelector('.narrator-avatar').classList.contains('is-speaking'),true);
+ p.click('#scene-play');await p.advance(1000);
+ assert.equal(p.w.document.querySelector('.narrator-avatar').classList.contains('is-speaking'),false);
+ p.click('#scene-play');await p.advance(20000);
+ assert.equal(recordings.length,1,'long saved narration is not interrupted by the synthesis watchdog');
+ const stale=recordings[0].onended;
+ p.click('#scene-replay');assert.equal(recordings.length,2);
+ stale();assert.equal(recordings.length,2,'old completion cannot advance a replay');
+ p.click('#close-story');assert.equal(recordings[1].onended,null);
+});
+
 for(const language of ['indonesian','chinese'])test(`${language}: Continue responds without waiting for animation frames and page turns show a busy state`,async t=>{
  const p=page(t),d=p.w.document;
  p.update({phase:'room',language,trip:1});p.walk('book');await p.advance(6500);
@@ -185,7 +250,7 @@ for(const language of ['indonesian','chinese'])test(`${language}: mobile complet
    assert.equal(scene.querySelector('#nyale-school').querySelectorAll('image').length,3,'separate school colours');
    assert.equal(scene.querySelector('#nyale-target-body').parentElement.id,'nyale-target');
   }else{
-   assert.equal(scene.querySelectorAll('[data-story-tray]').length,chapter===2?1:0);
+   assert.equal(scene.querySelectorAll('[data-story-tray]').length,[2,3].includes(chapter)?1:0);
    assert.equal(scene.querySelectorAll('[data-story-object^="zh-family-"]').length,chapter<=2?0:2);
    if(chapter===1||chapter===2)assert.equal(scene.querySelectorAll('[data-legend-character]').length,2);
   }
@@ -203,8 +268,8 @@ for(const language of ['indonesian','chinese'])test(`${language}: mobile complet
    assert.deepEqual(['cx','cy','r'].map(name=>hit.getAttribute(name)),[cx,cy,r]);
    assert.ok(Math.abs(Number(image.getAttribute('width'))/Number(image.getAttribute('height'))-1.5)<.001,'original PNG aspect ratio');
   }
-  if(language==='chinese')assert.equal(d.querySelectorAll('[data-story-table-art]').length,[2,4].includes(chapter)?1:0);
-  for(let beat=0;beat<3;beat++){p.click('#scene-continue');await p.advance(100);}
+  if(language==='chinese')assert.equal(d.querySelectorAll('[data-story-table-art]').length,[1,2,3,4].includes(chapter)?1:0);
+  for(let beat=0;beat<3;beat++){p.click('#scene-continue');p.giveElixir();await p.advance(100);}
   if(language==='indonesian'){
    const translation=id=>d.getElementById(id).getAttribute('transform').match(/translate\(([-\d.]+) ([-\d.]+)\)/).slice(1).map(Number);
    assert.ok(translation('scene-boat')[1]<-40,'boat sits in the illustrated sea');
@@ -224,8 +289,8 @@ for(const language of ['indonesian','chinese'])test(`${language}: mobile complet
    const ids=[['story-shell'],['prince-left','prince-right'],['peace-ripple'],['nyale-target'],['scene-boat']][chapter];
    for(const id of ids)p.click('#'+id);
   }
-  p.click('#scene-continue');await p.advance(100);
-  p.click('#scene-continue');await p.advance(100);
+  p.click('#scene-continue');p.giveElixir();await p.advance(100);
+  p.click('#scene-continue');p.giveElixir();await p.advance(100);
   assert.equal(p.state.storyPage,chapter+1,`chapter ${chapter+1} awards vocabulary`);
   p.click('#scene-next');await p.advance(1000);
   if(chapter<4)for(const [selector,index]of [['#book-turn-still img',chapter],['#turn-front img',chapter],['.turn-back img',chapter+1]]){
@@ -242,7 +307,7 @@ for(const language of ['indonesian','chinese'])test(`${language}: mobile complet
  assert.match(d.querySelector('#objective').textContent,/invitation/);assert.equal(d.querySelector('#mailbox-button').disabled,false);
  assert.equal(d.querySelector('#activity-screen').hidden,false,'the invitation opens when the story finishes');
  assert.match(d.querySelector('#activity-title').textContent,/invited/);
- p.click('#accept-invite');await p.advance(6500);assert.match(d.querySelector('#activity-title').textContent,/Dress/);assert.equal(d.querySelectorAll('[data-outfit] .outfit-thumbnail svg').length,2);
+ p.click('#accept-invite');await p.advance(6500);assert.equal(d.querySelector('#activity-screen').hidden,true,'accepting does not walk or open the wardrobe');assert.equal(d.querySelector('#wardrobe-guide').hidden,false);p.walk('wardrobe');await p.advance(6500);assert.match(d.querySelector('#activity-title').textContent,/Dress/);assert.equal(d.querySelectorAll('[data-outfit] .outfit-thumbnail svg').length,2);
  assert.equal(d.querySelector('#mission-step').textContent,'MISSION 4 OF 5');
  p.click(`[data-outfit="${journeys[language].outfits[0].id}"]`);
  p.click(`[data-outfit="${journeys[language].outfits[1].id}"]`);
@@ -283,6 +348,7 @@ test('Moon Festival chapter three shows the family table and supports exploring 
  const scene=d.querySelector('.chinese-scene');
  assert.equal(d.querySelector('#scene-stage').dataset.chapter,'2');
  assert.equal(scene.querySelectorAll('[data-family]').length,2,'the family appears with the table');
+ assert.equal(scene.querySelector('[data-moon-prop]').hasAttribute('hidden'),true,'cake and plate are absent before the food request');
  assert.ok(scene.querySelector('[data-story-explore="table"]'));
  assert.ok(scene.querySelector('[data-chinese-choice="peace-ripple"]'));
  const table=scene.querySelector('[data-story-explore="table"]'),tableImage=table.querySelector('[data-story-table-art]');
@@ -292,17 +358,19 @@ test('Moon Festival chapter three shows the family table and supports exploring 
  assert.ok(table.querySelector('[data-table-shadow]'),'table shadow remains a separate layer');
  assert.equal(table.querySelectorAll('[data-table-hit-area] path').length,2,'original exploration paths are retained');
  // Measured corners of the supplied PNG's flat top surface (source pixels).
- // Test food contact points, including both extremes of the delivered bob,
- // rather than assuming that the transparent image box is the tabletop.
+ // Test the delivered plate's contact area rather than treating the transparent
+ // image box as the tabletop.
  const top=[[219,351],[855,264],[1324,355],[662,464]],scale=Number(tableImage.getAttribute('width'))/1536;
- for(const [x,y]of [[488.5,398.53],[490.5,418.21],[490.5,426.21]]){
+ for(const [x,y]of [[490,409],[490,426],[462,416],[518,416]]){
   const point=[(x-Number(tableImage.getAttribute('x')))/scale,(y-Number(tableImage.getAttribute('y')))/scale];
   const sides=top.map(([ax,ay],i)=>{const [bx,by]=top[(i+1)%top.length];return(bx-ax)*(point[1]-ay)-(by-ay)*(point[0]-ax);});
   assert.ok(sides.every(side=>side>=0)||sides.every(side=>side<=0),'mooncake base stays on the measured tabletop');
  }
  assert.equal(d.querySelector('.story-audio-options').open,false,'audio controls are tucked away');
  assert.equal(d.querySelector('#scene-next').hidden,true,'Back and Continue are the main reading controls');
- for(let beat=0;beat<3;beat++){p.click('#scene-continue');await p.advance(100);}
+ for(let beat=0;beat<3;beat++){p.click('#scene-continue');p.giveElixir();await p.advance(100);}
+ assert.equal(scene.querySelector('[data-moon-prop]').hasAttribute('hidden'),false,'food request reveals cake and plate');
+ assert.equal(scene.querySelector('[data-family="prince-left"]').hasAttribute('hidden'),true,'Chang’e has left before Hou Yi remembers her');
  p.click('[data-story-explore="table"]');
  assert.match(d.querySelector('#scene-status').textContent,/shares mooncakes/);
  scene.getBoundingClientRect=()=>({left:0,top:0,width:960,height:520});
@@ -310,7 +378,10 @@ test('Moon Festival chapter three shows the family table and supports exploring 
  mooncake.dispatchEvent(new p.w.MouseEvent('pointerdown',{bubbles:true,clientX:672,clientY:374}));
  scene.dispatchEvent(new p.w.MouseEvent('pointermove',{bubbles:true,clientX:490,clientY:390}));
  scene.dispatchEvent(new p.w.MouseEvent('pointerup',{bubbles:true,clientX:490,clientY:390}));
- assert.equal(mooncake.getAttribute('transform'),'translate(-182 16)','logical drop target is unchanged');
+ assert.equal(mooncake.getAttribute('transform'),'translate(-180 -10)','cake and plate land together on the tabletop');
+ assert.ok(mooncake.querySelector('[data-story-tray]'));assert.ok(mooncake.querySelector('[data-story-mooncake]'));
+ assert.equal(scene.querySelectorAll('[data-story-tray]').length,1);
+ await p.advance(300);assert.equal(scene.querySelector('[data-moon-prop]').getAttribute('transform'),'translate(0 0)','plated mooncake does not float');
  assert.equal(scene.querySelector('[data-chinese-success]'),null,'decorative success text is removed');
  assert.equal(d.querySelector('#scene-stage').classList.contains('choice-complete'),true);
 });
@@ -392,7 +463,7 @@ test('memory shelf opens on approach without a button and stays closed until app
 test('memory shelf and book show only earned items, with no future rewards or duplicates',async t=>{
  const p=page(t),d=p.w.document,drawn=[];
  const paint=p.w.OceanArt.canvasMemory;
- p.w.OceanArt.canvasMemory=(ctx,item,x,y,size)=>{if([117,173,229].includes(x)&&[381,411].includes(y))drawn.push(item.icon);paint(ctx,item,x,y,size);};
+ p.w.OceanArt.canvasMemory=(ctx,item,x,y,size)=>{if([107,166,225].includes(x)&&[496,522].includes(y))drawn.push(item.icon);paint(ctx,item,x,y,size);};
  p.update({phase:'room',language:'indonesian',trip:1});await p.advance(50);
  assert.deepEqual(drawn,[],'empty shelf must not show reward artwork');
  p.walk('memories');await p.advance(6500);
@@ -419,7 +490,7 @@ test('Chinese Jelly mouth animates during narration, rests on pause, and page ob
  const initial=mouth.getAttribute('ry');await p.advance(150);assert.notEqual(mouth.getAttribute('ry'),initial);
  p.click('#scene-play');assert.equal(mouth.getAttribute('ry'),'2');
  p.click('#scene-play');assert.equal(narrator.classList.contains('is-speaking'),true);
- for(let i=0;i<3;i++){p.click('#scene-continue');await p.advance(100);}
+ for(let i=0;i<3;i++){p.click('#scene-continue');p.giveElixir();await p.advance(100);}
  p.w.speechSynthesis.speaking=false;utterances.at(-1).onend();await p.advance(100);
  assert.equal(mouth.getAttribute('ry'),'2','mouth rests while waiting for the child');
  assert.equal(d.querySelector('[data-chinese-choice="story-shell"]'),moon,'animation does not replace the illustrated target');
@@ -439,9 +510,9 @@ function installStoryVoices(p,initialVoices) {
 }
 async function reachStoryReward(p,chapter=0,language='chinese') {
  p.update({phase:'room',language,trip:1,storyPage:chapter});p.walk('book');await p.advance(6500);
- for(let i=0;i<3;i++){p.click('#scene-continue');await p.advance(100);}
+ for(let i=0;i<3;i++){p.click('#scene-continue');p.giveElixir();await p.advance(100);}
  for(const id of [['story-shell'],['prince-left','prince-right'],['peace-ripple'],['nyale-target'],['scene-boat']][chapter])p.click(language==='chinese'?`[data-chinese-choice="${id}"]`:'#'+id);
- p.click('#scene-continue');await p.advance(100);
+ p.click('#scene-continue');p.giveElixir();await p.advance(100);
 }
 test('all Chinese story words use a Mandarin voice between English segments and never read pinyin aloud',async t=>{
  const english={name:'English default',lang:'en-US',default:true},cantonese={name:'Cantonese',lang:'zh-HK'},mandarin={name:'Tingting',lang:'zh-CN'};
@@ -528,7 +599,7 @@ test('Bring Jelly home keeps its outfit and memories until starting a fresh adve
 });
 test('common room bubbles drift smoothly in seconds and wrap while invisible',t=>{
  const p=page(t);
- for(let i=0;i<18;i++)for(let time=0;time<100;time+=.1){
+ for(let i=0;i<64;i++)for(let time=0;time<100;time+=.1){
   const a=p.w.OceanArt.roomBubble(i,time),b=p.w.OceanArt.roomBubble(i,time+.016);
   assert.ok(a.alpha>=0&&a.alpha<=1);
   if(Math.abs(a.y-b.y)>10){assert.equal(a.alpha,0);assert.equal(b.alpha,0);}
@@ -586,7 +657,7 @@ test('the gift stays at home before Peng Meng arrives and Chang’e rises slowly
  const scene=d.querySelector('.chinese-scene'),peng=scene.querySelector('[data-peng-meng]'),change=scene.querySelector('[data-family="prince-left"]');
  assert.equal(peng.getAttribute('opacity'),'1');
  assert.equal(peng.getAttribute('transform'),'translate(470 0)');
- p.click('#scene-continue');p.click('#scene-continue');await p.advance(1200);
+ p.click('#scene-continue');p.click('#scene-continue');p.giveElixir();await p.advance(1200);
  const position=change.getAttribute('transform');assert.notEqual(position,'translate(265 0)');
  p.click('#scene-play');await p.advance(1000);assert.equal(change.getAttribute('transform'),position);
  p.click('#scene-play');await p.advance(6800);assert.equal(change.getAttribute('transform'),'translate(705 -245)');
@@ -634,4 +705,132 @@ test('Jade Rabbit discovery is optional, only on the final Chinese page, and pau
  assert.match(d.querySelector('#scene-play').textContent,/Play/);
  p.click('#close-story');p.update({storyPage:0});p.w.OceanRoom.startStory();await p.advance(2200);
  assert.equal(discovery.hidden,true);assert.equal(discovery.open,false);
+});
+
+test('Continue repeats the glowing-water task in Jelly’s voice',async t=>{
+ const p=page(t),lookups=[],recordings=[];
+ p.w.speechSynthesis={speaking:false,cancel(){},getVoices:()=>[]};
+ p.w.eval(fs.readFileSync('public/js/vocabulary-speech.js','utf8'));
+ p.w.VocabularySpeech.recordingFor=(text,lang,role)=>{lookups.push({text,role});return '/audio/elevenlabs/task.mp3';};
+ p.w.Audio=class{constructor(){recordings.push(this);}play(){this.onplaying?.();return Promise.resolve();}pause(){this.onpause?.();}};
+ p.update({phase:'room',language:'indonesian',trip:1,storyPage:2});p.walk('book');await p.advance(6500);
+ for(let i=0;i<3;i++)p.click('#scene-continue');recordings.at(-1).onended();
+ p.click('#scene-continue');assert.match(lookups.at(-1).text,/glowing water/);assert.equal(lookups.at(-1).role,'jelly');p.click('#close-story');
+});
+
+test('changing language switches room backgrounds and renders plenty of animated bubbles',async t=>{
+ const p=page(t),bubbles=new Set();const original=p.w.OceanArt.roomBubble;
+ p.w.OceanArt.roomBubble=(index,seconds)=>{bubbles.add(index);return original(index,seconds);};
+ for(const [language,name]of [['indonesian','nusantara'],['chinese','chinese'],['indonesian','nusantara']]){
+  p.draws.length=0;bubbles.clear();p.update({phase:'room',language});await p.advance(100);
+  const backgrounds=p.draws.map(draw=>draw[0]?.src).filter(src=>src?.includes('underwater-room-'));
+  assert.ok(backgrounds.length);assert.ok(backgrounds.every(src=>src===`/assetNEW/underwater-room-${name}-balanced.png`));
+  assert.ok(bubbles.size>=50,'the room has a dense field of drifting bubbles');
+ }
+});
+
+test('bookshelf, storybook and wardrobe arrow tips follow their fitted furniture across screen sizes',async t=>{
+ const p=page(t),d=p.w.document;
+ p.update({phase:'room',language:'indonesian',trip:1,storyDone:true,invited:true,bag:[{id:'book'}]});
+ const guides=[['learning-guidance','.guidance-arrow','bookshelf'],['storybook-guidance','.storybook-guidance-arrow','storybook'],['wardrobe-guide','span','wardrobe'],['memory-shelf-guidance','.memory-guidance-arrow','memory-shelf']];
+ for(const [id]of guides){const node=d.getElementById(id);node.hidden=false;node.getBoundingClientRect=()=>({left:0,top:0,width:220,height:100});}
+ for(const [width,height]of [[390,590],[844,390],[1280,800]]){
+  const rect={left:20,top:30,width,height,right:20+width,bottom:30+height};
+  d.getElementById('game').getBoundingClientRect=()=>rect;d.getElementById('game').parentElement.getBoundingClientRect=()=>rect;
+  p.draws.length=0;await p.advance(100);
+  for(const [id,selector,file]of guides){
+   const guide=d.getElementById(id),arrow=guide.querySelector(selector);
+   const drawn=p.draws.find(args=>args[0]?.src===`/underwater_commonroom/${file}.png`);assert.ok(drawn,file);
+   const x=(drawn[1]+drawn[3]/2)*width/960,y=(drawn[2]+drawn[4]*.08)*height/620;
+   const tipX=parseFloat(guide.style.left)+parseFloat(arrow.style.left)+parseFloat(arrow.style.width)/2;
+   const tipY=parseFloat(guide.style.top)+parseFloat(arrow.style.top)+parseFloat(arrow.style.height);
+   assert.ok(Math.abs(tipX-x)<.01,`${file} arrow is horizontally centered on the artwork`);
+   assert.ok(Math.abs(tipY-y)<.01,`${file} arrow points inside the artwork rather than at the old wall position`);
+   assert.equal(arrow.textContent,'↓');
+  }
+ }
+});
+
+test('tapping the mooncake delivers its plate too, with no independent floating',async t=>{
+ const p=page(t),d=p.w.document;
+ p.update({phase:'room',language:'chinese',trip:1,storyPage:2});p.walk('book');await p.advance(6500);
+ for(let i=0;i<3;i++){p.click('#scene-continue');p.giveElixir();await p.advance(100);}
+ const scene=d.querySelector('.chinese-scene'),cake=scene.querySelector('[data-chinese-choice="peace-ripple"]');
+ const tray=cake.querySelector('[data-story-tray]'),pastry=cake.querySelector('[data-story-mooncake]');
+ assert.ok(tray);assert.ok(pastry);assert.ok(tray.compareDocumentPosition(pastry)&p.w.Node.DOCUMENT_POSITION_FOLLOWING,'plate is painted underneath the cake');
+ assert.ok(tray.querySelector('[data-cake-contact-shadow]'),'contact shadow joins cake to plate');
+ p.click('[data-chinese-choice="peace-ripple"]');assert.equal(cake.getAttribute('transform'),'translate(-180 -10)');
+ await p.advance(500);assert.equal(cake.getAttribute('transform'),'translate(-180 -10)');
+ assert.equal(scene.querySelector('[data-moon-prop]').getAttribute('transform'),'translate(0 0)');
+ assert.equal(tray.closest('[data-chinese-choice]'),cake);assert.equal(pastry.closest('[data-chinese-choice]'),cake);
+ assert.equal(d.querySelector('#scene-stage').classList.contains('choice-complete'),true);
+});
+
+test('the supplied elixir stands above the tabletop and character hearts use the supplied PNG',async t=>{
+ for(const pageIndex of [1,2]){
+  const p=page(t),d=p.w.document;
+  p.update({phase:'room',language:'chinese',trip:1,storyPage:pageIndex});p.walk('book');await p.advance(6500);
+  const scene=d.querySelector('.chinese-scene'),table=scene.querySelector('[data-story-explore="table"]');
+  const bottle=scene.querySelector(pageIndex===1?'[data-gift-elixir]':'[data-legend-elixir]'),image=bottle.querySelector('image');
+  assert.equal(image.getAttribute('href'),'/assetNEW/magical-elixir.png');
+  assert.ok(table.compareDocumentPosition(bottle)&p.w.Node.DOCUMENT_POSITION_FOLLOWING,'bottle is painted above the table');
+  const scale=Number(image.getAttribute('width'))/1310;
+  assert.ok(Math.abs(scale-Number(image.getAttribute('height'))/1200)<.00001,'PNG keeps its aspect ratio');
+  const baseX=Number(image.getAttribute('x'))+(375+934)/2*scale,baseY=Number(image.getAttribute('y'))+1085*scale;
+  assert.ok(Math.abs(baseX-490)<.01);assert.ok(baseY>407&&baseY<409,'visible bottle base touches the tabletop');
+  assert.ok((934-375)*scale<=44.01&&(1085-80)*scale<=80.01,'bottle stays proportional to the table');
+  assert.ok(bottle.querySelector('[data-elixir-contact-shadow]'));
+  if(pageIndex===1){
+   for(let i=0;i<3;i++){p.click('#scene-continue');p.giveElixir();await p.advance(100);}
+   for(const name of ['prince-left','prince-right']){
+    const character=scene.querySelector(`[data-chinese-choice="${name}"]`),heart=character.querySelector('[data-delivered]');
+    assert.equal(heart.hasAttribute('hidden'),true);p.click(`.chinese-scene [data-chinese-choice="${name}"]`);assert.equal(heart.hasAttribute('hidden'),false);
+    const picture=heart.querySelector('image');assert.equal(picture.getAttribute('href'),'/assetNEW/heart-storybook.png');
+    const s=Number(picture.getAttribute('width'))/1310;assert.ok((1114-195)*s<=26.01&&(994-214)*s<=24.01,'heart is a small character-sized cue');
+   }
+  }
+  p.click('#close-story');
+ }
+});
+
+test('Chang’e waits for the elixir drag before the bottle disappears and she rises',async t=>{
+ const p=page(t),d=p.w.document;
+ p.update({phase:'room',language:'chinese',trip:1,storyPage:2});p.walk('book');await p.advance(6500);
+ p.click('#scene-continue');
+ const scene=d.querySelector('.chinese-scene'),elixir=scene.querySelector('[data-legend-elixir]'),change=scene.querySelector('[data-family="prince-left"]');
+ scene.getBoundingClientRect=()=>({left:0,top:0,width:960,height:520});
+ assert.equal(elixir.getAttribute('aria-disabled'),'false');assert.match(d.querySelector('#scene-prompt').textContent,/Drag the elixir/);
+ for(let i=0;i<3;i++)p.click('#scene-continue');await p.advance(12000);
+ assert.equal(elixir.getAttribute('opacity'),'1');assert.equal(change.getAttribute('transform'),'translate(265 0)','Continue cannot start the flight');
+ elixir.dispatchEvent(new p.w.MouseEvent('pointerdown',{bubbles:true,clientX:490,clientY:368}));
+ scene.dispatchEvent(new p.w.MouseEvent('pointermove',{bubbles:true,clientX:850,clientY:368}));scene.dispatchEvent(new p.w.MouseEvent('pointerup',{bubbles:true}));
+ assert.equal(elixir.getAttribute('transform'),null);assert.equal(elixir.getAttribute('opacity'),'1','wrong drop keeps the elixir on the table');
+ elixir.dispatchEvent(new p.w.MouseEvent('pointerdown',{bubbles:true,clientX:490,clientY:368}));
+ scene.dispatchEvent(new p.w.MouseEvent('pointermove',{bubbles:true,clientX:265,clientY:345}));scene.dispatchEvent(new p.w.MouseEvent('pointerup',{bubbles:true}));
+ assert.equal(elixir.getAttribute('opacity'),'0');assert.equal(d.querySelector('#scene-prompt').hidden,true);
+ await p.advance(1000);assert.notEqual(change.getAttribute('transform'),'translate(265 0)','flight starts only after delivery');
+ assert.equal(p.state.storyPage,2,'delivering elixir does not bypass the mooncake interaction');
+});
+
+test('remembering Chang’e shows Hou Yi returning, then offerings before the modern celebration',async t=>{
+ const p=page(t),d=p.w.document;
+ p.update({phase:'room',language:'chinese',trip:1,storyPage:3});p.walk('book');await p.advance(6500);
+ const scene=d.querySelector('.chinese-scene'),houyi=scene.querySelector('[data-remembering-houyi]');
+ assert.match(d.querySelector('#scene-subtitle').textContent,/When Hou Yi came home/);
+ assert.equal(houyi.hasAttribute('hidden'),false);
+ assert.equal(houyi.getAttribute('transform'),'translate(700 0)');
+ assert.equal(scene.querySelector('[data-modern-family]').hasAttribute('hidden'),true);
+ assert.equal(scene.querySelector('[data-remembrance-offerings]').hasAttribute('hidden'),true);
+ assert.equal(scene.querySelector('[data-moon-prop]').hasAttribute('hidden'),true);
+ p.click('#scene-continue');await p.advance(100);
+ assert.match(d.querySelector('#scene-subtitle').textContent,/favourite foods outside beneath the Moon/);
+ const offerings=scene.querySelector('[data-remembrance-offerings]');
+ assert.equal(offerings.hasAttribute('hidden'),false);
+ assert.ok(offerings.querySelector('[data-story-tray]'));assert.ok(offerings.querySelector('[data-story-mooncake]'));
+ assert.equal(scene.querySelector('[data-story-explore="table"]').hasAttribute('hidden'),false);
+ p.click('#scene-continue');await p.advance(100);
+ assert.match(d.querySelector('#scene-subtitle').textContent,/Today, families celebrate/);
+ assert.equal(houyi.hasAttribute('hidden'),true);
+ assert.equal(scene.querySelector('[data-modern-family]').hasAttribute('hidden'),false);
+ assert.equal(scene.querySelector('[data-moon-prop]').hasAttribute('hidden'),false);
 });

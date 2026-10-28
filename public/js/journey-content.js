@@ -8,7 +8,7 @@ const mandalika = [
       { label: "The kingdom", line: "Once upon a time, in a Sasak legend from Lombok, we meet a kind princess named Mandalika.", minSeconds: 4 },
       { label: "Mandalika arrives", line: "Here comes Putri Mandalika. Putri means princess in Indonesian. She walks through her home with a warm smile.", minSeconds: 5 },
       { label: "A kind greeting", line: "Mandalika cared for her community. She greeted her neighbours and listened when they spoke.", minSeconds: 5 },
-      { label: "Your turn", line: "Can you help me find the seashell beside the path? Tap it to join our story.", minSeconds: 3 },
+      { label: "Your turn", line: "Can you help me find the seashell beside the path? Please tap it!", minSeconds: 3 },
       { label: "A new word", line: "You found it! Kerang means seashell in Indonesian. Thank you for exploring with me. Let's see what happens next.", minSeconds: 4 },
     ],
   },
@@ -75,8 +75,8 @@ const moonStory = [
  ]),
  chapter("Chang’e Flies to the Moon", "Tap 月饼 or drag it to the table beneath the Moon", [
   "One day, Hou Yi went away. His apprentice, Peng Meng, came to their home and tried to take the elixir from Chang’e.",
-  "Chang’e did not want Peng Meng to take it. She drank the elixir herself. Then something extraordinary began to happen.",
-  "Her feet lifted from the ground. Slowly, she rose above the house, higher and higher, until she reached the Moon. Let’s pause with her there, far from home.",
+  "Chang’e did not want Peng Meng to take the elixir. Drag the elixir to Chang’e to see what happens next.",
+  "Chang’e drank the elixir herself. Her feet lifted from the ground. Slowly, she rose above the house, higher and higher, until she reached the Moon. Let’s pause with her there, far from home.",
   "Hou Yi would remember Chang’e with her favourite foods. Place this mooncake on the table: tap it, or drag it to the middle.",
   "Thank you for sharing. 月饼, yuè bǐng, means mooncake. Keep this round cake in mind. On the next page, we’ll find out why people share it today."
  ]),

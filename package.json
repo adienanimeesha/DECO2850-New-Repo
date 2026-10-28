@@ -6,7 +6,12 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "node --test"
+    "test": "node --test",
+    "voice:sample": "node scripts/generate-voice.js",
+    "voice:generate": "node scripts/generate-voice.js --all",
+    "voice:guidance": "node scripts/generate-voice.js --guidance",
+    "assets:vocabulary": "python3 scripts/prepare-vocabulary-assets.py",
+    "voice:assemble": "node scripts/assemble-voice.js"
   },
   "keywords": [],
   "author": "",

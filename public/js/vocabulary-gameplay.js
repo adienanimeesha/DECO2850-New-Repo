@@ -5,7 +5,7 @@
 const footprint = Object.freeze({halfWidth:50, halfHeight:54, float:5, radius:48});
 const overlaps = (a,b,gap=0) => a.x < b.x+b.width+gap && a.x+a.width+gap > b.x && a.y < b.y+b.height+gap && a.y+a.height+gap > b.y;
 const objectBounds = item => ({x:item.x-footprint.halfWidth,y:item.y-footprint.halfHeight,width:footprint.halfWidth*2,height:footprint.halfHeight*2});
-function placeObjects(objects, { bounds, furniture, player, reserved = [], visualObstacles = furniture }) {
+function placeObjects(objects, { bounds, placementBounds = bounds, furniture, player, reserved = [], visualObstacles = furniture }) {
  const radius = player.radius + 3, grid = 20;
  const valid = p => p.x >= bounds.left + radius && p.x <= bounds.right - radius && p.y >= bounds.top + radius && p.y <= bounds.bottom - radius && !furniture.some(b => {
   const dx = p.x - Math.max(b.x, Math.min(p.x, b.x + b.width));
@@ -28,7 +28,7 @@ function placeObjects(objects, { bounds, furniture, player, reserved = [], visua
  const obstacles=[...visualObstacles,...reserved.map(s=>s.width!==undefined?s:{x:s.x-s.radius,y:s.y-s.radius,width:s.radius*2,height:s.radius*2})];
  const candidates = queue.filter(p => {
   const box=objectBounds(p);
-  return valid(p) && box.x>=bounds.left && box.x+box.width<=bounds.right && box.y>=bounds.top && box.y+box.height<=bounds.bottom && !obstacles.some(obstacle=>overlaps(box,obstacle,2));
+  return valid(p) && box.x>=placementBounds.left && box.x+box.width<=placementBounds.right && box.y>=placementBounds.top && box.y+box.height<=placementBounds.bottom && !obstacles.some(obstacle=>overlaps(box,obstacle,2));
  });
  const chosen = [];
  for (const object of objects) {
@@ -73,14 +73,15 @@ function positionBubble(options) {
 function create({ root, adapter, room, colouring = window.VocabularyColouring }) {
  if (!root || !adapter || !room || !colouring || !window.VocabularySpeech) throw new Error('Vocabulary gameplay dependencies are missing.');
  let view = null, objects = [], generation = 0, pending = false, speaking = false, disposed = false, paint = null, paintedKey = null;
- let feedbackParts = null, cancelledKey = null, hoveredId=null,targetId=null,characterBubble=null,bubbleSize=null,layoutDirty=false,wrongHintTimer=null;
+ let feedbackParts = null, cancelledKey = null, hoveredId=null,targetId=null,characterBubble=null,bubbleSize=null,bubbleAnchor=null,layoutDirty=false,wrongHintTimer=null,thankYouDone=null,finishing=null,narrationPaused=false;
  const reducedMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)');
- const speech = window.VocabularySpeech.create({onSpeaking(value){speaking=value;},onStatus(message){const node=root.querySelector('.vocabulary-audio-status');if(node){node.textContent=message;node.hidden=!message;}}});
+ const speech = window.VocabularySpeech.create({onSpeaking(value,role='jelly'){speaking=value&&role==='jelly';},onStatus(message){const node=root.querySelector('.vocabulary-audio-status');if(node){node.textContent=message;node.hidden=!message;}}});
  function stopPresentation() {
+  thankYouDone?.(false);thankYouDone=null;finishing=null;narrationPaused=false;
   clearTimeout(wrongHintTimer);wrongHintTimer=null;
   generation++; speech.cancel(); paint?.close(); paint=null; paintedKey=null; pending=false; objects=[]; feedbackParts=null; cancelledKey=null;
   room.clearMovement(); root.replaceChildren(); root.hidden=true;
-  hoveredId=targetId=null;characterBubble?.remove();characterBubble=null;bubbleSize=null;layoutDirty=false;
+  hoveredId=targetId=null;characterBubble?.remove();characterBubble=null;bubbleSize=null;bubbleAnchor=null;layoutDirty=false;
  }
  function parts(question) {
   const lang = view.language === 'chinese' ? 'zh-CN' : 'id-ID';
@@ -92,11 +93,11 @@ function create({ root, adapter, room, colouring = window.VocabularyColouring })
    ...(/[\p{L}\p{N}]/u.test(after)?[{text:after,lang:'en-US',audio:question.afterAudio}]:[])
   ];
  }
- function replay() { if (view?.question && !paint && !disposed) speech.play(feedbackParts || parts(view.question)); }
+ function replay() { if(finishing){finishDrawing();return;}if (view?.question && !paint && !finishing && !disposed) speech.play(feedbackParts || parts(view.question)); }
  function relayout() {
   if(!view||disposed)return;
-  layoutDirty=true;bubbleSize=null;
-  if(paint||pending)return;
+  layoutDirty=true;bubbleSize=null;bubbleAnchor=null;
+  if(paint||pending||finishing)return;
   objects=placeObjects(view.question.objects,room.geometry());layoutDirty=false;hoveredId=targetId=null;room.clearMovement();
  }
  window.addEventListener('resize',relayout);
@@ -137,6 +138,7 @@ function create({ root, adapter, room, colouring = window.VocabularyColouring })
   // the character's caption in a second visible panel.
   const transcript=document.createElement('div');transcript.className='sr-only vocabulary-transcript';
   transcript.append(progress,text,pronunciation,choices);
+  const retry=document.createElement('button');retry.type='button';retry.className='vocabulary-save-retry secondary';retry.textContent='Try saving again';retry.hidden=true;retry.addEventListener('click',finishDrawing);controls.append(retry);
   bubble.append(transcript,controls,hint,status);root.append(bubble);
   if(canvas){characterBubble=document.createElement('aside');characterBubble.className='jelly-question-bubble';characterBubble.hidden=true;characterBubble.setAttribute('aria-hidden','true');const visibleProgress=document.createElement('small');visibleProgress.className='vocabulary-visible-progress';visibleProgress.textContent=`Word ${view.index+1} of 5 · Colour it to continue`;characterBubble.append(visibleProgress,text.cloneNode(true));if(view.question.pronunciation)characterBubble.append(pronunciation.cloneNode(true));canvas.parentElement.append(characterBubble);}
  }
@@ -156,7 +158,7 @@ function create({ root, adapter, room, colouring = window.VocabularyColouring })
   if(next.stage==='colouring')restoreColouring();else replay();
  }
  function restoreColouring() {
-  if(view?.stage==='colouring'&&!paint&&cancelledKey!==view.key)
+  if(view?.stage==='colouring'&&!paint&&!finishing&&cancelledKey!==view.key)
    openColouring(objects.find(item=>item.id===view.colouringItemId));
  }
  function openColouring(item) {
@@ -168,10 +170,15 @@ function create({ root, adapter, room, colouring = window.VocabularyColouring })
   if(characterBubble)characterBubble.hidden=true;
   root.querySelector('.vocabulary-resume').hidden=true;
   const host=document.createElement('div');host.className='vocabulary-colouring-host';root.append(host);
-  paint=colouring.mount(host,{...item,icon:view.colouringAsset||item.icon,step:view.index+1,total:5},async artwork=>{
-   if(token!==generation||paintedKey!==key)return;
-   await adapter.complete({key,objectId:item.id,artwork});
-   if(token===generation){paint?.close();paint=null;host.remove();root.querySelector('.vocabulary-hint').textContent='Waiting for the next question…';}
+  paint=colouring.mount(host,{...item,icon:view.colouringAsset||item.icon,step:view.index+1,total:5,feedback:view.question.feedback,word:view.question.word,language:view.language},async artwork=>{
+   if(token!==generation||paintedKey!==key||finishing)return;
+   finishing={token,key,item,artwork,text:view.question.feedback?.thankYou,thanked:false};
+   paint?.close();paint=null;host.remove();cancelledKey=key;objects=[];bubbleSize=null;bubbleAnchor=null;
+   const text=finishing.text||'Thank you for colouring this for me!';
+   const transcript=root.querySelector('.vocabulary-prompt');transcript.textContent=text;transcript.setAttribute('role','status');
+   if(characterBubble){characterBubble.querySelector('.vocabulary-prompt').textContent=text;characterBubble.querySelector('small').textContent='Jelly says…';characterBubble.querySelector('.vocabulary-pronunciation')?.remove();characterBubble.hidden=false;}
+   root.querySelector('.vocabulary-replay').disabled=true;
+   await finishDrawing();
   },()=>{
    paint?.close();paint=null;host.remove();pending=false;cancelledKey=key;room.clearMovement();
    if(layoutDirty)relayout();
@@ -179,8 +186,33 @@ function create({ root, adapter, room, colouring = window.VocabularyColouring })
    root.querySelector('.vocabulary-hint').textContent='Your answer is saved. Continue colouring when you are ready.';
   });
  }
+ async function finishDrawing(){
+  const current=finishing;if(!current||current.running)return;
+  current.running=true;pending=true;
+  root.querySelector('.vocabulary-save-retry').hidden=true;
+  try{
+   if(current.text&&!current.thanked){
+    const finished=await new Promise(resolve=>{
+     const settle=value=>{if(thankYouDone===settle)thankYouDone=null;resolve(value);};thankYouDone=settle;
+     speech.play([{text:current.text,lang:view.language==='chinese'?'zh-CN':'id-ID',role:'jelly',fallbackParts:window.JellyGuidanceContent?.vocabularyParts(current.text,view.question.word,view.language,'jelly')}],{onComplete(){settle(true);},onCancel(){settle(false);}});
+    });
+    if(current.token!==generation||finishing!==current)return;
+    if(!finished){
+     pending=false;root.querySelector('.vocabulary-replay').disabled=false;
+     const retry=root.querySelector('.vocabulary-save-retry');retry.textContent='Continue Jelly’s thank-you';retry.hidden=false;
+     root.querySelector('.vocabulary-hint').textContent='Jelly was interrupted. Continue her thank-you to finish this word.';
+     return;
+    }
+    current.thanked=true;
+   }
+   await adapter.complete({key:current.key,objectId:current.item.id,artwork:current.artwork});
+   if(current.token===generation)root.querySelector('.vocabulary-hint').textContent='Waiting for the next question…';
+  }catch{
+   if(current.token===generation){pending=false;root.querySelector('.vocabulary-hint').textContent='Your drawing is safe. Try saving it again.';const retry=root.querySelector('.vocabulary-save-retry');retry.textContent='Try saving again';retry.hidden=false;}
+  }finally{current.running=false;}
+ }
  async function select(id) {
-  if(disposed||!view||pending||paint)return;
+  if(disposed||!view||pending||paint||finishing)return;
   const item=objects.find(o=>o.id===id);if(!item||!room.isNear(item))return;
   if(view.stage==='colouring'){if(id===view.colouringItemId)openColouring(item);return;}
   clearTimeout(wrongHintTimer);wrongHintTimer=null;
@@ -196,7 +228,11 @@ function create({ root, adapter, room, colouring = window.VocabularyColouring })
     wrongHintTimer=setTimeout(()=>{if(token===generation&&hint.isConnected){hint.textContent='';hint.classList.remove('is-incorrect');}wrongHintTimer=null;},5200);
     // Hints are content, never inferred from the renderer's icon names.
     // Keep contextual mixed-language hint audio available as content segments.
-    feedbackParts=result?.speechParts || [{text:message,lang:'en-US'}];speech.play(feedbackParts);
+    feedbackParts=[
+     ...(result?.speechParts || [{text:message,lang:'en-US'}]).map(part=>({...part,role:'narrator'})),
+     ...parts(view.question).map(part=>({...part,role:'jelly'}))
+    ];
+    speech.play(feedbackParts,{onComplete(){if(token===generation)feedbackParts=null;}});
     return;
    }
    if(result.colouringAllowed!==true)return;
@@ -207,7 +243,7 @@ function create({ root, adapter, room, colouring = window.VocabularyColouring })
  }
  function updateCharacterBubble(player) {
   if(!characterBubble)return;
-  characterBubble.hidden=Boolean(paint)||view?.stage==='colouring';if(characterBubble.hidden)return;
+  characterBubble.hidden=Boolean(paint)||(view?.stage==='colouring'&&!finishing);if(characterBubble.hidden)return;
   const canvas=document.getElementById('game'),rect=canvas.getBoundingClientRect();
   if(!rect.width||!rect.height)return;
   const sx=rect.width/960,sy=rect.height/620,u=Math.min(sx,sy);
@@ -217,15 +253,27 @@ function create({ root, adapter, room, colouring = window.VocabularyColouring })
     const measured=characterBubble.getBoundingClientRect();
     return {width:Math.min(measured.width||width,rect.width-16),height:measured.height||80};
    });
-   bubbleSize={sizes,frameWidth:rect.width,frameHeight:rect.height};
+   bubbleSize={sizes,frameWidth:rect.width,frameHeight:rect.height};bubbleAnchor=null;
   }
   const head={x:player.x*sx-43*u,y:(player.y-25)*sy-62*u,width:86*u,height:82*u};
-  const obstacles=objects.map(item=>{const b=objectBounds(item);return{x:b.x*sx,y:b.y*sy,width:b.width*sx,height:b.height*sy};});
-  for(const node of document.querySelectorAll('.d-pad,.journey-tools,.vocabulary-controls,.vocabulary-hint'))if(node.getClientRects().length){const b=node.getBoundingClientRect();obstacles.push({x:b.left-rect.left,y:b.top-rect.top,width:b.width,height:b.height});}
-  const point=positionBubble({width:rect.width,height:rect.height,sizes:bubbleSize.sizes,head,obstacles});
+  if(!bubbleAnchor){
+   const obstacles=objects.map(item=>{const b=objectBounds(item);return{x:b.x*sx,y:b.y*sy,width:b.width*sx,height:b.height*sy};});
+   for(const node of document.querySelectorAll('.d-pad,.journey-tools,.vocabulary-controls,.vocabulary-hint'))if(node.getClientRects().length){const b=node.getBoundingClientRect();obstacles.push({x:b.left-rect.left,y:b.top-rect.top,width:b.width,height:b.height});}
+   // Keep one side of Jelly, then smoothly follow movement without reselecting sides.
+   // Resize and dialogue changes explicitly invalidate this anchor.
+   bubbleAnchor=positionBubble({width:rect.width,height:rect.height,sizes:bubbleSize.sizes,head,obstacles});
+  }
+  const point=bubbleAnchor;
+  if(point){
+   const cx=head.x+head.width/2,cy=head.y+head.height/2,now=performance.now();
+   if(point.offsetX===undefined){point.offsetX=point.x-cx;point.offsetY=point.y-cy;point.time=now;}
+   const x=Math.max(8,Math.min(rect.width-point.width-8,cx+point.offsetX)),y=Math.max(8,Math.min(rect.height-point.height-8,cy+point.offsetY));
+   const blend=reducedMotion?.matches?1:1-Math.exp(-Math.min(100,now-point.time)/90);point.time=now;
+   point.x+=(x-point.x)*blend;point.y+=(y-point.y)*blend;
+  }
   if(!point){characterBubble.hidden=true;return;}
   characterBubble.style.width=point.width+'px';characterBubble.style.left=point.x+'px';characterBubble.style.top=point.y+'px';characterBubble.dataset.tail=point.side;
-  characterBubble.style.setProperty('--tail-x',point.tailX+'px');characterBubble.style.setProperty('--tail-y',point.tailY+'px');
+  characterBubble.style.setProperty('--tail-x',Math.max(14,Math.min(point.width-14,head.x+head.width/2-point.x))+'px');characterBubble.style.setProperty('--tail-y',Math.max(14,Math.min(point.height-14,head.y+head.height/2-point.y))+'px');
  }
  function draw(ctx,time,player) {
   for(const item of objects){
@@ -245,7 +293,7 @@ function create({ root, adapter, room, colouring = window.VocabularyColouring })
   updateCharacterBubble(player);
  }
  const hitTest=p=>objects.find(item=>{const b=objectBounds(item);return p.x>=b.x&&p.x<=b.x+b.width&&p.y>=b.y&&p.y<=b.y+b.height;});
- return {sync,select,draw,replay,hitTest,setHover:id=>{hoveredId=id;},setTarget:id=>{targetId=id;},cancelNarration:()=>speech.cancel(),get objects(){return objects;},get active(){return Boolean(view);},get blocked(){return pending||Boolean(paint);},get speaking(){return speaking;},stop(){stopPresentation();view=null;},destroy(){stopPresentation();view=null;disposed=true;window.removeEventListener('resize',relayout);resizeObserver?.disconnect();}};
+ return {sync,select,draw,replay,hitTest,setHover:id=>{hoveredId=id;},setTarget:id=>{targetId=id;},cancelNarration:()=>speech.cancel(),pauseNarration(){if(view){narrationPaused=true;speech.pause?.();}},resumeNarration(){if(narrationPaused){narrationPaused=false;speech.resume?.();}},get objects(){return objects;},get active(){return Boolean(view);},get blocked(){return pending||Boolean(paint)||Boolean(finishing);},get speaking(){return speaking;},stop(){stopPresentation();view=null;},destroy(){stopPresentation();view=null;disposed=true;window.removeEventListener('resize',relayout);resizeObserver?.disconnect();}};
 }
 window.VocabularyGameplay={create,placeObjects,footprint,objectBounds,overlaps,positionBubble};
 })();

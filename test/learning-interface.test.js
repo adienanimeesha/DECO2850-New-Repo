@@ -32,13 +32,39 @@ test('first room visit guides movement and bookshelf opens three authoritative l
  const p = setup(t);
  p.api.sync(p.base, null);
  assert.equal(p.document.querySelector('#learning-guidance').hidden, false);
- assert.match(p.document.querySelector('#learning-guidance').textContent, /Move your jellyfish towards the bookshelf/);
+ assert.match(p.document.querySelector('#learning-guidance').textContent, /Move Jelly towards the bookshelf/);
  p.api.approach('learning-bookshelf');
  assert.equal(p.document.querySelector('#learning-level-screen').hidden, false);
  assert.equal(p.document.querySelectorAll('#learning-level-list .learning-card').length, 3);
  assert.equal(p.document.querySelectorAll('#learning-level-list .learning-card-action').length, 1);
  assert.equal(p.document.querySelector('#learning-level-list .learning-card h3').textContent, 'Everyday objects · Tutorial');
  assert.equal(p.document.querySelectorAll('#learning-level-list .is-locked').length, 2);
+});
+
+test('guidance is spoken once on arrival, replayable, and canceled before levels start',t=>{
+ const p=setup(t),spoken=[];let canceled=0;
+ p.window.JellyGuidanceContent=require('../public/js/guidance-content');
+ p.window.VocabularySpeech={create:options=>{assert.equal(options.role,'narrator');return{play(parts){spoken.push(parts[0].text);},cancel(){canceled++;}};}};
+ p.api.sync(p.base,null);
+ assert.equal(spoken.at(-1),p.window.JellyGuidanceContent.bookshelf);
+ p.api.sync(p.base,p.base);assert.equal(spoken.length,1,'snapshots do not repeat instructions');
+ p.document.querySelector('#hear-learning-guidance').click();assert.equal(spoken.length,2);
+ p.api.approach('learning-bookshelf');assert.equal(spoken.at(-1),p.window.JellyGuidanceContent.levels);
+ assert.ok(canceled>0);
+ p.api.stop();assert.equal(p.document.querySelector('#learning-guidance').hidden,true);
+});
+
+test('first storybook unlock is announced by narrator exactly once',t=>{
+ const p=setup(t),spoken=[];
+ p.window.JellyGuidanceContent=require('../public/js/guidance-content');
+ p.window.VocabularySpeech={create:options=>({play(parts){spoken.push({role:options.role,text:parts[0].text});},cancel(){}})};
+ p.api.sync(p.base,null);
+ const complete=structuredClone(p.base);complete.learning.levels[0].status='completed';complete.learning.storyUnlocked=true;
+ p.api.sync(complete,p.base);
+ const unlock=p.window.JellyGuidanceContent.unlock;
+ assert.deepEqual(spoken.filter(line=>line.text===unlock),[{role:'narrator',text:unlock}]);
+ p.api.sync(complete,complete);p.document.querySelector('#explore-storybook').click();p.api.sync(complete,complete);
+ assert.equal(spoken.filter(line=>line.text===unlock).length,1);
 });
 
 test('starting Level 1 closes the menu without starting from room entry', async t => {
@@ -138,4 +164,32 @@ test('owned interface removes nursery-rhyme navigation and includes responsive l
  assert.doesNotMatch(js, /journey-rhyme-|nursery rhyme|sing along/i);
  assert.match(css, /@media\(max-width:680px\)/);
  assert.match(css, /@media\(max-height:500px\) and \(orientation:landscape\)/);
+});
+
+test('first collection pauses the next request for narrator memory shelf guidance, then resumes once',t=>{
+ const p=setup(t),views=[],spoken=[];let complete;
+ p.window.JellyGuidanceContent=require('../public/js/guidance-content');
+ p.window.VocabularyGameplay={};
+ p.window.OceanRoom.configureLearning=()=>({sync(view){views.push(view);},stop(){views.push(null);}});
+ p.window.VocabularySpeech={create:({role})=>({play(parts,callbacks){spoken.push({role,text:parts[0].text});complete=callbacks.onComplete;},cancel(){}})};
+ const first={...p.base,trip:1,bag:[{id:'old-item'}],memories:[{id:'old-memory'}],learning:{...p.base.learning,active:{level:1,questionIndex:0,attemptId:'a'},presentation:{key:'first'}}};
+ const second={...first,bag:[{id:'book'}],learning:{...first.learning,active:{level:1,questionIndex:1,attemptId:'b'},presentation:{key:'second'}}};
+ p.api.sync(first,null);p.api.sync(second,first);
+ assert.equal(p.document.querySelector('#memory-shelf-guidance').hidden,false);
+ assert.equal(views.at(-1),null,'next request is deferred');assert.equal(p.locks.at(-1),true);
+ assert.deepEqual(spoken,[{role:'narrator',text:p.window.JellyGuidanceContent.memoryShelf}]);
+ p.api.sync(second,second);assert.equal(spoken.length,1);
+ complete();assert.equal(p.document.querySelector('#memory-shelf-guidance').hidden,true);
+ assert.equal(views.at(-1).key,'second');assert.equal(p.locks.at(-1),false);
+ p.api.sync(second,first);assert.equal(spoken.length,1,'repeated transition does not repeat the introduction');
+});
+
+test('leaving during memory shelf guidance cannot restore an old request',t=>{
+ const p=setup(t);let complete;
+ p.window.JellyGuidanceContent=require('../public/js/guidance-content');
+ p.window.VocabularySpeech={create:()=>({play(parts,callbacks){complete=callbacks.onComplete;},cancel(){}})};
+ const first={...p.base,trip:1,bag:[],learning:{...p.base.learning,active:{level:1,questionIndex:0,attemptId:'a'}}};
+ const second={...first,bag:[{id:'book'}],learning:{...first.learning,active:{level:1,questionIndex:1,attemptId:'b'}}};
+ p.api.sync(first,null);p.api.sync(second,first);p.api.stop();complete();
+ assert.equal(p.document.querySelector('#memory-shelf-guidance').hidden,true);assert.equal(p.locks.at(-1),false);
 });

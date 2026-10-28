@@ -17,26 +17,36 @@
   </script>
 </head>
 <body class="mobile-page immersive-page">
+  <button type="button" id="music-toggle" class="room-music-toggle" aria-label="Play background music" aria-pressed="false">Play music ♫</button>
   <main class="game-shell" id="phone-app">
     <section class="game-frame" aria-label="Jelly’s adventure world">
+      <aside id="wardrobe-guide" class="wardrobe-guide" role="status" hidden><span aria-hidden="true">↓</span><small>Swim to the wardrobe</small></aside>
       <canvas id="game" width="960" height="620" tabindex="0" aria-label="Underwater common room. Use the arrow keys or touch controls to swim toward the bookshelf, storybook, wardrobe, and memory shelf."></canvas>
       <aside class="mission-panel" id="mission-panel" aria-live="polite">
         <span class="mission-step" id="mission-step">MISSION 1 OF 5</span>
         <strong id="objective">Swim to the storybook to read a cultural story.</strong>
         <small id="mission-detail">The book opens when you swim close.</small>
         <div class="mission-progress" id="mission-progress" aria-hidden="true"></div>
+        <button type="button" id="hear-festival-instructions" hidden>Hear instructions</button>
+      </aside>
+      <aside id="memory-shelf-guidance" class="memory-shelf-guidance" hidden aria-live="polite">
+        <span class="memory-guidance-arrow" aria-hidden="true">↓</span>
+        <strong>Great job! Your first discovery is on the memory shelf!</strong>
+        <span>You can visit it anytime to look again at the items you’ve collected.</span>
+        <button id="continue-memory-guide" type="button">Continue</button>
       </aside>
       <aside class="learning-guidance" id="learning-guidance" aria-live="polite" hidden>
-        <span class="guidance-arrow" aria-hidden="true">➜</span>
+        <span class="guidance-arrow" aria-hidden="true">↓</span>
         <strong>Let’s learn some new words!</strong>
-        <span>Move your jellyfish towards the bookshelf to begin.</span>
+        <span>Move Jelly towards the bookshelf to begin.</span>
+        <button type="button" id="hear-learning-guidance">Hear instructions</button>
       </aside>
       <aside class="storybook-guidance" id="storybook-guidance" aria-live="polite" hidden>
         <strong>Your storybook is ready!</strong>
         <span>Swim toward the book to read it.</span>
         <span class="storybook-guidance-arrow" aria-hidden="true">↓</span>
       </aside>
-      <button class="mailbox-button festival-story-button" id="festival-storybook" type="button" aria-label="Read storybook again" title="Read storybook again" hidden><span aria-hidden="true">📖</span></button>
+      <button class="mailbox-button festival-story-button" id="festival-storybook" type="button" aria-label="Read storybook again" title="Read storybook again" hidden><img src="/assetNEW/storybook_button.png" alt="" aria-hidden="true" draggable="false"></button>
       <button class="mailbox-button" id="mailbox-button" type="button" aria-label="Mailbox" disabled hidden><span id="mailbox-icon"></span><span class="mail-badge" id="mail-badge" hidden>1</span></button>
       <div class="interaction" id="interaction" hidden><span id="interaction-text"></span><button id="interact-button" type="button">Open</button></div>
       <div class="d-pad" id="d-pad" aria-label="Touch movement controls">
@@ -86,8 +96,8 @@
       <div class="unlock-copy">
         <span class="unlock-book" aria-hidden="true">📖</span>
         <p class="eyebrow">AMAZING WORK!</p>
-        <h2 id="storybook-unlock-title">Storybook Unlocked!</h2>
-        <p>Level 2 and the storybook are ready. Choose what to explore next.</p>
+        <h2 id="storybook-unlock-title">You unlocked the storybook!</h2>
+        <p>A new story is waiting for you. You can also try Level 2 at the bookshelf.</p>
         <div class="unlock-actions">
           <button class="primary" id="explore-storybook" type="button">Explore storybook</button>
           <button class="unlock-learning" id="continue-learning" type="button">Choose next level</button>
@@ -114,7 +124,7 @@
       </div>
       <div class="story-top"><span id="story-origin">A legend from Lombok, Indonesia</span><button id="close-story" type="button" aria-label="Close storybook">×</button></div>
       <div class="animated-scene" id="animated-scene" hidden>
-        <div class="scene-heading"><span id="scene-chapter-title">CHAPTER 1 · THE KIND PRINCESS</span><span id="scene-beat-label">The kingdom</span></div>
+        <div class="scene-heading"><span id="scene-chapter-title">PAGE 1 · THE KIND PRINCESS</span><span id="scene-beat-label">The kingdom</span></div>
         <div class="scene-stage" id="scene-stage">
           <svg viewBox="0 0 960 520" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Animated kingdom scene with Princess Mandalika, neighbours, and a seashell">
             <defs>
@@ -301,14 +311,16 @@
     </section>
   </div>
   <script src="/socket.io/socket.io.js"></script>
-  <script src="/js/journey-content.js?v=20261026-usability"></script>
-  <script src="/js/ocean-art.js?v=20261025-moon-outfit"></script>
-  <script src="/js/vocabulary-speech.js?v=20261025-language-voices"></script>
-  <script src="/js/vocabulary-colouring.js?v=20261026-usability"></script>
-  <script src="/js/vocabulary-gameplay.js?v=20261026-usability"></script>
-  <script src="/js/learning-backend.js?v=20261025-retry-copy"></script>
-  <script src="/js/learning-interface.js?v=20261025-three-levels"></script>
-  <script src="/js/journey-mobile.js?v=20261026-usability"></script>
+  <script src="/js/journey-content.js?v=20261028-elixir-delivery"></script>
+  <script src="/js/ocean-art.js?v=20261028-padded-png-art"></script>
+  <script src="/js/guidance-content.js?v=20261028-praise-pause"></script>
+  <script src="/js/vocabulary-speech.js?v=20261028-praise-pause"></script>
+  <script src="/js/room-music.js?v=20261028-story-festival-music"></script>
+  <script src="/js/vocabulary-colouring.js?v=20261028-simple-colouring"></script>
+  <script src="/js/vocabulary-gameplay.js?v=20261028-smooth-follow"></script>
+  <script src="/js/learning-backend.js?v=20261028-success-feedback"></script>
+  <script src="/js/learning-interface.js?v=20261028-success-feedback"></script>
+  <script src="/js/journey-mobile.js?v=20261028-wardrobe-guide"></script>
   <script>
     const gameScript = document.createElement("script");
     gameScript.src = "/js/ocean-room.js?v=" + window.gameAssetVersion;

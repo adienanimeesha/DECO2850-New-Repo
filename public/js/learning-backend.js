@@ -1,5 +1,6 @@
 (function (root) {
 'use strict';
+const guidance=typeof module!=='undefined'&&module.exports?require('./guidance-content'):root.JellyGuidanceContent;
 const keyOf = (state, active = state?.learning?.active) => active &&
  `${state.language}:${state.trip}:${active.attemptId}:${active.questionId}`;
 function presentation(state, content) {
@@ -9,11 +10,12 @@ function presentation(state, content) {
  if (!question || question.id !== active.questionId) throw new Error('The active vocabulary question is missing from content.');
  return {
   ...active, key: keyOf(state), language: state.language, index: active.questionIndex,
-  colouringItemId: question.correctItemId, colouringAsset: question.colouringAsset,
+  colouringItemId: question.correctItemId, colouringAsset: `vocabulary-${question.colouringAsset}`,
   question: {
    before: question.sentenceBefore, word: question.targetWord, after: question.sentenceAfter,
    pronunciation: question.pinyin || '', hint: content.learningRetryMessage,
-   objects: question.options.map(option => ({id: option.itemId, icon: option.asset}))
+   feedback:guidance?.vocabularyFeedback(question,state.language),
+   objects: question.options.map(option => ({id: option.itemId, icon: `vocabulary-${option.asset}`}))
   }
  };
 }

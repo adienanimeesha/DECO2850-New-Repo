@@ -41,7 +41,7 @@ Use WASD, arrow keys, the touch D-pad, or click a destination to walk there. Flo
 
 Each language has three basic learning levels and 15 questions about everyday objects, food, and animals. The level menu introduces listening, guessing, movement, and colouring before the child presses Start. Cultural vocabulary remains in the separate stories and festivals. All vocabulary choices and colouring targets have SVG illustrations. Abstract words use contextual scenes, such as family gathering or sharing a mooncake. The clothing and festival art are playful interpretations. The story retells one version of Chang’e’s legend and distinguishes it from present-day festival traditions; nyale and bau are identified as Sasak words.
 
-Narration separates English context from Indonesian (`id-ID`) or Mandarin (`zh-CN`) vocabulary. Pinyin is displayed and is never synthesized as English. Jelly's mouth follows speech playback. Devices without the required voice show an audio notice and retain text and pronunciation guidance. Actual voice availability and autoplay behavior depend on the browser/device. No native-speaker recordings are bundled.
+Narration separates English context from Indonesian (`id-ID`) or Mandarin (`zh-CN`) vocabulary. Pinyin is displayed and is never synthesized as English. Jelly's mouth follows speech playback. Devices without the required voice show an audio notice and retain text and pronunciation guidance. Actual voice availability and autoplay behavior depend on the browser/device. Optional [ElevenLabs setup](docs/elevenlabs-voice.md) generates saved recordings using the configured Jelly voice, with device voices as a fallback. No generated audio is bundled in Git.
 
 Cultural references used for the festival context:
 

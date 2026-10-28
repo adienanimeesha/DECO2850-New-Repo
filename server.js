@@ -17,6 +17,15 @@ app.use(express.static(path.join(__dirname, "public"), {
   setHeaders(response) { response.setHeader('Cache-Control', 'no-store'); },
 }));
 app.get('/', (_request, response) => response.redirect('/mobile.html'));
+// Only the generated audio index is public. API credentials are used solely by
+// the local generation command, never by a browser or an HTTP generation route.
+app.get('/api/voice/manifest', async (_request, response) => {
+  response.setHeader('Cache-Control', 'no-store');
+  try {
+    const file = await require('node:fs/promises').readFile(path.join(__dirname, 'public/audio/elevenlabs/manifest.json'), 'utf8');
+    response.json({clips: JSON.parse(file).clips});
+  } catch { response.json({clips: {}}); }
+});
 
 // One shared, in-memory adventure for the robot and mobile devices.
 const gameState = {};
