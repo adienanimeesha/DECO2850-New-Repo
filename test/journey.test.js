@@ -255,3 +255,17 @@ test('invalid events, exit, reset and a language change cannot leak progress', a
   await api.send(client, 'journey-start', 'chinese'); await api.phase('room');
   assert.equal(api.journey.snapshot().learning.levels[0].completed, false);
 });
+
+
+test('Chinese story retells Chang’e’s legend before connecting it to modern Mid-Autumn traditions', () => {
+  const story = content.chinese;
+  assert.equal(story.storyTitle, 'Chang’e Flies to the Moon');
+  assert.equal(story.chapters.length, 5);
+  const opening = story.chapters.slice(0, 2).flatMap(page => page.beats.map(beat => beat.line)).join(' ');
+  for (const event of [/ten suns/i, /nine suns/i, /Hou Yi/, /Chang’e/, /Peng Meng/, /elixir/, /drank it/, /rose all the way to the Moon/]) assert.match(opening, event);
+  const ending = story.chapters.slice(2).flatMap(page => page.beats.map(beat => beat.line)).join(' ');
+  assert.match(ending, /favourite foods/);
+  assert.match(ending, /mooncakes/);
+  assert.match(ending, /lanterns/);
+  assert.match(ending, /related tales/);
+});

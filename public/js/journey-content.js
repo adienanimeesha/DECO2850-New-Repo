@@ -56,41 +56,43 @@ const mandalika = [
 function chapter(title, prompt, lines) {
  return { title, prompt, beats: lines.map((line,i) => ({label: ["A new beginning", "Watch the story", "Discover together", "Your turn", "A new word"][i], line, minSeconds: 2})) };
 }
+// A child-friendly retelling of one traditional version of Chang’e’s legend.
+// Reference: https://lightsbythelake.nparks.gov.sg/files/LBTL_Handbook.pdf
 const moonStory = [
- chapter("The Moon Rabbit", "Tap the bright moon 月亮", [
-  "Look up at the moon. In some Chinese stories, a rabbit lives there. Let's follow Jelly into a moon story.",
-  "The bright moon helps Jelly find a silver path. Who might be waiting there?",
-  "A little rabbit waves hello from a moonlit garden. Its long ears bounce as it welcomes us.",
-  "Can you point to the moon? Tap the round moon shining above the garden.",
-  "You found it! 月亮, yuè liang, means moon. The moon lights our story tonight."
+ chapter("Hou Yi and the Ten Suns", "Tap the one sun left in the sky", [
+  "Jelly has a traditional Chinese legend to share: Chang’e Flies to the Moon. People tell different versions. This is one of them.",
+  "Long ago, ten suns shone together. Their heat dried the fields, and people needed help.",
+  "A skilled archer named Hou Yi shot down nine suns. One sun remained to warm the Earth, and the people were safe.",
+  "Find the one sun Hou Yi left to light the day. Tap the sun in the sky.",
+  "You found it! 太阳, tài yáng, means sun. As a reward, Hou Yi received a magical elixir that could make someone live forever."
  ]),
- chapter("A Family Invitation", "Tap both family members to invite them", [
-  "A family is getting ready for the Mid-Autumn Festival.",
-  "Some loved ones are nearby. Others are far away. They can all look up at the same moon.",
-  "Jelly has two invitations to share. The moon will shine above the gathering.",
-  "Tap both family members to give each one an invitation.",
-  "Both are invited! 家人, jiā rén, means family members. Everyone has a place at our table."
+ chapter("Chang’e Flies to the Moon", "Tap Chang’e and Hou Yi to meet them", [
+  "Hou Yi loved his wife, Chang’e. He did not want to live forever without her, so he left the magical elixir in her care.",
+  "One day, while Hou Yi was away, his apprentice Peng Meng tried to take the elixir. Chang’e drank it to keep it from him.",
+  "Suddenly, Chang’e floated up into the sky! She rose all the way to the Moon, where she would stay, far from Hou Yi.",
+  "These are the two people in our legend. Tap Chang’e and Hou Yi to meet them.",
+  "This story remembers their love even when they are apart. 家人, jiā rén, means family members. Hou Yi missed Chang’e very much."
  ]),
- chapter("A Mooncake to Share", "Tap 月饼 or drag it to the family table", [
-  "The family gathers around a table in the moonlit garden.",
-  "A round mooncake waits on a tray beside the table. Families share mooncakes during the Mid-Autumn Festival.",
-  "Everyone gets a piece. Sharing a treat is one way to celebrate together.",
-  "Tap the mooncake, or drag it to the middle of the table, to share it.",
-  "Lovely! 月饼, yuè bǐng, means mooncake. Sharing makes our celebration warmer."
+ chapter("Remembering Chang’e", "Tap 月饼 or drag it to Hou Yi’s table", [
+  "When Hou Yi came home, he searched for Chang’e. Then he looked up at the bright Moon and thought of her.",
+  "He placed her favourite foods outside beneath the Moon. In this legend, the offerings show how much he missed her.",
+  "Today, sharing mooncakes is part of the Mid-Autumn Festival. Here is a mooncake to help us learn about that tradition.",
+  "Tap the mooncake, or drag it to the table beneath the Moon.",
+  "Lovely! 月饼, yuè bǐng, means mooncake. The round shape reminds people of the full moon and being together."
  ]),
- chapter("Light the Lantern", "Tap the lantern 灯笼, not the star", [
-  "The garden grows darker, and the family brings colourful lanterns.",
-  "Jelly finds a lantern waiting to be lit. A little star twinkles beside it.",
-  "Soft lantern light makes a path through the garden.",
+ chapter("A Festival of Moonlight", "Tap the lantern 灯笼, not the star", [
+  "Now Jelly brings us from the old legend to a Mid-Autumn celebration today. Families gather to admire the full moon.",
+  "Some loved ones are nearby, while others are far away. Looking at the same moon can help them feel connected.",
+  "Children carry colourful lanterns. Their warm light brightens the evening as people remember stories like Chang’e’s.",
   "Which one is the lantern? Tap the lantern, not the star.",
-  "You found it! 灯笼, dēng long, means lantern. Look at its warm glow."
+  "You found it! 灯笼, dēng long, means lantern. Let’s follow its glow towards the celebration."
  ]),
  chapter("Together Under the Moon", "Tap the rabbit lantern to join the celebration", [
-  "Jelly's story rabbit joins a Mid-Autumn Festival celebration.",
-  "Families look at the same full moon, even when some loved ones are far away. They share mooncakes when they meet.",
-  "A rabbit lantern bobs along the garden path. Jelly is ready to join in.",
-  "Tap the rabbit lantern to send it into the celebration.",
-  "Wonderful! 团圆, tuán yuán, means reunion: people coming together again. Our story ends with family around the same table."
+  "Chang’e’s legend is one of the stories people remember at Mid-Autumn. The Jade Rabbit belongs to related tales about the Moon.",
+  "At our festival, a rabbit-shaped lantern celebrates that moon folklore. It is a lantern, not a real rabbit travelling to the Moon.",
+  "Families share mooncakes, tell stories, and enjoy being together. They also think of loved ones who cannot be there.",
+  "Tap the rabbit lantern to join Jelly at the Mid-Autumn celebration.",
+  "Wonderful! 团圆, tuán yuán, means reunion: people coming together again. Even far apart, we can look up at the same moon."
  ])
 ];
 // One name and one transparent illustration per Bau Nyale object, reused in
@@ -159,9 +161,9 @@ const journeys = {
   ]
  },
  chinese: {
-  label:"中文 · Chinese",shortLabel:"Chinese",speech:"zh-CN",learningRetryMessage,storyTitle:"The Moon Rabbit",storyLabel:"An imagined journey inspired by Chinese moon folklore",chapters:moonStory,
+  label:"中文 · Chinese",shortLabel:"Chinese",speech:"zh-CN",learningRetryMessage,storyTitle:"Chang’e Flies to the Moon",storyLabel:"A traditional Chinese legend · one of several versions",chapters:moonStory,
   festival:"Mid-Autumn Festival",place:"the moonlit garden",festivalIntro:"Follow Jelly to a lantern-lit garden. Help Jelly with three requests across the mooncake courtyard, lantern walk, and moon garden.",
-  storyRewards:[{id:"moon-story",word:"月亮",pronunciation:"yuè liang",meaning:"moon",icon:"moon"},{id:"family",word:"家人",pronunciation:"jiā rén",meaning:"family members",icon:"letter"},{id:"mooncake-story",word:"月饼",pronunciation:"yuè bǐng",meaning:"mooncake",icon:"mooncake"},{id:"lantern-story",word:"灯笼",pronunciation:"dēng long",meaning:"lantern",icon:"lantern"},{id:"reunion",word:"团圆",pronunciation:"tuán yuán",meaning:"reunion",icon:"rabbit"}],
+  storyRewards:[{id:"moon-story",word:"太阳",pronunciation:"tài yáng",meaning:"sun",icon:"sun"},{id:"family",word:"家人",pronunciation:"jiā rén",meaning:"family members",icon:"letter"},{id:"mooncake-story",word:"月饼",pronunciation:"yuè bǐng",meaning:"mooncake",icon:"mooncake"},{id:"lantern-story",word:"灯笼",pronunciation:"dēng long",meaning:"lantern",icon:"lantern"},{id:"reunion",word:"团圆",pronunciation:"tuán yuán",meaning:"reunion",icon:"rabbit"}],
   rhyme:{title:"小星星",subtitle:"Sing along with BabyBus",videoId:"GxtknJ9KFKY",channel:"BabyBus",lines:[
    {word:"星星",pronunciation:"xīng xing",meaning:"star",icon:"star"},
    {word:"天空",pronunciation:"tiān kōng",meaning:"sky",icon:"sky"},
@@ -195,56 +197,267 @@ for (const [language, entry] of Object.entries(journeys)) {
   items: entry.festivalItems, outfits: entry.outfits }];
 }
 
-// Each row names something present in the story, its celebration, or the
-// existing festival scene. Asset keys are reusable illustration requests; the
-// frontend may render a richer asset but must keep the item IDs unchanged.
+// Basic learning uses familiar everyday objects; story and festival content stays separate.
 const vocabulary = {
- indonesian: [
-  { title: 'Meet Mandalika', words: [
-   ['putri','princess','princess','Mandalika is the princess in our story.','Mandalika is waiting by the sea. Can you find'],
-   ['kerang','seashell','shell','A kerang is a shell you might find beside the shore.','Look along the shore for a seashell. Can you find'],
-   ['laut','sea','sea','Laut is the sea beside Lombok.','Boats float on the wide blue water. Can you find'],
-   ['nyale','sea worm','nyale','Nyale are the colourful sea worms in the Sasak legend.','Colourful sea creatures appear in our legend. Find'],
-   ['perahu','boat','boat','A perahu is a boat that sails by the shore.','Let’s sail along Lombok’s coast. Can you find'],
-  ]},
-  { title: "Explore Lombok's Coast", words: [
-   ['pantai','beach','beach','Pantai is the beach where people gather.','Let’s visit the sandy place where sea meets land. Find'],
-   ['ombak','wave','wave','Ombak are the waves moving across the sea.','The sea is rolling toward the shore. Can you find'],
-   ['pasir','sand','sand','Pasir is the sand beneath your feet at the beach.','Feel the soft ground beneath your feet at the beach. Find'],
-   ['pesisir','coast','coast','Pesisir is the land along the sea.','Follow the edge of Lombok’s sea. Can you find'],
-   ['air','water','water','Air is the water around the colourful nyale.','The nyale swim in it. Can you find'],
-  ]},
-  { title: 'Celebrate Bau Nyale', words: [
-   ['ayam Taliwang','Taliwang grilled chicken','chicken','Ayam Taliwang is the grilled chicken dish in our festival.','I’m hungry! Can you find',' for our festival meal?'],
-   ['gendang','drum','drum','A gendang is the drum you find at the music gathering.','Let’s make music at the festival. Can you find'],
-   ['kain tenun','woven cloth','woven-cloth','Kain tenun is the woven cloth in the Sasak-inspired outfit.','Jelly needs a woven wrap for the festival. Find'],
-   ['ikat kepala','headcloth','headcloth','An ikat kepala is cloth worn around the head.','Jelly needs a cloth to wear on their head. Find'],
-   ['perayaan','celebration','celebration','A perayaan is a celebration shared by people together.','Everyone is gathering for Bau Nyale. Can you find'],
-  ]},
+ "indonesian": [
+  {
+   "title": "Everyday objects · Tutorial",
+   "words": [
+    [
+     "buku",
+     "book",
+     "book",
+     "buku means book.",
+     "I want to read. Can you find"
+    ],
+    [
+     "bola",
+     "ball",
+     "ball",
+     "bola means ball.",
+     "I want to play. Can you find"
+    ],
+    [
+     "cangkir",
+     "cup",
+     "cup",
+     "cangkir means cup.",
+     "I want a drink. Can you find"
+    ],
+    [
+     "kursi",
+     "chair",
+     "chair",
+     "kursi means chair.",
+     "I want to sit down. Can you find"
+    ],
+    [
+     "apel",
+     "apple",
+     "apple",
+     "apel means apple.",
+     "I want some fruit. Can you find"
+    ]
+   ]
+  },
+  {
+   "title": "Things we use",
+   "words": [
+    [
+     "meja",
+     "table",
+     "table",
+     "meja means table.",
+     "I need somewhere to put my cup. Can you find"
+    ],
+    [
+     "pensil",
+     "pencil",
+     "pencil",
+     "pensil means pencil.",
+     "I want to draw. Can you find"
+    ],
+    [
+     "tas",
+     "bag",
+     "bag",
+     "tas means bag.",
+     "I need to carry my books. Can you find"
+    ],
+    [
+     "sepatu",
+     "shoe",
+     "shoe",
+     "sepatu means shoe.",
+     "I need something for my foot. Can you find"
+    ],
+    [
+     "topi",
+     "hat",
+     "hat",
+     "topi means hat.",
+     "I need something for my head. Can you find"
+    ]
+   ]
+  },
+  {
+   "title": "Food and animal friends",
+   "words": [
+    [
+     "ikan",
+     "fish",
+     "fish",
+     "ikan means fish.",
+     "I see something swimming. Can you find"
+    ],
+    [
+     "kelinci",
+     "rabbit",
+     "rabbit",
+     "kelinci means rabbit.",
+     "I see long ears and a fluffy tail. Can you find"
+    ],
+    [
+     "air",
+     "water",
+     "water",
+     "air means water.",
+     "I want to fill my cup. Can you find"
+    ],
+    [
+     "nasi",
+     "rice",
+     "rice",
+     "nasi means rice.",
+     "I want something to eat with vegetables. Can you find"
+    ],
+    [
+     "sayuran",
+     "vegetables",
+     "vegetables",
+     "sayuran means vegetables.",
+     "I want some greens on my plate. Can you find"
+    ]
+   ]
+  }
  ],
- chinese: [
-  { title: 'Discover the Moon Story', words: [
-   ['月亮','yuè liang','moon','moon','月亮 is the bright moon above the garden.','Look up at the bright night sky. Can you find'],
-   ['兔子','tù zi','rabbit','rabbit','兔子 is the rabbit in our moon story.','A little friend from our moon story is nearby. Find'],
-   ['月饼','yuè bǐng','mooncake','mooncake','月饼 is a round cake shared at Mid-Autumn Festival.','I’m hungry! Can you find',' for our festival snack?'],
-   ['灯笼','dēng long','lantern','lantern','灯笼 is a lantern glowing along the garden path.','Our path needs a warm glow. Can you find'],
-   ['家人','jiā rén','family members','family','家人 are the family members gathering together.','Let’s bring everyone together for the festival. Find'],
-  ]},
-  { title: 'Under the Moonlight', words: [
-   ['花园','huā yuán','garden','garden','花园 is the garden where the family celebrates.','The lantern walk leads to a place full of plants. Find'],
-   ['夜晚','yè wǎn','evening','evening','夜晚 is the evening when the moon shines.','The sky grows dark and the moon shines. Find'],
-   ['星星','xīng xing','stars','stars','星星 are the stars twinkling near the moon.','Tiny lights twinkle beside the moon. Find'],
-   ['小路','xiǎo lù','path','path','小路 is the path lined with lanterns.','Follow the walkway between the lanterns. Find'],
-   ['光','guāng','light','light','光 is the warm light coming from a lantern.','A lantern shines with a warm glow. Find'],
-  ]},
-  { title: 'Celebrate the Moon Festival', words: [
-   ['糕点','gāo diǎn','pastry','pastry','糕点 is a pastry; a mooncake is one kind.','I’m hungry! Can you find',' for a sweet festival treat?'],
-   ['汉服','hàn fú','hanfu clothing','hanfu','汉服 is the clothing that inspired our festival outfit.','Jelly wants to dress for the Moon Festival. Find'],
-   ['团圆','tuán yuán','reunion','reunion','团圆 is family coming together again.','The whole family is together again. Find'],
-   ['赏月','shǎng yuè','admire the moon','moon-viewing','赏月 means to enjoy looking at the moon.','Let’s enjoy looking up at the full moon. Find'],
-   ['中秋节','zhōng qiū jié','Mid-Autumn Festival','mid-autumn','中秋节 is the festival in our moonlit garden.','Let’s celebrate together beneath the full moon. Find'],
-  ]},
- ],
+ "chinese": [
+  {
+   "title": "Everyday objects · Tutorial",
+   "words": [
+    [
+     "书",
+     "shū",
+     "book",
+     "book",
+     "书 means book.",
+     "I want to read. Can you find"
+    ],
+    [
+     "球",
+     "qiú",
+     "ball",
+     "ball",
+     "球 means ball.",
+     "I want to play. Can you find"
+    ],
+    [
+     "杯子",
+     "bēi zi",
+     "cup",
+     "cup",
+     "杯子 means cup.",
+     "I want a drink. Can you find"
+    ],
+    [
+     "椅子",
+     "yǐ zi",
+     "chair",
+     "chair",
+     "椅子 means chair.",
+     "I want to sit down. Can you find"
+    ],
+    [
+     "苹果",
+     "píng guǒ",
+     "apple",
+     "apple",
+     "苹果 means apple.",
+     "I want some fruit. Can you find"
+    ]
+   ]
+  },
+  {
+   "title": "Things we use",
+   "words": [
+    [
+     "桌子",
+     "zhuō zi",
+     "table",
+     "table",
+     "桌子 means table.",
+     "I need somewhere to put my cup. Can you find"
+    ],
+    [
+     "铅笔",
+     "qiān bǐ",
+     "pencil",
+     "pencil",
+     "铅笔 means pencil.",
+     "I want to draw. Can you find"
+    ],
+    [
+     "书包",
+     "shū bāo",
+     "bag",
+     "bag",
+     "书包 means bag.",
+     "I need to carry my books. Can you find"
+    ],
+    [
+     "鞋子",
+     "xié zi",
+     "shoe",
+     "shoe",
+     "鞋子 means shoe.",
+     "I need something for my foot. Can you find"
+    ],
+    [
+     "帽子",
+     "mào zi",
+     "hat",
+     "hat",
+     "帽子 means hat.",
+     "I need something for my head. Can you find"
+    ]
+   ]
+  },
+  {
+   "title": "Food and animal friends",
+   "words": [
+    [
+     "鱼",
+     "yú",
+     "fish",
+     "fish",
+     "鱼 means fish.",
+     "I see something swimming. Can you find"
+    ],
+    [
+     "兔子",
+     "tù zi",
+     "rabbit",
+     "rabbit",
+     "兔子 means rabbit.",
+     "I see long ears and a fluffy tail. Can you find"
+    ],
+    [
+     "水",
+     "shuǐ",
+     "water",
+     "water",
+     "水 means water.",
+     "I want to fill my cup. Can you find"
+    ],
+    [
+     "米饭",
+     "mǐ fàn",
+     "rice",
+     "rice",
+     "米饭 means rice.",
+     "I want something to eat with vegetables. Can you find"
+    ],
+    [
+     "蔬菜",
+     "shū cài",
+     "vegetables",
+     "vegetables",
+     "蔬菜 means vegetables.",
+     "I want some greens on my plate. Can you find"
+    ]
+   ]
+  }
+ ]
 };
 for (const [language, levels] of Object.entries(vocabulary)) {
  journeys[language].learningLevels = levels.map((level, levelIndex) => ({

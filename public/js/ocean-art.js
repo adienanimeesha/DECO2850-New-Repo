@@ -1,6 +1,7 @@
 (function () {
 'use strict';
 const icons = {
+ sun:'<circle cx="50" cy="50" r="23" fill="#ffe293" stroke="#cfa767" stroke-width="3"/><path d="M50 5V17M50 83V95M5 50H17M83 50H95M18 18L27 27M73 73L82 82M18 82L27 73M73 27L82 18" stroke="#cfa767" stroke-width="5" stroke-linecap="round"/>',
  bookshelf:'<rect x="9" y="10" width="82" height="80" rx="8" fill="#c6a5dc" stroke="#8866a5" stroke-width="4"/><path d="M13 48H87M13 82H87" stroke="#8866a5" stroke-width="5"/><path d="M23 18V43M36 20V43M50 17L59 42M70 19V42M25 56V77M39 54V77M54 57V77M68 54L77 77" stroke="#fff0bc" stroke-width="9"/><path d="M20 93V87M80 93V87" stroke="#8866a5" stroke-width="5"/>',
  chicken:'<ellipse cx="50" cy="78" rx="43" ry="13" fill="#fff0d7" stroke="#b699bf" stroke-width="3"/><path d="M20 66Q13 27 51 28Q78 23 82 62Q68 81 20 66Z" fill="#dca174" stroke="#a97972" stroke-width="4"/><path d="M46 51Q60 31 75 43Q84 52 66 64L82 77" fill="#e8b282" stroke="#a97972" stroke-width="4"/><path d="M82 77L91 79M82 77L85 86" stroke="#fff4dc" stroke-width="7" stroke-linecap="round"/><path d="M26 51Q37 35 44 41M28 61L39 55" fill="none" stroke="#bc856b" stroke-width="3"/><path d="M12 75L22 70M14 82L28 76" stroke="#8ebf8a" stroke-width="4"/>', 
  sky:'<rect x="8" y="8" width="84" height="84" rx="23" fill="#a9ddf3"/><path d="M20 61Q14 43 31 40Q37 21 55 32Q72 23 77 45Q91 49 81 62Z" fill="#fffaf5" stroke="#9bbccf" stroke-width="3"/><circle cx="72" cy="23" r="10" fill="#ffe5a3"/>',
@@ -36,6 +37,7 @@ const robe = shape('M35 14L18 27L6 53L22 62L31 43L23 91Q50 99 77 91L69 43L78 62L
 const plate = shape('M8 64Q50 92 92 64L84 83Q50 99 16 83Z','#fff1c6');
 const garden = shape('M5 88Q50 54 95 88Z','#b7d3b4')+shape('M20 77V42M78 78V36M14 58L20 64L29 54M69 51L78 59L88 47','none')+circle(20,33,12,'#f2a6ca')+circle(78,28,12,'#e6b8ef')+circle(20,33,4,'#fff1c6')+circle(78,28,4,'#fff1c6');
 const lanternSmall = `<g transform="translate(26 10) scale(.55)">${icons.lantern}</g>`;
+Object.assign(icons, {"book": "<path d=\"M10 20Q30 12 50 23Q70 12 90 20V82Q70 74 50 85Q30 74 10 82Z\"/><path d=\"M50 23V85M20 35H39M61 35H80M20 47H39M61 47H80\"/>", "ball": "<circle cx=\"50\" cy=\"50\" r=\"37\"/><path d=\"M13 50H87M50 13Q20 50 50 87Q80 50 50 13\"/>", "cup": "<path d=\"M20 20H65V68Q42 92 20 68ZM65 30H79Q96 49 65 60\"/><path d=\"M13 88H79\"/>", "chair": "<path d=\"M25 52V14H72V52M18 52H80V65H18ZM25 65V92M72 65V92\"/>", "apple": "<path d=\"M50 30C12 7 5 56 28 83Q40 94 50 85Q65 96 79 76C100 40 77 12 50 30Z\"/><path d=\"M50 30V12M52 20Q60 3 77 10Q73 25 52 20\"/>", "table": "<path d=\"M10 28H90V46H10ZM20 46V91M80 46V91\"/>", "pencil": "<path d=\"M15 86L21 63L70 14Q77 7 86 16Q93 23 85 30L36 79ZM21 63L36 79M65 19L81 35M28 70L74 25M15 86L24 83\"/>", "bag": "<rect x=\"20\" y=\"25\" width=\"60\" height=\"65\" rx=\"12\"/><path d=\"M35 25V16Q50 2 65 16V25M30 90V58H70V90M30 68H70\"/>", "shoe": "<path d=\"M12 37H39L49 59L84 65Q95 69 90 86H10ZM10 79H91M43 48L55 44M49 58L61 53\"/>", "hat": "<path d=\"M25 65V35Q50 5 75 35V65M8 65Q50 53 92 65V80Q50 94 8 80ZM26 51H74\"/>", "fish": "<ellipse cx=\"42\" cy=\"50\" rx=\"30\" ry=\"24\"/><path d=\"M70 44L92 25V75L70 56\"/><circle cx=\"28\" cy=\"44\" r=\"3\"/>", "rice": "<path d=\"M12 57Q50 110 88 57ZM18 57Q22 20 50 22Q78 20 82 57ZM30 43L36 38M46 32L51 37M58 48L66 42\"/>", "vegetables": "<path d=\"M12 67Q50 105 88 67ZM22 65Q5 40 24 34Q18 11 40 23Q56 8 65 28Q90 19 86 47Q99 63 75 67ZM35 67L43 37M57 67L69 39\"/>"});
 Object.assign(icons, {
  princess: person(50,36,.95,'#f2a6ca')+shape('M34 20L31 7L44 15L50 3L57 15L70 7L66 20Z','#fff1c6')+shape('M39 52L22 91H78L61 52Z','#f2a6ca'),
  sea: circle(77,17,11,'#fff1c6')+waves,
@@ -86,6 +88,7 @@ const openMoji = Object.freeze({
  star:'2B50', pastry:'1F96E', reunion:'1F46A',
 });
 const projectStickers = new Set([
+ 'book','ball','cup','chair','apple','table','pencil','bag','shoe','hat','fish','rice','vegetables',
  'princess','shell','sea','nyale','boat','sand','coast','evening','chicken','drum',
  'woven-cloth','headcloth','lantern','garden','stars','path',
  'light','hanfu','moon-viewing','mid-autumn',

@@ -77,12 +77,14 @@ test('all 30 real curriculum questions map to supported, parseable illustrations
   assert.ok(storyMarkup.includes(`href="${file}"`),`storybook missing ${key}`);
 });
 
-test('every tutorial question gives a distinct cultural clue, with hunger only for food', () => {
- const food=new Set(['ayam Taliwang','月饼','糕点']);
+test('every basic question gives a distinct everyday clue, with hunger only for food', () => {
+ const food=new Set();
+ const everyday=new Set(['book','ball','cup','chair','apple','table','pencil','bag','shoe','hat','fish','rabbit','water','rice','vegetables']);
  const prompts=new Set();
  for(const [language,track] of Object.entries(content))for(const level of track.learningLevels)
   for(const question of level.questions){
    const {sentenceBefore, sentenceAfter, targetWord}=question;
+   assert.ok(everyday.has(question.translation), `Basic learning must use an everyday object: ${question.translation}`);
    assert.ok(sentenceBefore.length>20,`Missing clue for ${targetWord}`);
    assert.match(sentenceBefore,/\bfind\s*$/i,`Clue should lead into ${targetWord}`);
    assert.match(sentenceAfter,/\?$/,`Missing visible question mark for ${targetWord}`);

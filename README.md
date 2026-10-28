@@ -36,13 +36,15 @@ Use WASD, arrow keys, the touch D-pad, or click a destination to walk there. Flo
 | Language | Story | Festival | Clothing |
 | --- | --- | --- | --- |
 | Indonesian | Putri Mandalika, a Sasak legend from Lombok | Bau Nyale | Sasak-inspired woven wrap and headcloth |
-| Mandarin Chinese | An imagined Moon Rabbit adventure | Mid-Autumn Festival | Hanfu-inspired robe |
+| Mandarin Chinese | Chang’e Flies to the Moon | Mid-Autumn Festival | Hanfu-inspired robe |
 
-Each language has five levels and 25 questions tied to its existing story, food, clothing, setting, and celebration. All vocabulary choices and colouring targets have SVG illustrations. Abstract words use contextual scenes, such as family gathering or sharing a mooncake. The clothing and festival art are playful interpretations. The story distinguishes the imagined moon adventure from the festival tradition; nyale and bau are identified as Sasak words.
+Each language has three basic learning levels and 15 questions about everyday objects, food, and animals. The level menu introduces listening, guessing, movement, and colouring before the child presses Start. Cultural vocabulary remains in the separate stories and festivals. All vocabulary choices and colouring targets have SVG illustrations. Abstract words use contextual scenes, such as family gathering or sharing a mooncake. The clothing and festival art are playful interpretations. The story retells one version of Chang’e’s legend and distinguishes it from present-day festival traditions; nyale and bau are identified as Sasak words.
 
 Narration separates English context from Indonesian (`id-ID`) or Mandarin (`zh-CN`) vocabulary. Pinyin is displayed and is never synthesized as English. Jelly's mouth follows speech playback. Devices without the required voice show an audio notice and retain text and pronunciation guidance. Actual voice availability and autoplay behavior depend on the browser/device. No native-speaker recordings are bundled.
 
 Cultural references used for the festival context:
+
+- [NParks: Chang’e and her Moon Palace](https://lightsbythelake.nparks.gov.sg/files/LBTL_Handbook.pdf)
 
 - [Indonesia Tourism: Bau Nyale and Mandalika](https://www.indonesia.travel/us/en/events/event-detail/makna-di-balik-festival-bau-nyale-di-mandalika-lombok)
 - [Indonesia Tourism: Ayam Taliwang](https://www.indonesia.travel/id/id/travel-ideas/gastronomy/ayam-taliwang)

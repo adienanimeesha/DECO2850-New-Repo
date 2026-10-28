@@ -156,7 +156,7 @@ test('dedicated Indonesian and Mandarin voices take priority over English-person
  assert.equal(choose([english],'id-ID'),undefined);
 });
 
-for(const [language,targetWord,targetLocale] of [['indonesian','perahu','id-ID'],['chinese','月饼','zh-CN']])
+for(const [language,targetWord,targetLocale] of [['indonesian','buku','id-ID'],['chinese','书','zh-CN']])
  test(`${language} question speaks only the target word in ${targetLocale} and never says punctuation`,t=>{
   const voices=[{lang:'en-US',name:'English'},{lang:'id-ID',name:'Indonesian'},{lang:'zh-CN',name:'Mandarin'}];
   const p=setup(t,{voices}),level=content[language].learningLevels[0];

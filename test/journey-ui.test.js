@@ -185,7 +185,8 @@ for(const language of ['indonesian','chinese'])test(`${language}: mobile complet
    assert.equal(scene.querySelector('#nyale-target-body').parentElement.id,'nyale-target');
   }else{
    assert.equal(scene.querySelectorAll('[data-story-tray]').length,chapter===2?1:0);
-   assert.equal(scene.querySelectorAll('[data-story-object^="zh-family-"]').length,chapter===0?0:2);
+   assert.equal(scene.querySelectorAll('[data-story-object^="zh-family-"]').length,chapter===0||chapter===1?0:2);
+   if(chapter===1)assert.equal(scene.querySelectorAll('[data-legend-character]').length,2);
   }
   checkStoryBackground(d.querySelector(language==='chinese'?'.chinese-scene':'#scene-stage > svg:not(.chinese-scene)'),language,chapter);
   if(language==='indonesian')for(const id of ['scene-background','scene-water','scene-plants','cloud-a','cloud-b','scene-sun','scene-boat','princess','nyale-target']){
@@ -472,7 +473,7 @@ test('Mandarin voice loading, pause, replay, and close preserve speech order and
  await reachStoryReward(p);speech.finish();
  const waitingCount=speech.utterances.length;assert.equal(speech.listeners.size,1);
  p.click('#scene-play');speech.setVoices([english,mandarin]);assert.equal(speech.utterances.length,waitingCount,'voice arrival cannot play while paused');
- p.click('#scene-play');const word=speech.utterances.at(-1);assert.equal(word.text,'月亮');assert.equal(word.voice,mandarin);
+ p.click('#scene-play');const word=speech.utterances.at(-1);assert.equal(word.text,'太阳');assert.equal(word.voice,mandarin);
  p.click('#scene-replay');const replay=speech.utterances.at(-1);assert.equal(replay.lang,'en-US');
  const replayCount=speech.utterances.length;speech.finish(word);assert.equal(speech.utterances.length,replayCount,'old word completion cannot enqueue another segment');
  p.click('#close-story');speech.finish(replay);await p.advance(1200);assert.equal(speech.utterances.length,replayCount);
@@ -556,4 +557,44 @@ for(const language of ['indonesian','chinese'])test(`${language}: completed stor
  for(let index=3;index>=0;index--){p.click('#scene-prev');await p.advance(2200);assert.equal(d.querySelector('#scene-stage').dataset.chapter,String(index));checkStoryBackground(scene(),language,index);}
  for(let index=1;index<5;index++){p.click('#scene-next');await p.advance(2200);assert.equal(d.querySelector('#scene-stage').dataset.chapter,String(index));checkStoryBackground(scene(),language,index);}
  assert.equal(p.events.some(([event])=>event==='journey-story-page'),false,'browsing does not award duplicate story progress');
+});
+
+
+test('Hou Yi’s arrows remove nine suns, keep the final sun, and freeze while paused',async t=>{
+ const p=page(t),d=p.w.document;
+ p.update({phase:'room',language:'chinese',trip:1,storyPage:0});p.walk('book');await p.advance(6500);
+ p.click('#scene-continue');p.click('#scene-continue');await p.advance(1500);
+ const scene=d.querySelector('.chinese-scene'),arrow=scene.querySelector('[data-legend-arrow]');
+ const gone=()=>[...scene.querySelectorAll('[data-extra-sun]')].filter(sun=>sun.getAttribute('opacity')==='0').length;
+ assert.ok(gone()>0&&gone()<9,'suns disappear one by one during Hou Yi’s narration');
+ assert.equal(arrow.getAttribute('opacity'),'1');
+ const before=arrow.getAttribute('transform');p.click('#scene-play');await p.advance(1000);
+ assert.equal(arrow.getAttribute('transform'),before,'pause freezes the arrow');
+ p.click('#scene-play');await p.advance(5000);
+ assert.equal(gone(),9);
+ assert.ok(scene.querySelector('[data-chinese-choice="story-shell"]'),'the remaining sun stays available to select');
+});
+
+test('Peng Meng enters when introduced and Chang’e rises during the flight narration',async t=>{
+ const p=page(t),d=p.w.document;
+ p.update({phase:'room',language:'chinese',trip:1,storyPage:1});p.walk('book');await p.advance(6500);
+ const scene=d.querySelector('.chinese-scene'),peng=scene.querySelector('[data-peng-meng]'),change=scene.querySelector('[data-family="prince-left"]');
+ assert.equal(peng.getAttribute('opacity'),'0','the apprentice is absent before being introduced');
+ p.click('#scene-continue');await p.advance(1800);
+ assert.equal(peng.getAttribute('opacity'),'1');assert.equal(peng.getAttribute('transform'),'translate(470 0)');
+ p.click('#scene-continue');await p.advance(1200);
+ const position=change.getAttribute('transform');assert.notEqual(position,'translate(265 0)');
+ p.click('#scene-play');await p.advance(1000);assert.equal(change.getAttribute('transform'),position);
+ p.click('#scene-play');await p.advance(2500);assert.equal(change.getAttribute('transform'),'translate(705 -245)');
+ assert.equal(scene.querySelector('[data-legend-elixir]').getAttribute('opacity'),'0');
+});
+
+
+test('generated Chinese legend character cutouts are local RGBA PNGs',()=>{
+ for(const name of ['change','houyi','pengmeng']){
+  const bytes=fs.readFileSync(`public/assetNEW/storybook-zh-${name}.png`);
+  assert.equal(bytes.subarray(0,8).toString('hex'),'89504e470d0a1a0a');
+  assert.equal(bytes[25],6,'the character retains its alpha channel');
+  assert.ok(bytes.readUInt32BE(16)>=1024&&bytes.readUInt32BE(20)>=1024);
+ }
 });

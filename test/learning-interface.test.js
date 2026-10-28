@@ -17,7 +17,7 @@ function setup(t) {
   room: () => window.OceanRoom
  });
  const levels = Array.from({ length: 3 }, (_, index) => ({
-  id: 'level-' + (index + 1), title: ['Meet Mandalika', "Explore Lombok's Coast", 'Celebrate Bau Nyale'][index],
+  id: 'level-' + (index + 1), title: ['Everyday objects · Tutorial', 'Things we use', 'Food and animal friends'][index],
   status: index ? 'locked' : 'available'
  }));
  const stories = [
@@ -37,7 +37,7 @@ test('first room visit guides movement and bookshelf opens three authoritative l
  assert.equal(p.document.querySelector('#learning-level-screen').hidden, false);
  assert.equal(p.document.querySelectorAll('#learning-level-list .learning-card').length, 3);
  assert.equal(p.document.querySelectorAll('#learning-level-list .learning-card-action').length, 1);
- assert.equal(p.document.querySelector('#learning-level-list .learning-card h3').textContent, 'Meet Mandalika');
+ assert.equal(p.document.querySelector('#learning-level-list .learning-card h3').textContent, 'Everyday objects · Tutorial');
  assert.equal(p.document.querySelectorAll('#learning-level-list .is-locked').length, 2);
 });
 
@@ -125,7 +125,7 @@ test('real curriculum ignores obsolete five-level progress and never unlocks unk
  const cards = [...window.document.querySelectorAll('#learning-level-list .learning-card')];
  assert.equal(cards.length, 3);
  assert.deepEqual(cards.map(card=>card.querySelector('h3').textContent),
-  ['Meet Mandalika', "Explore Lombok's Coast", 'Celebrate Bau Nyale']);
+  ['Everyday objects · Tutorial', 'Things we use', 'Food and animal friends']);
  assert.equal(window.document.querySelectorAll('#learning-level-list .learning-card-action').length, 1);
  assert.doesNotMatch(window.document.querySelector('#learning-level-list').textContent, /Music and Traditions|Bau Nyale Adventure/);
 });
