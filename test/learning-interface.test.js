@@ -101,7 +101,7 @@ test('completed levels and stories render Replay while locked content stays iner
  assert.equal(p.document.querySelectorAll('#learning-level-list .learning-card-action').length, 2);
  p.document.querySelector('#close-level-select').click();
  p.api.openStories();
- assert.equal(p.document.querySelector('#learning-story-list .learning-card-action').textContent, 'Replay');
+ assert.equal(p.document.querySelector('#learning-story-list .learning-card-action').textContent, 'Start festival');
  assert.equal(p.document.querySelectorAll('#learning-story-list .is-locked button').length, 0);
 });
 

@@ -149,6 +149,14 @@ for (const language of ['indonesian', 'chinese']) {
     await api.send(mobile, 'journey-festival');
     assert.equal(api.journey.snapshot().phase, 'travelling');
     await api.phase('festival');
+    const beforeExit = api.journey.snapshot();
+    await api.send(mobile, 'journey-exit');
+    await api.phase('aquarium');
+    await api.send(mobile, 'journey-start', language);
+    await api.phase('festival');
+    assert.equal(api.journey.snapshot().storyDone, true);
+    assert.equal(api.journey.snapshot().outfit, beforeExit.outfit);
+    assert.equal(api.journey.snapshot().festivalMission, beforeExit.festivalMission);
     await api.send(mobile, 'journey-area', 2);
     assert.equal(api.journey.snapshot().festivalArea, 0);
     for (const item of content[language].festivalItems) {
@@ -183,16 +191,14 @@ for (const language of ['indonesian', 'chinese']) {
     await api.send(mobile, 'journey-start', language);
     await api.phase('room');
     state = api.journey.snapshot();
-    assert.equal(state.learning.storybookUnlocked, true);
-    assert.equal(state.learning.active, null);
+    assert.equal(state.storyDone, true);
+    assert.equal(state.storyPage, 5);
     assert.equal(state.learning.levels[0].completed, true);
-    assert.equal(state.stories[0].completed, true);
     assert.equal(state.memories.length, 13);
-    await api.send(mobile, 'journey-story-select', { storyId: content[language].stories[0].id });
-    for (let page = 0; page < 5; page++) await api.send(mobile, 'journey-story-page', page);
-    assert.equal(api.journey.snapshot().bag.length, 0, 'replay does not duplicate story rewards');
-    await api.send(mobile, 'journey-invitation');
-    assert.equal(api.journey.snapshot().invited, true);
+    await api.send(mobile, 'journey-exit'); await api.phase('aquarium');
+    await api.send(mobile, 'journey-start', {language, fresh:true}); await api.phase('room');
+    assert.equal(api.journey.snapshot().storyDone, false);
+    assert.equal(api.journey.snapshot().learning.storybookUnlocked, false);
   });
 }
 
@@ -261,11 +267,12 @@ test('Chinese story retells Chang’e’s legend before connecting it to modern 
   const story = content.chinese;
   assert.equal(story.storyTitle, 'Chang’e Flies to the Moon');
   assert.equal(story.chapters.length, 5);
-  const opening = story.chapters.slice(0, 2).flatMap(page => page.beats.map(beat => beat.line)).join(' ');
-  for (const event of [/ten suns/i, /nine suns/i, /Hou Yi/, /Chang’e/, /Peng Meng/, /elixir/, /drank it/, /rose all the way to the Moon/]) assert.match(opening, event);
+  const opening = story.chapters.slice(0, 3).flatMap(page => page.beats.map(beat => beat.line)).join(' ');
+  for (const event of [/ten suns/i, /nine suns/i, /Hou Yi/, /Chang’e/, /Peng Meng/, /elixir/, /drank the elixir/, /reached the Moon/]) assert.match(opening, event);
   const ending = story.chapters.slice(2).flatMap(page => page.beats.map(beat => beat.line)).join(' ');
   assert.match(ending, /favourite foods/);
   assert.match(ending, /mooncakes/);
-  assert.match(ending, /lanterns/);
-  assert.match(ending, /related tales/);
+  assert.match(ending, /lanterns/i);
+  assert.match(ending, /Jade Rabbit/);
+  assert.ok(story.chapters[2].beats[2].minSeconds >= 15);
 });

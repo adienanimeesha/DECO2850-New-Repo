@@ -36,6 +36,7 @@
         <span>Swim toward the book to read it.</span>
         <span class="storybook-guidance-arrow" aria-hidden="true">↓</span>
       </aside>
+      <button class="mailbox-button festival-story-button" id="festival-storybook" type="button" aria-label="Read storybook again" title="Read storybook again" hidden><span aria-hidden="true">📖</span></button>
       <button class="mailbox-button" id="mailbox-button" type="button" aria-label="Mailbox" disabled hidden><span id="mailbox-icon"></span><span class="mail-badge" id="mail-badge" hidden>1</span></button>
       <div class="interaction" id="interaction" hidden><span id="interaction-text"></span><button id="interact-button" type="button">Open</button></div>
       <div class="d-pad" id="d-pad" aria-label="Touch movement controls">
@@ -282,6 +283,12 @@
         </div>
         <div class="narrator-strip">
           <div class="book-margin-note"><span id="book-page-marker">PAGE 1 OF 5</span><strong id="story-name">Putri Mandalika</strong><small id="book-note">Watch the story, then tap the glowing choice.</small></div>
+          <details id="jade-rabbit-discovery" class="jade-rabbit-discovery" hidden>
+            <summary>🐇 Meet the Jade Rabbit</summary>
+            <p>In some Chinese tales, the Jade Rabbit lives on the Moon with Chang’e.</p>
+            <p>It pounds magical medicine in a bowl. Our rabbit-shaped lantern reminds us of this moon friend.</p>
+            <small>Close this discovery and press Play to keep going.</small>
+          </details>
           <div class="subtitle-bubble"><span id="scene-subtitle" aria-live="polite">Once upon a time...</span><small id="scene-status">Jelly is telling the story</small></div>
         </div>
         <div class="scene-controls">

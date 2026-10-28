@@ -60,41 +60,48 @@ function chapter(title, prompt, lines) {
 // Reference: https://lightsbythelake.nparks.gov.sg/files/LBTL_Handbook.pdf
 const moonStory = [
  chapter("Hou Yi and the Ten Suns", "Tap the one sun left in the sky", [
-  "Jelly has a traditional Chinese legend to share: Chang’e Flies to the Moon. People tell different versions. This is one of them.",
-  "Long ago, ten suns shone together. Their heat dried the fields, and people needed help.",
-  "A skilled archer named Hou Yi shot down nine suns. One sun remained to warm the Earth, and the people were safe.",
-  "Find the one sun Hou Yi left to light the day. Tap the sun in the sky.",
-  "You found it! 太阳, tài yáng, means sun. As a reward, Hou Yi received a magical elixir that could make someone live forever."
+  "Jelly has a Chinese legend to share: Chang’e Flies to the Moon. People tell different versions. Let’s take our time with this one.",
+  "Long ago, ten suns shone together. The fields became too hot and dry. The people needed someone to help.",
+  "An archer named Hou Yi stepped forward. He shot down nine suns, one by one. One sun remained, giving the Earth the warmth it needed.",
+  "Take a look at the peaceful sky. Can you tap the one sun Hou Yi left behind?",
+  "You found it! 太阳, tài yáng, means sun. The fields could grow again, and the people were safe."
  ]),
- chapter("Chang’e Flies to the Moon", "Tap Chang’e and Hou Yi to meet them", [
-  "Hou Yi loved his wife, Chang’e. He did not want to live forever without her, so he left the magical elixir in her care.",
-  "One day, while Hou Yi was away, his apprentice Peng Meng tried to take the elixir. Chang’e drank it to keep it from him.",
-  "Suddenly, Chang’e floated up into the sky! She rose all the way to the Moon, where she would stay, far from Hou Yi.",
-  "These are the two people in our legend. Tap Chang’e and Hou Yi to meet them.",
-  "This story remembers their love even when they are apart. 家人, jiā rén, means family members. Hou Yi missed Chang’e very much."
+ chapter("A Precious Gift", "Tap Chang’e and Hou Yi to meet them", [
+  "To thank Hou Yi, he was given a precious gift: a magical elixir. In this legend, drinking it could make someone live forever.",
+  "Hou Yi loved his wife, Chang’e. He did not want to live forever without her. For now, he chose not to drink the gift.",
+  "He left the elixir with Chang’e to keep it safe. Here they are together at home, before their lives changed.",
+  "Let’s meet them before we go on. Tap Chang’e, then tap Hou Yi.",
+  "You met them! 家人, jiā rén, means family members. Chang’e and Hou Yi cared deeply about each other. Remember that as we turn the page."
  ]),
- chapter("Remembering Chang’e", "Tap 月饼 or drag it to Hou Yi’s table", [
-  "When Hou Yi came home, he searched for Chang’e. Then he looked up at the bright Moon and thought of her.",
-  "He placed her favourite foods outside beneath the Moon. In this legend, the offerings show how much he missed her.",
-  "Today, sharing mooncakes is part of the Mid-Autumn Festival. Here is a mooncake to help us learn about that tradition.",
-  "Tap the mooncake, or drag it to the table beneath the Moon.",
-  "Lovely! 月饼, yuè bǐng, means mooncake. The round shape reminds people of the full moon and being together."
+ chapter("Chang’e Flies to the Moon", "Tap 月饼 or drag it to the table beneath the Moon", [
+  "One day, Hou Yi went away. His apprentice, Peng Meng, came to their home and tried to take the elixir from Chang’e.",
+  "Chang’e did not want Peng Meng to take it. She drank the elixir herself. Then something extraordinary began to happen.",
+  "Her feet lifted from the ground. Slowly, she rose above the house, higher and higher, until she reached the Moon. Let’s pause with her there, far from home.",
+  "Hou Yi would remember Chang’e with her favourite foods. Place this mooncake on the table: tap it, or drag it to the middle.",
+  "Thank you for sharing. 月饼, yuè bǐng, means mooncake. Keep this round cake in mind. On the next page, we’ll find out why people share it today."
  ]),
- chapter("A Festival of Moonlight", "Tap the lantern 灯笼, not the star", [
-  "Now Jelly brings us from the old legend to a Mid-Autumn celebration today. Families gather to admire the full moon.",
-  "Some loved ones are nearby, while others are far away. Looking at the same moon can help them feel connected.",
-  "Children carry colourful lanterns. Their warm light brightens the evening as people remember stories like Chang’e’s.",
-  "Which one is the lantern? Tap the lantern, not the star.",
-  "You found it! 灯笼, dēng long, means lantern. Let’s follow its glow towards the celebration."
+ chapter("Remembering Chang’e", "Tap the lantern 灯笼, not the star", [
+  "When Hou Yi came home, he searched for Chang’e. He looked up at the bright Moon and missed her very much.",
+  "He placed her favourite foods outside beneath the Moon. In this legend, the offerings show his love for someone far away.",
+  "Today, families celebrate Mid-Autumn by sharing mooncakes and admiring the full moon. Lanterns brighten some celebrations too. Old stories help people remember loved ones.",
+  "Let’s light our way to the celebration. Tap the lantern, not the star.",
+  "A warm light! 灯笼, dēng long, means lantern. We are leaving the old legend now and joining a festival today."
  ]),
- chapter("Together Under the Moon", "Tap the rabbit lantern to join the celebration", [
-  "Chang’e’s legend is one of the stories people remember at Mid-Autumn. The Jade Rabbit belongs to related tales about the Moon.",
-  "At our festival, a rabbit-shaped lantern celebrates that moon folklore. It is a lantern, not a real rabbit travelling to the Moon.",
-  "Families share mooncakes, tell stories, and enjoy being together. They also think of loved ones who cannot be there.",
-  "Tap the rabbit lantern to join Jelly at the Mid-Autumn celebration.",
-  "Wonderful! 团圆, tuán yuán, means reunion: people coming together again. Even far apart, we can look up at the same moon."
+ chapter("A Rabbit Lantern", "Tap the rabbit lantern to join the celebration", [
+  "Our story has brought us to a Mid-Autumn celebration. Families share mooncakes beneath the Moon.",
+  "There is another moon tale to discover. In that tale, the Jade Rabbit keeps Chang’e company on the Moon.",
+  "Look! A rabbit-shaped lantern. It reminds us of the Jade Rabbit. Shall we bring it to the celebration?",
+  "Tap the rabbit lantern to join Jelly.",
+  "Together again! 团圆, tuán yuán, means reunion. Let’s celebrate with the people we love."
  ])
-];
+ ];
+// Leave room for the illustrations and a quiet pause after Chang’e’s flight.
+for (const page of moonStory) for (const [index, beat] of page.beats.entries()) {
+ beat.minSeconds = index === 3 ? 2 : Math.max(7, beat.line.length * .065);
+}
+moonStory[0].beats[2].minSeconds = 11;
+moonStory[2].beats[2].minSeconds = 15;
+moonStory[2].beats[2].pauseAfterSeconds = 2;
 // One name and one transparent illustration per Bau Nyale object, reused in
 // the festival scene and in the response to a child's selection.
 const bauNyaleFestivalArt = {

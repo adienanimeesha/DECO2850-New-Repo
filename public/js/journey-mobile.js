@@ -15,6 +15,7 @@ const outfit = () => content().outfits.find(x => x.id === (outfitChoice || state
 $('welcome-jelly').innerHTML = art.jelly();
 $('travel-jelly').innerHTML = art.jelly();
 $('mailbox-icon').innerHTML=art.svg('letter');
+$('festival-storybook').addEventListener('click',()=>{ if(state?.phase==='festival'){closeActivity();stopAudio();window.OceanRoom?.startStory();} });
 $('mailbox-button').addEventListener('click',()=>openActivity('mail'));
 $('festival-home').addEventListener('click',()=>openActivity(state?.festivalFeedback?'festival-feedback':'festival-complete'));
 document.querySelectorAll('[data-language]').forEach(button => button.addEventListener('click', () => {
@@ -174,6 +175,7 @@ function updateMission() {
  $('mission-step').textContent=`MISSION ${step} OF 5`;
  $('objective').textContent=goal;$('mission-detail').textContent=detail;
  $('mission-progress').innerHTML=Array.from({length:5},(_,i)=>`<i class="${i+1<step?'complete':i+1===step?'current':''}"></i>`).join('');
+ $('festival-storybook').hidden=state.phase!=='festival'||!state.storyDone;
  const mailReady=state.phase==='room'&&state.storyDone&&!state.learning?.active;
  $('mailbox-button').disabled=!mailReady;
  $('mailbox-button').hidden=!mailReady||state.phase==='festival';
@@ -229,7 +231,7 @@ socket.on('journey-state', next => {
  $('travel-screen').hidden=!travelling;
  const titles={departing:'Jelly is swimming over…',travelling:`Next stop: ${c.festival}`,returning:'Bringing our memories home…'};
  $('travel-title').textContent=titles[next.phase] || '';
- $('travel-copy').textContent=next.phase==='travelling' ? c.festivalIntro : next.phase==='returning' ? 'Follow Jelly on the aquarium screen.' : 'From the aquarium to your little ocean home.';
+ $('travel-copy').textContent=next.phase==='travelling' ? c.festivalIntro : next.phase==='returning' ? 'Follow Jelly on the aquarium screen.' : next.phase==='departing' && next.storyDone && next.invited && next.outfit ? 'Returning to your festival discoveries.' : 'From the aquarium to your little ocean home.';
  $('travel-jelly').innerHTML=art.jelly(outfit());
  $('welcome-return').textContent=next.mainAdventureCompleted && next.phase==='aquarium'
   ? `Welcome home, Jelly! Your memories are safe. Continue the adventure to learn more words or revisit the storybook.`

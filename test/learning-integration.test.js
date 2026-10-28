@@ -191,6 +191,7 @@ test('each Bau Nyale mission has four spaced transparent PNG choices with named 
 test('supplied tutorial pictures render as circular coloured choices without stretching',t=>{
  const dom=new JSDOM('<!doctype html>',{runScripts:'outside-only'});t.after(()=>dom.window.close());
  const w=dom.window,calls=[];
+ w.Path2D=class{constructor(path){this.path=path;}};
  w.Image=class {constructor(){this.complete=true;this.naturalWidth=1156;this.naturalHeight=1388;}set src(value){this._src=value;}};
  w.eval(fs.readFileSync('public/js/ocean-art.js','utf8'));
  const ctx={canvas:{getBoundingClientRect:()=>({width:960,height:620})},
@@ -269,6 +270,7 @@ function mobile(t, api, name='mobile.html', viewport={width:960,height:620}) {
   const left=parseFloat(this.style.left)||0,top=parseFloat(this.style.top)||0;
   return {left,top,width,height,right:left+width,bottom:top+height};
  };
+ w.Path2D=class{constructor(path){this.path=path;}};
  w.Image=class{constructor(){this.complete=true;this.naturalWidth=100;this.naturalHeight=100;}set src(value){this._src=value;if(/^\/assetNEW\/(mission|distractor)-/.test(value)){this.naturalWidth=1254;this.naturalHeight=1254;}if(/^\/assetNEW\/ArrowPointing/.test(value)){this.naturalWidth=1306;this.naturalHeight=1205;}this.onload?.();}get src(){return this._src;}};
  Object.defineProperty(w.performance,'now',{value:()=>now});
  w.requestAnimationFrame=fn=>{const id=++sequence;frames.set(id,fn);return id;};w.cancelAnimationFrame=id=>frames.delete(id);
@@ -485,16 +487,16 @@ for(const language of ['indonesian','chinese'])test(`${language}: real sockets a
  }
  assert.equal(api.journey.snapshot().learning.allCompleted,true);
  assert.equal(api.journey.snapshot().bag.length,10);
- await p.walk(486,269);assert.equal(p.d.querySelector('#learning-story-list button').textContent,'Replay');
- p.click('#learning-story-list button');await waitFor(()=>!p.d.querySelector('#storybook-backdrop').hidden);
- assert.equal(p.w.JellyJourney.state.storyPage,0);
- assert.equal(p.w.JellyJourney.state.storyDone,false);
- assert.equal(p.w.JellyJourney.state.stories[0].completed,true);
- // Finish one replayed chapter; historical rewards must not duplicate.
- for(let beat=0;beat<3;beat++){p.click('#scene-continue');await p.advance(100);}
- p.click(language==='chinese'?'[data-chinese-choice="story-shell"]':'#story-shell');
- p.click('#scene-continue');await p.advance(100);p.click('#scene-continue');await p.advance(100);
- await waitFor(()=>p.w.JellyJourney.state.storyPage===1);assert.equal(api.journey.snapshot().bag.length,10);
+ await p.walk(486,269);assert.equal(p.d.querySelector('#learning-story-list button').textContent,'Start festival');
+ p.click('#learning-story-list button');await waitFor(()=>p.w.JellyJourney.state.phase==='festival');
+ assert.equal(p.d.querySelector('#storybook-backdrop').hidden,true);
+ assert.equal(p.w.JellyJourney.state.storyDone,true);
+ assert.equal(p.w.JellyJourney.state.festivalMission,0);
+ p.click('#festival-storybook');await p.advance(2200);
+ assert.equal(p.d.querySelector('#storybook-backdrop').hidden,false);
+ assert.equal(p.d.querySelector('#scene-stage').dataset.chapter,'0');
+ p.click('#close-story');
+ assert.equal(api.journey.snapshot().bag.length,10,'optional replay does not duplicate rewards');
 });
 
 for(const language of ['indonesian','chinese'])test(`${language}: Level 2 and Level 3 run in the common room before any story or festival`,async t=>{

@@ -186,8 +186,8 @@ for(const language of ['indonesian','chinese'])test(`${language}: mobile complet
    assert.equal(scene.querySelector('#nyale-target-body').parentElement.id,'nyale-target');
   }else{
    assert.equal(scene.querySelectorAll('[data-story-tray]').length,chapter===2?1:0);
-   assert.equal(scene.querySelectorAll('[data-story-object^="zh-family-"]').length,chapter===0||chapter===1?0:2);
-   if(chapter===1)assert.equal(scene.querySelectorAll('[data-legend-character]').length,2);
+   assert.equal(scene.querySelectorAll('[data-story-object^="zh-family-"]').length,chapter<=2?0:2);
+   if(chapter===1||chapter===2)assert.equal(scene.querySelectorAll('[data-legend-character]').length,2);
   }
   checkStoryBackground(d.querySelector(language==='chinese'?'.chinese-scene':'#scene-stage > svg:not(.chinese-scene)'),language,chapter);
   if(language==='indonesian')for(const id of ['scene-background','scene-water','scene-plants','cloud-a','cloud-b','scene-sun','scene-boat','princess','nyale-target']){
@@ -455,7 +455,7 @@ test('all Chinese story words use a Mandarin voice between English segments and 
   const spoken=speech.utterances.slice(start).map(line=>line.text).join(' ');
   assert.equal(spoken.includes(reward.pronunciation),false,'pinyin is not spoken with an English voice');
   assert.match(p.w.document.querySelector('#scene-subtitle').textContent,new RegExp(reward.pronunciation),'pinyin stays visible');
-  speech.finish();await p.advance(2200);assert.equal(p.state.storyPage,chapter+1);
+  speech.finish();await p.advance(14000);assert.equal(p.state.storyPage,chapter+1);
  }
 });
 test('Indonesian story vocabulary uses an Indonesian voice, including repeated Sasak words',async t=>{
@@ -571,22 +571,25 @@ test('Hou Yi’s arrows remove nine suns, keep the final sun, and freeze while p
  assert.equal(arrow.getAttribute('opacity'),'1');
  const before=arrow.getAttribute('transform');p.click('#scene-play');await p.advance(1000);
  assert.equal(arrow.getAttribute('transform'),before,'pause freezes the arrow');
- p.click('#scene-play');await p.advance(5000);
+ p.click('#scene-play');await p.advance(10500);
  assert.equal(gone(),9);
  assert.ok(scene.querySelector('[data-chinese-choice="story-shell"]'),'the remaining sun stays available to select');
 });
 
-test('Peng Meng enters when introduced and Chang’e rises during the flight narration',async t=>{
+test('the gift stays at home before Peng Meng arrives and Chang’e rises slowly on the next page',async t=>{
  const p=page(t),d=p.w.document;
  p.update({phase:'room',language:'chinese',trip:1,storyPage:1});p.walk('book');await p.advance(6500);
+ assert.ok(d.querySelector('[data-gift-elixir]'));
+ assert.equal(d.querySelector('[data-peng-meng]'),null);
+ p.click('#close-story');
+ p.update({storyPage:2});p.w.OceanRoom.startStory();await p.advance(6500);
  const scene=d.querySelector('.chinese-scene'),peng=scene.querySelector('[data-peng-meng]'),change=scene.querySelector('[data-family="prince-left"]');
- assert.equal(peng.getAttribute('opacity'),'0','the apprentice is absent before being introduced');
- p.click('#scene-continue');await p.advance(1800);
- assert.equal(peng.getAttribute('opacity'),'1');assert.equal(peng.getAttribute('transform'),'translate(470 0)');
- p.click('#scene-continue');await p.advance(1200);
+ assert.equal(peng.getAttribute('opacity'),'1');
+ assert.equal(peng.getAttribute('transform'),'translate(470 0)');
+ p.click('#scene-continue');p.click('#scene-continue');await p.advance(1200);
  const position=change.getAttribute('transform');assert.notEqual(position,'translate(265 0)');
  p.click('#scene-play');await p.advance(1000);assert.equal(change.getAttribute('transform'),position);
- p.click('#scene-play');await p.advance(2500);assert.equal(change.getAttribute('transform'),'translate(705 -245)');
+ p.click('#scene-play');await p.advance(6800);assert.equal(change.getAttribute('transform'),'translate(705 -245)');
  assert.equal(scene.querySelector('[data-legend-elixir]').getAttribute('opacity'),'0');
 });
 
@@ -598,4 +601,37 @@ test('generated Chinese legend character cutouts are local RGBA PNGs',()=>{
   assert.equal(bytes[25],6,'the character retains its alpha channel');
   assert.ok(bytes.readUInt32BE(16)>=1024&&bytes.readUInt32BE(20)>=1024);
  }
+});
+
+for(const language of ['indonesian','chinese'])test(`${language}: festival book replay starts at page one and preserves mission progress`,async t=>{
+ const p=page(t),d=p.w.document;
+ p.update({phase:'festival',language,trip:1,storyPage:5,storyDone:true,invited:true,festivalMission:1,festivalArea:1});
+ const before=JSON.stringify(p.state);
+ assert.equal(d.querySelector('#festival-storybook').hidden,false);
+ p.click('#festival-storybook');await p.advance(2200);
+ assert.equal(d.querySelector('#storybook-backdrop').hidden,false);
+ assert.equal(d.querySelector('#scene-stage').dataset.chapter,'0');
+ p.click('#close-story');
+ assert.equal(d.querySelector('#storybook-backdrop').hidden,true);
+ assert.equal(JSON.stringify(p.state),before);
+ assert.equal(p.events.some(([event])=>event==='journey-story-page'||event==='journey-story-select'),false);
+});
+
+test('Jade Rabbit discovery is optional, only on the final Chinese page, and pauses playback',async t=>{
+ const p=page(t),d=p.w.document;
+ p.update({phase:'room',language:'chinese',trip:1,storyPage:4});p.walk('book');await p.advance(2200);
+ const discovery=d.querySelector('#jade-rabbit-discovery');
+ assert.equal(discovery.hidden,true);
+ assert.equal(d.querySelector('[data-moon-rabbit]').getAttribute('opacity'),'0');
+ p.click('#scene-continue');
+ assert.equal(d.querySelector('[data-moon-rabbit]').getAttribute('opacity'),'0');
+ p.click('#scene-continue');
+ assert.equal(d.querySelector('[data-moon-rabbit]').getAttribute('opacity'),'1');
+ assert.equal(discovery.hidden,false);
+ assert.match(discovery.textContent,/lives on the Moon with Chang’e/);
+ assert.match(discovery.textContent,/rabbit-shaped lantern/);
+ discovery.open=true;discovery.dispatchEvent(new p.w.Event('toggle'));
+ assert.match(d.querySelector('#scene-play').textContent,/Play/);
+ p.click('#close-story');p.update({storyPage:0});p.w.OceanRoom.startStory();await p.advance(2200);
+ assert.equal(discovery.hidden,true);assert.equal(discovery.open,false);
 });

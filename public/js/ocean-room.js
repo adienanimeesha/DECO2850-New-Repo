@@ -431,16 +431,17 @@ function showFeedback(message, duration = 4500) {
   feedbackUntil = performance.now() + duration;
 }
 function openStory(selected = false) {
-  if (journey.state?.phase !== "room" || learning?.active || (learningOptions && !learningStoryUnlocked)) return;
+  const festivalReplay = journey.state?.phase === "festival" && journey.state.storyDone;
+  if ((!festivalReplay && journey.state?.phase !== "room") || learning?.active || (!festivalReplay && learningOptions && !learningStoryUnlocked)) return;
   storyProximityArmed=false;
-  if (!selected && learningOptions?.onStorybook) { clearMovement(); learningOptions.onStorybook(); return; }
+  if (!festivalReplay && !selected && learningOptions?.onStorybook) { clearMovement(); learningOptions.onStorybook(); return; }
   const pictures=storyPagePictures(journey.state.language,Math.min(journey.state.storyPage,journey.content.chapters.length-1));
   if(pictures.some(picture=>!picture.settled)){
    const trip=journey.state.trip;clearMovement();
    Promise.all(pictures.map(picture=>picture.ready)).then(()=>{if(journey.state.trip===trip)openStory(selected);});return;
   }
   chapters = journey.content.chapters;storyChapterCount=chapters.length;
-  pageIndex = Math.min(journey.state.storyPage, chapters.length-1);
+  pageIndex = festivalReplay ? 0 : Math.min(journey.state.storyPage, chapters.length-1);
   lastFocus = document.activeElement;
   storyOpen = true;
   clearMovement();
@@ -625,6 +626,7 @@ function nextPage() {
     turnPage(pageIndex + 1);
   } else {
     closeStory();
+    if(journey.state?.phase==='festival')return;
     if(journey.state?.storyDone&&!journey.state?.invited)journey.openActivity('mail');
     else showFeedback("Your story is complete! Your invitation is in the mailbox.", 6500);
   }
@@ -632,6 +634,9 @@ function nextPage() {
 function renderPage(startNarration = true) {
   leaveIntro();
   stopNarration();
+  const discovery = introElement('jade-rabbit-discovery');
+  discovery.open = false;
+  discovery.hidden = true;
   const chapter = chapters[pageIndex];
   for(const id of ["scene-continue","scene-play","scene-replay"])introElement(id).disabled=false;
   introElement("story-origin").textContent=journey.content.storyLabel;
@@ -763,6 +768,7 @@ function leaveIntro() {
 function startIntroBeat(index, speak = true) {
   cancelIntroSpeech();
   introState.beat = index;
+  introState.narrationFinishedAt = null;
   introState.elapsed = 0;
   introState.playing = true;
   introState.narrationDone = !speak;
@@ -808,6 +814,7 @@ function replayIntroNarration() {
   cancelIntroSpeech();
   introState.playing = true;
   introState.narrationDone = false;
+  introState.narrationFinishedAt = null;
   introState.speechStarted = false;
   // Replaying a line also restarts its whole-object animation.
   introState.elapsed = 0;
@@ -1028,7 +1035,10 @@ function tickIntro(time) {
       introState.speaking = false;
       if (introState.beat === 3) introStatus("Your turn · " + chapters[pageIndex].prompt);
     }
-    if (introState.narrationDone && introState.elapsed >= beat.minSeconds) advanceIntroBeat();
+    if (introState.narrationDone && introState.narrationFinishedAt == null) introState.narrationFinishedAt = introState.elapsed;
+    const quietPause = beat.pauseAfterSeconds || 0;
+    if (introState.narrationDone && introState.elapsed >= beat.minSeconds &&
+        introState.elapsed - introState.narrationFinishedAt >= quietPause) advanceIntroBeat();
     applyIntroVisual();
   }
   introState.frame = requestAnimationFrame(tickIntro);
@@ -1595,7 +1605,7 @@ function configureChineseStage() {
  const family=(name,x,colour,label,interactive=false)=>{
   // Retain the original painted geometry invisibly for the exact hit area;
   // the supplied complete pose replaces every visible body/face part.
-  const character=pageIndex===1?`<image data-legend-character="${name==='prince-left'?'change':'houyi'}" href="/assetNEW/storybook-zh-${name==='prince-left'?'change':'houyi'}.png" x="-65" y="245" width="130" height="200" preserveAspectRatio="xMidYMax meet"/>`:storyObjectImage(name==='prince-left'?'zh-family-first':'zh-family-second',-51,289,102,150);
+  const character=[1,2].includes(pageIndex)?`<image data-legend-character="${name==='prince-left'?'change':'houyi'}" href="/assetNEW/storybook-zh-${name==='prince-left'?'change':'houyi'}.png" x="-65" y="245" width="130" height="200" preserveAspectRatio="xMidYMax meet"/>`:storyObjectImage(name==='prince-left'?'zh-family-first':'zh-family-second',-51,289,102,150);
   const drawing=`<ellipse cx="0" cy="445" rx="44" ry="12" fill="#75979d33"/><g data-family-hit-area opacity="0"><path d="M-33 354Q0 333 33 354L43 439H-43Z" fill="${colour}" stroke="#a382ac" stroke-width="3"/><circle cx="0" cy="328" r="30" fill="#f1c3a6" stroke="#b88a9e" stroke-width="3"/><path d="M-29 326Q-37 283 3 291Q34 290 29 319Q11 304-3 313Z" fill="#7b668f"/><circle cx="-10" cy="328" r="3" fill="#62517b"/><circle cx="10" cy="328" r="3" fill="#62517b"/><path d="M-7 342Q0 348 7 342" fill="none" stroke="#b27d98" stroke-width="2"/><path d="M-30 369L-46 395M30 369L46 395" stroke="#edbaa1" stroke-width="10" stroke-linecap="round"/></g>${character}${interactive?`<g data-delivered="${name}" hidden><path d="M14 380Q10 365 24 372Q38 365 34 380L24 390Z" fill="#edb5d5"/></g>`:''}`;
   return `<g data-family="${name}" transform="translate(${x} 0)">${interactive?choice(name,label,drawing):`<g data-story-explore="family" role="button" tabindex="-1" aria-label="Family member">${drawing}</g>`}</g>`;
  };
@@ -1603,22 +1613,22 @@ function configureChineseStage() {
  const stars=`<g fill="#fff7d9">${Array.from({length:17},(_,i)=>`<circle cx="${40+i*53}" cy="${35+i*41%160}" r="${2+i%3}"/>`).join('')}</g>`;
  const starsTarget=pageIndex===0||pageIndex===3?choice('story-fish','Stars in the sky',stars):stars;
  const moonTarget=pageIndex===0?choice('story-shell','Sun',moon):`<g data-story-explore="moon" role="button" tabindex="-1" aria-label="Moon">${moon}</g>`;
- const rabbit=pageIndex<3?'':icon('rabbit',pageIndex===4?420:400,255,140);
+ const rabbit=pageIndex!==4?'':icon('rabbit',pageIndex===4?420:400,255,140);
  const rabbitTarget=pageIndex===4?choice('scene-boat','Rabbit lantern',`<path d="M490 239V269" stroke="#b69bbc" stroke-width="3"/>${rabbit}`):`<g data-story-explore="rabbit" role="button" tabindex="-1" aria-label="Moon rabbit">${rabbit}</g>`;
  const prop=pageIndex===2?choice('peace-ripple','Mooncake',icon('mooncake',625,327,95)):pageIndex===3?choice('nyale-target','Lantern',icon('lantern',625,327,95)):'';
- const familyScene=[1,2,3,4].includes(pageIndex)?family('prince-left',265,'#c5a3da',pageIndex===1?'Chang’e':'Family member',pageIndex===1)+family('prince-right',700,'#eab4cc',pageIndex===1?'Hou Yi':'Family member',pageIndex===1):'';
+ const familyScene=[1,2,3,4].includes(pageIndex)?family('prince-left',265,'#c5a3da',[1,2].includes(pageIndex)?'Chang’e':'Family member',pageIndex===1)+family('prince-right',700,'#eab4cc',[1,2].includes(pageIndex)?'Hou Yi':'Family member',pageIndex===1):'';
  // Visible PNG core: (215,259)–(1329,854). Uniform 0.19 scale places
  // its tabletop at y≈392–431 and its feet at y≈504. The small cake's base
  // (≈399) and the delivered cake's base (≈422) both rest on that surface.
  // Keep the original invisible exploration geometry and logical drop (490,390).
  const table=[2,4].includes(pageIndex)?`<g data-story-explore="table" role="button" tabindex="-1" aria-label="Family table"><ellipse data-table-shadow cx="490" cy="497" rx="148" ry="23" fill="#75979d44" pointer-events="none"/><image data-story-table-art href="/assetNEW/table.png" x="343.7" y="342" width="291.84" height="194.56" preserveAspectRatio="xMidYMid meet" pointer-events="none"/><g data-table-hit-area opacity="0"><ellipse cx="490" cy="447" rx="148" ry="23" fill="#75979d44"/><path d="M376 390Q490 370 604 390L591 421Q490 438 389 421Z" fill="#f7dcdd" stroke="#9e78a8" stroke-width="5"/><path d="M404 420V461M576 420V461" stroke="#9e78a8" stroke-width="13"/><ellipse cx="490" cy="390" rx="114" ry="28" fill="#fff0d9" stroke="#9e78a8" stroke-width="5"/></g>${pageIndex===4?icon('mooncake',460,351,57):''}</g>`:'';
  const figure=(x,y,colour,label)=>`<image href="/assetNEW/storybook-zh-${label.startsWith('Hou Yi')?'houyi':'change'}.png" x="${x-65}" y="${y-38}" width="130" height="195" preserveAspectRatio="xMidYMax meet" role="img" aria-label="${label}"/>`;
- const legendArt=pageIndex===0?`${figure(450,285,'','Hou Yi, the archer')}<g data-legend-arrow aria-label="Hou Yi’s flying arrow"><path d="M-34 0H4M-5-7L4 0L-5 7M-29 0L-37-6M-29 0L-37 6" fill="none" stroke="#795f83" stroke-width="4" stroke-linecap="round"/></g><g aria-label="Nine suns Hou Yi removes">${Array.from({length:9},(_,i)=>`<g data-extra-sun="${i}">${icon('sun',45+i*65,45+(i%2)*55,40)}</g>`).join('')}</g>`:pageIndex===1?`<g data-peng-meng role="img" aria-label="Peng Meng, the apprentice trying to take the elixir"><image href="/assetNEW/storybook-zh-pengmeng.png" x="-65" y="245" width="130" height="200" preserveAspectRatio="xMidYMax meet"/></g><g data-flight-trail fill="#fff2c9">${[0,1,2,3,4].map(i=>`<circle cx="${300+i*90}" cy="${390-i*48}" r="${5-i*.6}"/>`).join('')}</g><g data-legend-elixir role="img" aria-label="The magical elixir"><path d="M451 334H469V352L482 378Q490 401 460 403Q430 401 438 378L451 352Z" fill="#c5e9ef" stroke="#8769a0" stroke-width="3"/><path d="M448 332H472" stroke="#b3966c" stroke-width="7"/></g>`:pageIndex===2?figure(755,92,'','Chang’e on the Moon'):'';
- svg.innerHTML=`<defs><linearGradient id="moon-sky" x2="0" y2="1"><stop stop-color="#858cc5"/><stop offset="1" stop-color="#ddd1ec"/></linearGradient></defs><rect data-story-scenery width="960" height="520" fill="url(#moon-sky)"/>${moonTarget}${starsTarget}<path data-story-scenery d="M0 340Q200 285 430 340T960 320V520H0Z" fill="#a5cecd"/><path data-story-scenery d="M0 441Q300 365 500 455T960 418V520H0Z" fill="#d4e4d4"/><path data-story-scenery d="M30 310H225L205 265H60Z" fill="#a288b8"/><path data-story-scenery d="M60 310V399M205 310V399" stroke="#a288b8" stroke-width="14"/><path d="M0 230Q480 280 960 225" stroke="#b195bd" stroke-width="3" fill="none"/><g data-moon-lanterns>${[90,290,480,680,875].map(x=>`<g data-story-explore="lantern" role="button" tabindex="-1" aria-label="Lantern">${icon('lantern',x-23,230,45)}</g>`).join('')}</g>${familyScene}${legendArt}${table}${pageIndex===2?`<g data-story-tray><ellipse cx="670" cy="419" rx="64" ry="17" fill="transparent"/>${storyObjectImage('zh-serving-tray',606,402,128,34)}</g>`:''}<ellipse cx="486" cy="438" rx="93" ry="16" fill="#8daeb544"/><g data-moon-rabbit>${rabbitTarget}</g><g data-moon-prop>${prop}</g>`;
+ const legendArt=pageIndex===0?`${figure(450,285,'','Hou Yi, the archer')}<g data-legend-arrow aria-label="Hou Yi’s flying arrow"><path d="M-34 0H4M-5-7L4 0L-5 7M-29 0L-37-6M-29 0L-37 6" fill="none" stroke="#795f83" stroke-width="4" stroke-linecap="round"/></g><g aria-label="Nine suns Hou Yi removes">${Array.from({length:9},(_,i)=>`<g data-extra-sun="${i}">${icon('sun',45+i*65,45+(i%2)*55,40)}</g>`).join('')}</g>`:pageIndex===2?`<g data-peng-meng role="img" aria-label="Peng Meng, the apprentice trying to take the elixir"><image href="/assetNEW/storybook-zh-pengmeng.png" x="-65" y="245" width="130" height="200" preserveAspectRatio="xMidYMax meet"/></g><g data-flight-trail fill="#fff2c9">${[0,1,2,3,4].map(i=>`<circle cx="${300+i*90}" cy="${390-i*48}" r="${5-i*.6}"/>`).join('')}</g><g data-legend-elixir role="img" aria-label="The magical elixir"><path d="M451 334H469V352L482 378Q490 401 460 403Q430 401 438 378L451 352Z" fill="#c5e9ef" stroke="#8769a0" stroke-width="3"/><path d="M448 332H472" stroke="#b3966c" stroke-width="7"/></g>`:pageIndex===1?`<g data-gift-elixir aria-label="The precious elixir kept safe at home"><path d="M451 334H469V352L482 378Q490 401 460 403Q430 401 438 378L451 352Z" fill="#c5e9ef" stroke="#8769a0" stroke-width="3"/></g>`:pageIndex===3?figure(755,92,'','Chang’e on the Moon'):'';
+ svg.innerHTML=`<defs><linearGradient id="moon-sky" x2="0" y2="1"><stop stop-color="#858cc5"/><stop offset="1" stop-color="#ddd1ec"/></linearGradient></defs><rect data-story-scenery width="960" height="520" fill="url(#moon-sky)"/>${moonTarget}${starsTarget}<path data-story-scenery d="M0 340Q200 285 430 340T960 320V520H0Z" fill="#a5cecd"/><path data-story-scenery d="M0 441Q300 365 500 455T960 418V520H0Z" fill="#d4e4d4"/><path data-story-scenery d="M30 310H225L205 265H60Z" fill="#a288b8"/><path data-story-scenery d="M60 310V399M205 310V399" stroke="#a288b8" stroke-width="14"/><path d="M0 230Q480 280 960 225" stroke="#b195bd" stroke-width="3" fill="none"/><g data-moon-lanterns>${[90,290,480,680,875].map(x=>`<g data-story-explore="lantern" role="button" tabindex="-1" aria-label="Lantern">${icon('lantern',x-23,230,45)}</g>`).join('')}</g>${familyScene}${legendArt}${table}${pageIndex===2?`<g data-story-tray><ellipse cx="670" cy="419" rx="64" ry="17" fill="transparent"/>${storyObjectImage('zh-serving-tray',606,402,128,34)}</g>`:''}<ellipse cx="486" cy="438" rx="93" ry="16" fill="#8daeb544"/><g data-moon-rabbit opacity="0" style="pointer-events:none">${rabbitTarget}</g><g data-moon-prop>${prop}</g>`;
  // These are the objects in the illustration itself, with keyboard semantics
  // and a glow during the interaction beat. No separate choice controls.
  let draggedMooncake=false,mooncakeDrag=null;
- const exploreMessages={moon:'The full moon shines above everyone at the festival.',rabbit:'This rabbit comes from our moon story.',lantern:'A lantern lights the garden path.',family:'A family member is ready to celebrate together.',table:'The family shares mooncakes at this table.'};
+ const exploreMessages={moon:'The full moon shines above everyone at the festival.',rabbit:'This rabbit-shaped lantern reminds us of related tales about the Jade Rabbit. The extra discovery on the last page explains more.',lantern:'A lantern lights the garden path.',family:'A family member is ready to celebrate together.',table:'The family shares mooncakes at this table.'};
  const exploreObject=kind=>{const message=exploreMessages[kind];if(!message)return;introStatus(message);speakIntroHint(message);};
  svg.addEventListener('click',event=>{
   if(draggedMooncake){draggedMooncake=false;return;}
@@ -1684,7 +1694,7 @@ function applyChineseVisual() {
  const t=introState.totalTime,bob=reducedMotion?.matches?0:Math.sin(t*2)*4;
  const beat=introState.beat,elapsed=introState.elapsed,reduce=Boolean(reducedMotion?.matches);
  if(pageIndex===0){
-  const shooting=beat===2,shot=reduce?9:Math.min(9,elapsed/.65),removed=beat>2?9:shooting?Math.floor(shot):0;
+  const shooting=beat===2,shot=reduce?9:Math.min(9,elapsed/1.05),removed=beat>2?9:shooting?Math.floor(shot):0;
   svg.querySelectorAll('[data-extra-sun]').forEach((sun,i)=>sun.setAttribute('opacity',i<removed?'0':'1'));
   const arrow=svg.querySelector('[data-legend-arrow]');
   if(arrow){
@@ -1695,29 +1705,38 @@ function applyChineseVisual() {
    arrow.setAttribute('transform',`translate(${x} ${y}) rotate(${Math.atan2(targetY-310,targetX-490)*180/Math.PI})`);
   }
  }
- if(pageIndex===1){
-  const arrival=beat<1?0:reduce||beat>1?1:introEase(elapsed/1.6);
+ if(pageIndex===2){
+  const arrival=reduce||beat>0?1:introEase(elapsed/2.8);
   const peng=svg.querySelector('[data-peng-meng]');
   peng.setAttribute('transform',`translate(${1000-530*arrival} 0)`);
-  peng.setAttribute('opacity',beat===1||beat===2?'1':'0');
-  const flight=beat<2?0:reduce||beat>2?1:introEase(elapsed/3.2);
+  peng.setAttribute('opacity',beat<3?'1':'0');
+  const flight=beat<2?0:reduce||beat>2?1:introEase(elapsed/6.5);
   svg.querySelector('[data-flight-trail]').setAttribute('opacity',beat>=2?'.75':'0');
   svg.querySelector('[data-legend-elixir]').setAttribute('opacity',beat<2?'1':'0');
   svg.querySelectorAll('[data-family]').forEach((person,i)=>{
    person.setAttribute('transform',i===0?`translate(${265+440*flight} ${-245*flight})`:`translate(700 0)`);
-   person.setAttribute('opacity',i===1&&(beat===1||beat===2)?'0':'1');
+   person.setAttribute('opacity',i===1&&beat<3?'0':'1');
   });
  }
 
+ const rabbitVisible=pageIndex===4&&beat>=2;
+ const rabbitGroup=svg.querySelector('[data-moon-rabbit]');
+ rabbitGroup.setAttribute('opacity',rabbitVisible?'1':'0');
+ rabbitGroup.style.pointerEvents=rabbitVisible?'':'none';
+ rabbitGroup.setAttribute('aria-hidden',String(!rabbitVisible));
+ introElement('jade-rabbit-discovery').hidden=!rabbitVisible;
  const travel=pageIndex===4&&introState.interactionDone?180*introEase((t-introState.reactionTime)/3):0;
  svg.querySelector('[data-moon-rabbit]').setAttribute('transform',`translate(${travel} ${-bob})`);
  svg.querySelector('[data-moon-prop]').setAttribute('transform',`translate(0 ${bob})`);
  svg.querySelector('[data-moon-lanterns]').setAttribute('transform',`translate(0 ${Math.sin(t)*2})`);
- if(pageIndex!==1)svg.querySelectorAll('[data-family]').forEach((person,i)=>person.setAttribute('transform',`translate(${i===0?265:700} ${i===0?bob:-bob})`));
+ if(pageIndex!==2)svg.querySelectorAll('[data-family]').forEach((person,i)=>person.setAttribute('transform',`translate(${i===0?265:700} ${i===0?bob:-bob})`));
  syncChineseChoices();
 }
 // Read-along mode lets children advance narration at their own pace, while the
 // chapter's interaction is still required before Next page unlocks.
+introElement('jade-rabbit-discovery').addEventListener('toggle',()=>{
+ if(introElement('jade-rabbit-discovery').open && storyOpen && introState.playing)toggleIntroPlayback();
+});
 const continueButton=introElement('scene-continue');
 continueButton.addEventListener('click',()=>{
  if(!storyOpen)return;

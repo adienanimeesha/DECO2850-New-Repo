@@ -132,8 +132,20 @@ function createJourney(io, { transitionMs = 2200 } = {}) {
           completed: false, invitationAvailable: false, invited: false, replayEligible: true,
         }));
       }
-      resetTrip();
-      transition('departing', 'room');
+      // Continue an entered festival without resetting its story or missions.
+      if (!startFresh && state.storyDone && state.invited && state.outfit && festival() && state.festivalMission < festival().items.length) {
+        state.trip++;
+        state.learning.active = null;
+        transition('departing', 'festival');
+      } else {
+        resetTrip();
+        const completed = state.stories.find(item => item.id === state.activeStoryId && item.completed);
+        if (completed) {
+          state.storyDone = true;
+          state.storyPage = story().chapters.length;
+        }
+        transition('departing', 'room');
+      }
     });
     socket.on('journey-reset', () => {
       clearTimeout(timer); state = fresh(state.trip + 1); publish();
@@ -191,6 +203,17 @@ function createJourney(io, { transitionMs = 2200 } = {}) {
           !content().festivals.some(item => item.id === selected.festivalId))
         return invalid(socket, 'journey-story-select');
       state.activeStoryId = selected.id;
+      if (state.stories.find(item => item.id === selected.id)?.completed) {
+        state.storyPage = selected.chapters.length;
+        state.storyDone = true; state.invited = true;
+        state.festivalId = selected.festivalId;
+        state.stories.find(item => item.id === selected.id).invited = true;
+        state.outfit = festival().outfits.find(item => item.id === state.outfit)?.id || festival().outfits[0].id;
+        state.festivalArea = 0; state.festivalMission = 0;
+        state.festivalFeedback = false; state.festivalFound = [];
+        transition('travelling', 'festival');
+        return;
+      }
       state.storyPage = 0; state.storyDone = false; state.invited = false;
       state.outfit = null; state.festivalId = null; state.festivalArea = 0;
       state.festivalMission = 0; state.festivalFeedback = false; state.festivalFound = [];

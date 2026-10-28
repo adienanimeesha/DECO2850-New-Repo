@@ -144,11 +144,11 @@ function create({ action, getContent, room = () => window.OceanRoom }) {
    const completion = document.createElement('span'); completion.className = 'story-status'; completion.textContent = status.completed ? 'Completed ✓' : status.locked ? 'Locked' : 'Ready to read';
    copy.append(title, theme, completion); row.append(icon, copy);
    if (!status.locked) {
-    const button = labelledButton(status.completed ? 'Replay' : 'Start', 'learning-card-action');
+    const button = labelledButton(status.completed ? 'Start festival' : 'Start', 'learning-card-action');
     button.addEventListener('click', async () => {
      if (pending) return;
      pending = true; button.disabled = true;
-     try { await action('selectStory', { storyId: item.id }); closePopup(); room()?.startStory?.(); }
+     try { await action('selectStory', { storyId: item.id }); closePopup(); if (!status.completed) room()?.startStory?.(); }
      catch (error) { $('learning-story-status').textContent = error?.message || 'That story could not open. Please try again.'; button.disabled = false; }
      finally { pending = false; }
     });

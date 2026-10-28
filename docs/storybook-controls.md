@@ -47,3 +47,17 @@ Desktop verification used real mouse-down/up at Retina (2×) density with 4× CP
 All 178 automated tests pass, including an assertion that the completed primary button has no mutations across animation frames and a redundant backend update. Frozen image tests still require all visible image data to be embedded and preserve the live artwork's geometry.
 
 Final browser regression after screen-sized PNG capture passed all ten pages and all 50 narration beats, desktop/mobile layouts, existing interactions and outgoing/fixed/incoming page-turn images, with no runtime errors.
+
+## Returning to a festival
+
+Continue adventure resumes an unfinished festival at its saved area and mission, retaining the outfit and completed story. The top-left book button opens an optional replay from page one; closing it returns to the same festival without awarding story rewards again. After all festival missions are complete, Continue returns to the common room for optional vocabulary levels, with the completed story retained. Start new adventure clears story completion.
+
+Completed stories show **Start festival** in the story selection menu. This starts festival prompts directly, using the current outfit or the first festival outfit, without reopening the story. The festival book button is the optional replay entry point.
+
+## Chang’e story pacing and optional discovery
+
+The five chapters separate Hou Yi’s rescue, the precious elixir, Chang’e’s flight, remembrance, and the modern celebration. Automatic playback gives each narrative beat at least seven seconds, slows the arrows and ascent, and leaves two quiet seconds after the flight narration. Continue remains available for children who want to advance sooner.
+
+The final Chinese page has an optional “Who is the Jade Rabbit?” disclosure. Opening it pauses playback; close it and press Play to resume. It explains the moon companion and distinguishes it from the festival’s rabbit-shaped lantern. It does not gate completion or award another reward. Reference: [Asian Civilisations Museum rabbit resource](https://www.nhb.gov.sg/acm/-/media/acm/acm2017/documents/education-resources/resource---rabbit.pdf?la=en).
+
+The final page, “A Rabbit Lantern”, uses short sentences to introduce the Jade Rabbit, then the festival lantern. The lantern and optional discovery stay hidden until the line “Look! A rabbit-shaped lantern.” Replaying earlier narration hides them again. The discovery uses two short paragraphs.
