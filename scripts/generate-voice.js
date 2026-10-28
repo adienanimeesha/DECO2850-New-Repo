@@ -3,9 +3,15 @@ const path = require('node:path');
 const {createHash} = require('node:crypto');
 const {catalog, keyFor, spokenText, speechSegments} = require('../voice-catalog');
 const {assembleManifest}=require('./assemble-voice');
-function pronunciationFor(segment){
+function pronunciationFor(segment,role){
  if(segment.lang!=='id-ID')return null;
  const word=segment.text.toLowerCase();
+ // The narrator's Flash model needs different guidance from Jelly's v4.
+ if(role==='narrator'&&word==='apel')return{text:'apel',previous_text:'Aku suka makan buah',revision:'narrator-apel-fruit-v1'};
+ if(role==='narrator'&&word==='kursi')return{text:'kur-si',previous_text:'Aku duduk dan beristirahat di atas',revision:'narrator-kursi-syllables-v1'};
+ // A breve was ignored by the voice. Use the schwa character itself and
+ // Indonesian context with the requested vowel; game text stays unchanged.
+ if(word==='apel')return{text:'apəl',previous_text:'Aku melihat pelangi. Buah ini disebut',revision:'apel-explicit-schwa-v2'};
  if(word==='undangan')return{text:'undangan',previous_text:'Aku menerima sebuah',revision:'undangan-native-context-v1'};
  if(word==='kerang')return{text:'kerang',previous_text:'Di pantai ada banyak',revision:'kerang-native-context-v2'};
  if(word==='nyale')return{text:'nyalé',previous_text:'Di Lombok, cacing laut ini disebut',revision:'nyale-final-e-v2'};
@@ -76,7 +82,7 @@ async function main() {
       // Keep the chosen Jelly voice, using v4 for its Indonesian pronunciation.
       // English and Mandarin keep their existing models and cached recordings.
       const segmentModel=modelForSegment(segment,clip.role,modelId,indonesianModelId);
-      const pronunciation=pronunciationFor(segment);
+      const pronunciation=pronunciationFor(segment,clip.role);
       const hash=createHash('sha256').update(JSON.stringify({voiceId:selectedVoice,modelId:segmentModel,...speechSegment,revision:'native-segments-v1',settings:[.5,.75],...(pronunciation?{pronunciation}:{})})).digest('hex');
       const filename=`${hash}.mp3`,target=path.join(output,filename);
       try{await fs.access(target);}catch{

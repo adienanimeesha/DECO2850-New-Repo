@@ -130,3 +130,37 @@ test('every Indonesian and Chinese vocabulary explanation pauses after praise',(
   }
  }
 });
+
+test('apel uses a schwa pronunciation override without changing displayed words',()=>{
+ const p=pronunciationFor({text:'Apel',lang:'id-ID'});
+ assert.equal(p.text,'apəl');assert.match(p.previous_text,/melihat pelangi/);
+ assert.equal(pronunciationFor({text:'apel',lang:'en-US'}),null);
+ const question=journeys.indonesian.learningLevels[0].questions.find(q=>q.targetWord==='apel');
+ assert.equal(question.targetWord,'apel');
+ for(const clip of catalog().filter(c=>/\bapel\b/i.test(c.text))){
+  const segments=speechSegments(clip).filter(s=>s.lang==='id-ID'&&s.text.toLowerCase()==='apel');
+  assert.ok(segments.length,clip.text);
+  for(const segment of segments)assert.equal(pronunciationFor(segment).text,'apəl');
+ }
+});
+
+test('narrator pronunciation guidance is separate from Jelly for apel and kursi',async()=>{
+ const apple={text:'Apel',lang:'id-ID'},chair={text:'kursi',lang:'id-ID'};
+ assert.equal(pronunciationFor(apple,'jelly').text,'apəl');
+ assert.equal(pronunciationFor(apple,'narrator').text,'apel');
+ assert.match(pronunciationFor(apple,'narrator').previous_text,/buah/);
+ assert.equal(pronunciationFor(chair,'jelly'),null);
+ assert.equal(pronunciationFor(chair,'narrator').text,'kur-si');
+ for(const word of ['apel','kursi']){
+  const q=journeys.indonesian.learningLevels[0].questions.find(q=>q.targetWord===word);
+  const explanation=require('../public/js/guidance-content').vocabularyFeedback(q,'indonesian').narration;
+  const parts=speechSegments({text:explanation,lang:'id-ID',mixed:true,role:'narrator'});
+  const native=parts.filter(p=>p.lang==='id-ID'&&p.text.toLowerCase()===word);
+  assert.equal(native.length,2,'praise and meaning both use the narrator override');
+  const pronunciation=pronunciationFor(native[0],'narrator');
+  await generateClip({...native[0],pronunciation},{apiKey:'test',voiceId:'narrator',modelId:'eleven_flash_v2_5',fetchImpl:async(_url,options)=>{
+   const body=JSON.parse(options.body);assert.equal(body.text,word==='apel'?'apel':'kur-si');assert.equal(body.language_code,'id');assert.ok(body.previous_text);
+   return new Response('audio',{headers:{'content-type':'audio/mpeg'}});
+  }});
+ }
+});

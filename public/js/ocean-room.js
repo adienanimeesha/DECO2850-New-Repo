@@ -177,7 +177,10 @@ function positionRoomGuides(){
    }
   }
   guide.style.left=(rect.left-parent.left+left)+'px';guide.style.top=(rect.top-parent.top+top)+'px';guide.style.transform='none';
-  arrow.textContent='↓';arrow.style.left=(targetX-left-size/2)+'px';arrow.style.top=(targetY-top-size)+'px';
+  if(!arrow.querySelector('img')){
+   const icon=document.createElement('img');icon.src='/assetNEW/room-guidance-arrow.svg';icon.alt='';icon.draggable=false;arrow.replaceChildren(icon);
+  }
+  arrow.style.left=(targetX-left-size/2)+'px';arrow.style.top=(targetY-top-size)+'px';
   arrow.style.width=arrow.style.height=arrow.style.fontSize=size+'px';
   arrow.dataset.targetX=targetX;arrow.dataset.targetY=targetY;arrow.dataset.furniture=key;
  }

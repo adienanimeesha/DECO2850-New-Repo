@@ -343,7 +343,7 @@ body.immersive-page{display:block;width:100%;height:100dvh;min-height:0;margin:0
 @media(prefers-reduced-motion:reduce){.guidance-arrow,.storybook-guidance-arrow,.wardrobe-guide>span{animation:none!important;transform:none}}
 
 /* High contrast pointers keep their tip anchored while pulsing. */
-.guidance-arrow,.storybook-guidance-arrow,.wardrobe-guide>span,.memory-guidance-arrow{z-index:10;color:#fff23f;font-weight:1000;-webkit-text-stroke:2px #57326f;text-shadow:0 3px 0 #57326f,0 0 5px #fff,0 0 15px #fff69c;filter:drop-shadow(0 2px 3px #422352);opacity:1}
+.guidance-arrow,.storybook-guidance-arrow,.wardrobe-guide>span,.memory-guidance-arrow{z-index:10;-webkit-text-stroke:0;text-shadow:none;filter:drop-shadow(0 2px 2px #42235280) drop-shadow(0 0 6px #fff5ad);opacity:1}
 .memory-shelf-guidance{position:absolute;z-index:9;box-sizing:border-box;width:min(310px,calc(100% - 24px));padding:12px 16px;border:3px solid #fff8e8;border-radius:20px;background:#fff9e8f5;color:#654b7e;box-shadow:0 6px 0 #9d76ad55;display:flex;flex-direction:column;gap:6px;text-align:center;font-size:clamp(.75rem,1.3vw,.95rem)}
 .memory-guidance-arrow{position:absolute;display:block;line-height:1;text-align:center;transform-origin:50% 100%;animation:room-guide-pulse 1.4s ease-in-out infinite;pointer-events:none}
 #continue-memory-guide{align-self:center;border:2px solid #b491c8;border-radius:10px;background:#fff9ed;color:#654b7e;padding:7px 16px;font:inherit;font-weight:bold}
@@ -422,3 +422,6 @@ body.immersive-page{display:block;width:100%;height:100dvh;min-height:0;margin:0
 .mobile-page .narrator-strip>.book-margin-note{grid-column:1;grid-row:1}
 .mobile-page .narrator-strip>.subtitle-bubble{grid-column:2;grid-row:1}
 .mobile-page .narrator-strip>.jade-rabbit-discovery{grid-row:2}
+
+/* A single outlined silhouette avoids font-dependent overlapping arrow strokes. */
+.guidance-arrow>img,.storybook-guidance-arrow>img,.wardrobe-guide>span>img,.memory-guidance-arrow>img{display:block;width:100%;height:100%;object-fit:contain;pointer-events:none}

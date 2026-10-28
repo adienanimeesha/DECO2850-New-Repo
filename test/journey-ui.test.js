@@ -746,7 +746,8 @@ test('bookshelf, storybook and wardrobe arrow tips follow their fitted furniture
    const tipY=parseFloat(guide.style.top)+parseFloat(arrow.style.top)+parseFloat(arrow.style.height);
    assert.ok(Math.abs(tipX-x)<.01,`${file} arrow is horizontally centered on the artwork`);
    assert.ok(Math.abs(tipY-y)<.01,`${file} arrow points inside the artwork rather than at the old wall position`);
-   assert.equal(arrow.textContent,'↓');
+   assert.equal(arrow.textContent,'');
+   assert.equal(arrow.querySelector('img').getAttribute('src'),'/assetNEW/room-guidance-arrow.svg');
   }
  }
 });
