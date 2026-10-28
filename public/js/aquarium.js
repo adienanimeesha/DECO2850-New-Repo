@@ -2,22 +2,28 @@
 'use strict';
 const socket=io({auth:{journey:true}}),canvas=document.getElementById('aquarium'),ctx=canvas.getContext('2d'),art=window.OceanArt;
 const $=id=>document.getElementById(id);
-let state={phase:'aquarium',memories:[],bag:[]},changedAt=performance.now(),jellyImage=new Image(),imageVersion=0;
+let state={phase:'aquarium',memories:[],bag:[]},changedAt=performance.now(),jellyImage=new Image(),tentaclePath=null,imageVersion=0;
 const status={aquarium:['Jelly is at home ♡','Ready when you are.','Choose a language on the mobile screen to begin.'],departing:['Swimming to your mobile…','See you in the common room!','Jelly follows a trail of bubbles to your mobile adventure.'],room:['Exploring the common room','Jelly is on an adventure.','Words and cultural stories are waiting on the mobile screen.'],travelling:['On the way to the festival','A special invitation!','Jelly is dressed and swimming toward the celebration.'],festival:['Making festival memories','A festival to remember.','Find the glowing keepsakes with Jelly on the mobile screen.'],returning:['Swimming home with memories…','Welcome home, little explorer.','Jelly is bringing your discoveries into the aquarium.']};
 function round(x,y,w,h,r,fill,stroke){ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=3;ctx.stroke();}}
 function ellipse(x,y,rx,ry,fill,stroke){ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2);ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=2;ctx.stroke();}}
 function plant(x,y,scale,time,colour){ctx.save();ctx.translate(x,y);ctx.scale(scale,scale);for(let i=-2;i<=2;i++){ctx.beginPath();ctx.moveTo(i*7,0);ctx.quadraticCurveTo(i*20+Math.sin(time/700+i)*8,-50,i*16+Math.sin(time/650+i)*8,-80-Math.abs(i)*5);ctx.strokeStyle=colour;ctx.lineWidth=9;ctx.lineCap='round';ctx.stroke();}ctx.restore();}
 const reducedMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)');
+function glow(colour,blur=12){ctx.shadowColor=colour;ctx.shadowBlur=blur;}
 function ghostParticles(time,front=false){
  const clock=reducedMotion?.matches?0:time;
- for(let i=0;i<(front?5:14);i++){
-  const depth=front?1:.45+(i%3)*.12;
-  const y=565-((clock/(front?70:120)+i*83)%510);
-  const x=110+(i*173)%740+Math.sin(clock/4500+i)*8*depth;
-  const fade=Math.min(1,(565-y)/45,(y-55)/45);
-  ctx.save();ctx.globalAlpha=fade*(front?.26:.16);
-  if(i%3===0){ctx.beginPath();ctx.ellipse(x,y,(front?4:2.5)*depth,(front?4:2.5)*depth,0,0,Math.PI*2);ctx.strokeStyle='#adedef';ctx.lineWidth=1;ctx.stroke();}
-  else ellipse(x,y,depth,depth,'#c0e7ed');
+ for(let i=0;i<(front?8:26);i++){
+  const depth=front?1:.55+(i%3)*.12;
+  const y=575-((clock/(front?48:75)+i*83)%540);
+  const x=70+(i*173+(front?89:0))%820+Math.sin(clock/2600+i)*12*depth;
+  const radius=(3+i%5)*depth;
+  const fade=Math.max(0,Math.min(1,(575-y)/40,(y-35)/40));
+  ctx.save();ctx.globalAlpha=fade*(front?.8:.55);
+  glow('#80efff',front?10:7);
+  // Hollow rings and a small highlight emit light without a filled backdrop.
+  ctx.beginPath();ctx.ellipse(x,y,radius,radius,0,0,Math.PI*2);
+  ctx.strokeStyle='#b6f5ff';ctx.lineWidth=front?1.4:1;ctx.stroke();
+  ctx.beginPath();ctx.arc(x,y,radius*.65,Math.PI,Math.PI*1.45);
+  ctx.strokeStyle='#f0ffff';ctx.lineWidth=1;ctx.stroke();
   ctx.restore();
  }
 }
@@ -26,9 +32,11 @@ function ghostEnvironment(time){
  ghostParticles(time);
  // Small separated plants suggest a habitat without outlining a tank/floor.
  const clock=reducedMotion?.matches?0:time;
- ctx.save();ctx.globalAlpha=.36;
+ ctx.save();ctx.globalAlpha=.85;glow('#70f5cf');
  plant(142+Math.sin(clock/7000)*3,532,.65,clock,'#74baa9');
+ glow('#b3a1ff');
  plant(816+Math.sin(clock/8200)*3,538,.7,clock,'#a7b0dc');
+ glow('#ffade6');
  art.canvasIcon(ctx,'coral',183,535,42);art.canvasIcon(ctx,'coral',784,542,38);
  ctx.restore();
 }
@@ -53,18 +61,42 @@ function draw(time){
   const bob=Math.sin(clock/(ghost?1800+i%3*350:1100)+i)*(floating?6:1);
   if(!ghost)ellipse(x,y+24,22,6,'#5287a222');
   ctx.save();
-  if(ghost)ctx.globalAlpha=.7;
+  if(ghost)glow(['#9af5ff','#e4b0ff','#ffe6a1'][i%3],12);
   ctx.translate(x+(ghost?Math.sin(clock/6000+i)*3:0),y+bob);ctx.rotate(Math.sin(i*4)*.13);art.canvasMemory(ctx,item,0,0,45);ctx.restore();
  });
  const elapsed=(time-changedAt)/2200;
  let x=480+Math.sin(time/2300)*175,y=310+Math.sin(time/1600)*45,visible=state.phase==='aquarium';
  if(state.phase==='departing'){visible=true;x=480+Math.min(1,elapsed)*620;y=300-Math.sin(Math.min(1,elapsed)*Math.PI)*65;}
  if(state.phase==='returning'){visible=true;x=-90+Math.min(1,elapsed)*570;y=300+Math.sin(Math.min(1,elapsed)*Math.PI)*40;}
- if(visible&&jellyImage.complete&&jellyImage.naturalWidth){const scale=art.screenScale(canvas);ctx.save();ctx.translate(x,y);ctx.scale(scale.unit/scale.x,scale.unit/scale.y);ctx.rotate(Math.sin(time/1700)*.06);if(ghost){ctx.shadowColor='#c6a3e5';ctx.shadowBlur=6;}ctx.drawImage(jellyImage,-58,-69+Math.sin(time/330)*3,116,134);ctx.restore();}
+ if(visible&&jellyImage.complete&&jellyImage.naturalWidth){
+  const scale=art.screenScale(canvas),top=-69+Math.sin(time/330)*3;
+  ctx.save();ctx.translate(x,y);ctx.scale(scale.unit/scale.x,scale.unit/scale.y);ctx.rotate(Math.sin(time/1700)*.06);
+  ctx.scale(2.2,2.2);
+  if(ghost){
+   // Stroke the actual SVG tentacle paths directly: thin image shadows can be
+   // too faint, and cropped SVG image shadows vary between browsers.
+   if(tentaclePath){
+    ctx.save();ctx.translate(-58,top);ctx.scale(116/100,134/115);
+    ctx.lineCap='round';ctx.lineJoin='round';glow('#f3baff',12);
+    ctx.strokeStyle='#ef9dff';ctx.globalAlpha=.22;ctx.lineWidth=16;ctx.stroke(tentaclePath);
+    ctx.globalAlpha=.5;ctx.lineWidth=10;ctx.stroke(tentaclePath);
+    ctx.restore();
+   }
+   glow('#d7b3ff',14);
+  }
+  ctx.drawImage(jellyImage,-58,top,116,134);ctx.restore();
+ }
  if(ghost)ghostParticles(time,true);
  requestAnimationFrame(draw);
 }
-function updateImage(){const track=window.JOURNEYS[state.language],c=track&&(window.JourneyLearning?.selectedContent(track,state)||track),outfit=c?.outfits.find(x=>x.id===state.outfit);const image=new Image(),version=++imageVersion;image.onload=()=>{if(version===imageVersion)jellyImage=image;};image.src=art.jellyDataUrl(outfit);}
+function updateImage(){
+ const track=window.JOURNEYS[state.language],c=track&&(window.JourneyLearning?.selectedContent(track,state)||track),outfit=c?.outfits.find(x=>x.id===state.outfit);
+ const svg=new DOMParser().parseFromString(art.jelly(outfit),'image/svg+xml');
+ const path=new Path2D(svg.querySelector('path').getAttribute('d'));
+ const image=new Image(),version=++imageVersion;
+ image.onload=()=>{if(version===imageVersion){jellyImage=image;tentaclePath=path;}};
+ image.src=art.jellyDataUrl(outfit);
+}
 let awaitingSnapshot=true;
 socket.on('disconnect',()=>{awaitingSnapshot=true;});
 socket.on('journey-state',next=>{

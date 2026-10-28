@@ -10,6 +10,7 @@ function setup(t,query='',stored){
  w.HTMLCanvasElement.prototype.getContext=()=>ctx;
  w.HTMLElement.prototype.getBoundingClientRect=()=>({width:960,height:620});
  w.matchMedia=()=>({matches:false});w.requestAnimationFrame=fn=>{frames.push(fn);};
+ w.Path2D=class{constructor(d){this.d=d;}};
  w.Image=class{constructor(){this.complete=true;this.naturalWidth=100;this.naturalHeight=100;}set src(v){this._src=v;this.onload?.();}get src(){return this._src;}};
  w.io=()=>({on:(name,fn)=>handlers[name]=fn});
  if(stored!==undefined)w.localStorage.setItem('jelly-aquarium-calibration-v1',stored);
@@ -31,8 +32,22 @@ test('ghost mode clears to pure black, removes tank gradients and preserves Jell
  const jelly=calls=>calls.find(c=>c[0]==='drawImage'&&c[4]===116&&c[5]===134);
  assert.equal(jelly(g)[1].src,jelly(n)[1].src);
  assert.deepEqual(jelly(g).slice(2),jelly(n).slice(2));
- assert.ok(g.some(c=>c[0]==='set'&&c[1]==='shadowBlur'&&c[2]===6));
- assert.deepEqual(g.filter(c=>c[0]==='translate').at(-1),n.filter(c=>c[0]==='translate').at(-1));
+ for(const calls of [n,g])assert.ok(calls.some(c=>c[0]==='scale'&&c[1]===2.2&&c[2]===2.2),'Jelly and its glow render at 2.2 times their original size in both modes');
+ assert.ok(g.some(c=>c[0]==='set'&&c[1]==='shadowBlur'&&c[2]===14));
+ assert.ok(g.some(c=>JSON.stringify(c)===JSON.stringify(n.filter(c=>c[0]==='translate').at(-1))),'Jelly keeps the same swimming position');
+});
+test('ghost decorations and collected items glow, with hollow bubbles on a black background',t=>{
+ const p=setup(t,'?display=ghost');
+ p.handlers['journey-state']({revision:1,trip:1,phase:'aquarium',memories:[{id:'moon',icon:'moon'},{id:'fish',icon:'fish'},{id:'star',icon:'star'}],bag:[]});
+ const calls=p.frame();
+ assert.deepEqual(calls.filter(c=>c[0]==='fillRect').map(c=>c.slice(1)),[[0,0,960,620]],'only the black background fills the scene');
+ for(const colour of ['#70f5cf','#b3a1ff','#ffade6','#9af5ff','#e4b0ff','#ffe6a1','#d7b3ff'])assert.ok(calls.some(c=>c[0]==='set'&&c[1]==='shadowColor'&&c[2]===colour),colour+' glow is applied');
+ assert.equal(calls.filter(c=>c[0]==='arc').length,34,'each hollow bubble has a bright highlight');
+ assert.ok(calls.some(c=>c[0]==='set'&&c[1]==='shadowColor'&&c[2]==='#80efff'));
+ const strokes=calls.filter(c=>c[0]==='stroke'&&c[1] instanceof p.w.Path2D);
+ assert.equal(strokes.length,2,'tentacles have two direct vector halo strokes');
+ assert.match(strokes[0][1].d,/M29 65Q18 88 30 99/,'halo follows the original tentacle artwork');
+ assert.ok(calls.some(c=>c[0]==='set'&&c[1]==='shadowColor'&&c[2]==='#f3baff'));
 });
 test('calibration persists locally, clamps corrupt values, resets and can hide controls',t=>{
  const p=setup(t,'?display=ghost&calibrate=1',JSON.stringify({scale:99,x:-100,y:100,brightness:-1,mirror:true,flip:true}));
@@ -51,6 +66,19 @@ test('calibration persists locally, clamps corrupt values, resets and can hide c
 test('normal URL ignores stored ghost calibration and invalid storage does not stop rendering',t=>{
  const p=setup(t,'',JSON.stringify({scale:.5,mirror:true,brightness:.4}));assert.equal(p.d.querySelector('canvas').style.transform,'');assert.equal(p.w.AquariumDisplay.ghost,false);
  const broken=setup(t,'?display=ghost','{broken');assert.ok(broken.frame().length>0);
+});
+test('clicking or tapping the ghost display reopens hidden controls without resetting calibration',t=>{
+ const p=setup(t,'?display=ghost');
+ p.d.querySelector('canvas').click();
+ const panel=p.d.querySelector('.display-calibration');
+ assert.equal(panel.hidden,false);
+ const scale=panel.querySelector('[name=scale]');scale.value=.75;scale.dispatchEvent(new p.w.Event('input',{bubbles:true}));
+ panel.querySelector('[data-hide]').click();assert.equal(panel.hidden,true,'hide click must not reopen controls');
+ p.d.querySelector('canvas').click();assert.equal(panel.hidden,false);
+ assert.equal(scale.value,'0.75');
+ p.key('Escape');assert.equal(panel.hidden,true);
+ p.key('KeyC');assert.equal(panel.hidden,false);
+ const normal=setup(t);normal.d.querySelector('canvas').click();assert.equal(normal.d.querySelector('.display-calibration'),null);
 });
 test('display controls request fullscreen without changing shared journey state',async t=>{
  const p=setup(t,'?display=ghost&calibrate=1');let requested=0;

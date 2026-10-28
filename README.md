@@ -13,6 +13,7 @@ Open both screens on the same server:
 
 - Mobile adventure: <http://localhost:3000/mobile.html>
 - Aquarium: <http://localhost:3000/pet.html>
+- Pepper’s Ghost aquarium: <http://localhost:3000/pet.html?display=ghost&calibrate=1> (use **Hide controls** once calibrated).
 
 For a phone on the same Wi-Fi, use the computer's local IP in place of localhost. The server listens on `0.0.0.0`, port 3000 (or `PORT`). `npm run dev` restarts the server on backend changes; refresh pages after frontend changes.
 

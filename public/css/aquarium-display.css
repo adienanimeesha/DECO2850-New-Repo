@@ -1,5 +1,12 @@
 /* Only the opt-in physical display uses these rules. Black remains black even
    when the calibrated canvas is translated, scaled, mirrored or flipped. */
+.ghost-display-link {
+ position: fixed; z-index: 10; right: 16px; bottom: 16px;
+ padding: 12px 16px; border: 1px solid #9b85b8; border-radius: 12px;
+ background: #30253e; color: #fff; text-decoration: none;
+ font: 14px/1.4 "Trebuchet MS", sans-serif;
+}
+.ghost-display .ghost-display-link { display: none; }
 body.aquarium-page.ghost-display,
 .ghost-display .game-shell,
 .ghost-display .aquarium-frame { background: #000; }

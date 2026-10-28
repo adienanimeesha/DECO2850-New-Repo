@@ -2,6 +2,8 @@
 
 Normal aquarium: <http://localhost:3000/pet.html>
 
+Click **Pepper’s Ghost view ↗** at the bottom right of the normal aquarium to open the reflected display with calibration controls. The link is hidden in ghost mode so it does not appear in the reflection.
+
 Single-surface reflected display: <http://localhost:3000/pet.html?display=ghost>
 
 Open with calibration visible: <http://localhost:3000/pet.html?display=ghost&calibrate=1>
@@ -14,6 +16,7 @@ Use your server’s port if it is not 3000. The display is a single image, with 
 - **F:** enter/leave browser fullscreen in ghost mode or while calibration is open. A fullscreen button is also provided.
 - **Escape:** hide calibration; the browser handles exiting fullscreen.
 - **Hide controls:** remove the calibration UI from the reflected output. It is not simply faded out.
+- **Reopen controls:** press **C**, or click/tap anywhere on the ghost display. This also works when ghost mode opens without calibration visible.
 - **Switch mode:** compare the unchanged normal view against the reflected-display view without reconnecting or restarting the journey.
 - **Reset calibration:** reset scale, offsets, brightness and both flips.
 
@@ -23,9 +26,9 @@ Calibrate with controls visible, then hide them before viewing the reflection. F
 
 ## Rendering changes
 
-The original aquarium filled its 960 × 620 canvas with a bright water gradient, broad light shafts, tank borders and a sandy floor. Those large illuminated shapes suggest a flat rectangle in a reflection. Ghost mode clears every frame to opaque `#000000`, and its surrounding page and frame are also black. It removes those broad surfaces while retaining a few dim isolated plants/coral, sparse bubbles and particles. Far and near particles have different sizes/speeds; decorations and memories drift subtly at different rates. Additional environmental motion respects reduced-motion preferences.
+The original aquarium filled its 960 × 620 canvas with a bright water gradient, broad light shafts, tank borders and a sandy floor. Those large illuminated shapes suggest a flat rectangle in a reflection. Ghost mode clears every frame to opaque `#000000`, and its surrounding page and frame are also black. It removes those broad surfaces while retaining separated glowing plants and coral. Thirty-four hollow cyan bubble rings rise at different sizes and speeds, with small white highlights and soft local glows. Bubbles fade at the top and bottom; decorations and memories drift subtly at different rates. Additional environmental motion respects reduced-motion preferences.
 
-Jelly retains the same SVG artwork, selected outfit, swimming coordinates, bobbing, rotation and departure/return timing. A small shadow glow in ghost mode improves separation without blurring the character itself. Normal rendering runs through the original environment drawing unchanged. Returned memories remain visible, with subdued brightness and no ground shadows in ghost mode; saved white-paper drawings may still appear as small illuminated cards.
+Jelly retains the same SVG artwork, selected outfit, swimming coordinates, bobbing, rotation and departure/return timing. A soft lilac glow in ghost mode improves separation without blurring the character itself. Plants, coral and every returned memory have local coloured glows, while their source artwork stays sharp. Normal rendering runs through the original environment drawing unchanged. Returned memories render at full opacity with no ground shadows in ghost mode; saved white-paper drawings may still appear as small illuminated cards.
 
 Ghost mode fits the complete 48:31 scene proportionally inside the screen, leaving black margins rather than stretching the scene. Calibration transforms and brightness apply only to the canvas, so controls stay readable when the scene is mirrored or flipped. The canvas cursor is hidden in ghost mode.
 

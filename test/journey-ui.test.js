@@ -59,6 +59,7 @@ function page(t,name='mobile.html') {
  w.HTMLImageElement.prototype.decode=()=>Promise.resolve();
  w.HTMLElement.prototype.setPointerCapture=()=>{};
  w.HTMLElement.prototype.getBoundingClientRect=function(){return {left:0,top:0,width:960,height:520,right:960,bottom:520};};
+ w.Path2D=class{constructor(d){this.d=d;}};
  w.Image=class{constructor(){this.complete=true;this.naturalWidth=100;this.naturalHeight=100;}set src(s){this._src=s;this.onload?.();}get src(){return this._src;}};
  Object.defineProperty(w.performance,'now',{value:()=>now});
  w.requestAnimationFrame=fn=>{const id=++sequence;frames.set(id,fn);return id;};w.cancelAnimationFrame=id=>frames.delete(id);
@@ -323,7 +324,7 @@ test('refresh restores completed activity and memory book; aquarium displays ret
  assert.equal(p.w.document.querySelector('#outfit-done').disabled,true,'must try an outfit before leaving');
  const a=page(t,'pet.html');a.update({language:'chinese',phase:'aquarium',trip:1,memories:[{...journeys.chinese.storyRewards[0],source:'story',language:'chinese'}]});
  assert.equal(a.w.document.querySelector('button'),null,'aquarium has no buttons');
- assert.equal(a.w.document.querySelector('a'),null,'aquarium has no links');
+ assert.equal(a.w.document.querySelector('.ghost-display-link').getAttribute('href'),'/pet.html?display=ghost&calibrate=1','aquarium offers access to the reflected display');
  assert.equal(a.w.document.querySelector('header'),null,'aquarium has no header');
  assert.match(a.w.document.querySelector('#aquarium').getAttribute('aria-label'),/1 collected memories/);
  a.update({phase:'room'});assert.match(a.w.document.querySelector('#aquarium-status').textContent,/common room/);

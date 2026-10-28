@@ -160,6 +160,7 @@ if (require.main === module) {
   server.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Aquarium: http://localhost:${PORT}/pet.html`);
+    console.log(`Pepper’s Ghost: http://localhost:${PORT}/pet.html?display=ghost&calibrate=1`);
     console.log(`Mobile: http://localhost:${PORT}/mobile.html`);
   });
 }

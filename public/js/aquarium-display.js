@@ -29,7 +29,7 @@ function showCalibration(show=true){
   panel.innerHTML=`<strong>Pepper’s Ghost calibration</strong><p>Single reflection · C toggles controls · F fullscreen</p>
   ${[['scale','Scene scale',.4,1.5,.01],['x','Horizontal position (%)',-40,40,1],['y','Vertical position (%)',-40,40,1],['brightness','Brightness',.25,1.5,.05]].map(([name,label,min,max,step])=>`<label>${label} <output data-value="${name}"></output><input type="range" name="${name}" min="${min}" max="${max}" step="${step}"></label>`).join('')}
   <label class="display-check"><input type="checkbox" name="mirror"> Mirror horizontally</label><label class="display-check"><input type="checkbox" name="flip"> Flip vertically</label>
-  <div><button type="button" data-fullscreen>Fullscreen</button><button type="button" data-mode></button><button type="button" data-reset>Reset calibration</button><button type="button" data-hide>Hide controls</button></div><small>Position is relative to the scene size. Calibration stays on this browser. Hidden controls emit no display light.</small><p role="status"></p>`;
+  <div><button type="button" data-fullscreen>Fullscreen</button><button type="button" data-mode></button><button type="button" data-reset>Reset calibration</button><button type="button" data-hide>Hide controls</button></div><small>To reopen hidden controls, press C or click/tap anywhere on the Pepper’s Ghost display. Position is relative to the scene size. Calibration stays on this browser.</small><p role="status"></p>`;
   document.body.append(panel);
   panel.addEventListener('input',event=>{const input=event.target;if(!(input.name in defaults))return;settings[input.name]=input.type==='checkbox'?input.checked:Number(input.value);persist();syncControls();});
   panel.querySelector('[data-hide]').addEventListener('click',()=>showCalibration(false));
@@ -43,6 +43,9 @@ function showCalibration(show=true){
  panel.hidden=!show;
  if(show)panel.querySelector('input').focus();else if(panel.contains(document.activeElement))document.activeElement.blur();
 }
+document.addEventListener('click',event=>{
+ if(ghost&&(!panel||panel.hidden)&&!event.target.closest('a, button, .display-calibration'))showCalibration();
+});
 window.addEventListener('keydown',event=>{
  if(event.repeat||event.ctrlKey||event.metaKey||event.altKey||event.target.matches?.('textarea, select, input:not([type=range]):not([type=checkbox])'))return;
  if(event.code==='KeyC'){event.preventDefault();showCalibration(!panel||panel.hidden);}
