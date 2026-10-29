@@ -18,6 +18,7 @@
 </head>
 <body class="mobile-page immersive-page">
   <button type="button" id="music-toggle" class="room-music-toggle" aria-label="Play background music" aria-pressed="false">Play music ♫</button>
+  <button type="button" id="skip-feature" class="skip-feature" hidden>Next feature →</button>
   <main class="game-shell" id="phone-app">
     <section class="game-frame" aria-label="Jelly’s adventure world">
       <aside id="wardrobe-guide" class="wardrobe-guide" role="status" hidden><span aria-hidden="true">↓</span><small>Swim to the wardrobe</small></aside>
@@ -304,6 +305,7 @@
         <div class="scene-controls">
           <button id="scene-prev" type="button" disabled>← Back</button>
           <details class="story-audio-options"><summary>Audio options</summary><button id="scene-play" type="button">⏸ Pause</button><button id="scene-replay" type="button">↺ Hear again</button></details>
+          <button id="skip-feature-story" class="skip-feature-story" type="button" hidden>Next feature →</button>
           <button id="scene-continue" type="button">Continue story →</button>
           <button id="scene-next" type="button" hidden disabled>Next page →</button>
         </div>

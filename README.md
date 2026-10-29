@@ -30,6 +30,8 @@ For a phone on the same Wi-Fi, use the computer's local IP in place of localhost
 9. Swim home. Earned discoveries decorate the aquarium and Jelly retains the selected outfit while home.
 10. Choose **Continue adventure** for the same language to replay completed levels or stories and finish optional Levels 2–5. Each level has five questions and unlocks the next level. Completed rewards are never awarded twice.
 
+The **Next feature** shortcut advances from the tutorial to the storybook unlock, from the story to the invitation, from the invitation to the festival, and from the festival back to the aquarium. Skipped discoveries are not added to the collection. If no outfit was chosen, the festival’s first outfit is selected.
+
 Use WASD, arrow keys, the touch D-pad, or click a destination to walk there. Floating choices respond on approach. The bookshelf and storybook open their selection menus. The memory shelf displays earned discoveries. Escape closes idle dialogs; Exit level explicitly ends a vocabulary run. Restarting that level begins at question 1. The home control can return early with discoveries already earned.
 
 ## Content and speech

@@ -18,6 +18,7 @@ function createJourney(io, { transitionMs = 2200 } = {}) {
     invited: false, outfit: null, festivalId: null,
     festivalArea: 0, festivalMission: 0, festivalFeedback: false,
     festivalFound: [], mainAdventureCompleted: false, bag: [], memories: [],
+    featureSkip: { version: 0, feature: null },
   });
   let state = fresh();
   function normaliseLearningState() {
@@ -149,6 +150,44 @@ function createJourney(io, { transitionMs = 2200 } = {}) {
     });
     socket.on('journey-reset', () => {
       clearTimeout(timer); state = fresh(state.trip + 1); publish();
+    });
+    // Explicit feature skipping for demonstrations. Advancing changes shared
+    // progression but never fabricates uncollected words or story/festival rewards.
+    socket.on('journey-skip-feature', payload => {
+      const feature=payload?.feature;
+      if(payload?.trip!==state.trip || typeof feature!=='string')return invalid(socket,'journey-skip-feature');
+      if(feature==='tutorial'){
+        if(state.phase!=='room'||state.learning.storybookUnlocked||
+           (state.learning.active&&state.learning.active.level!==1))return invalid(socket,'journey-skip-feature');
+        state.learning.active=null;
+        state.learning.levels[0].completed=true;
+        state.learning.tutorialCompleted=true;
+        state.learning.storybookUnlocked=true;
+        state.learning.storybookUnlockVersion++;
+        state.learning.storybookUnlockedAtTrip=state.trip;
+        state.learning.levels[1].unlocked=true;
+      }else if(feature==='story'){
+        const selected=story(),progress=state.stories.find(item=>item.id===state.activeStoryId);
+        if(state.phase!=='room'||!state.learning.storybookUnlocked||state.storyDone||!selected||!progress||payload.storyId!==state.activeStoryId)
+          return invalid(socket,'journey-skip-feature');
+        state.learning.active=null;
+        state.storyPage=selected.chapters.length;state.storyDone=true;
+        progress.completed=true;progress.invitationAvailable=true;
+      }else if(feature==='invitation'){
+        const selected=story(),progress=state.stories.find(item=>item.id===state.activeStoryId);
+        const destination=content()?.festivals.find(item=>item.id===selected?.festivalId);
+        if(state.phase!=='room'||!state.storyDone||!progress||!destination||payload.storyId!==state.activeStoryId)
+          return invalid(socket,'journey-skip-feature');
+        const chosen=destination.outfits.find(item=>item.id===state.outfit)||destination.outfits[0];
+        if(!chosen)return invalid(socket,'journey-skip-feature');
+        state.learning.active=null;state.invited=true;state.festivalId=destination.id;progress.invited=true;state.outfit=chosen.id;
+      }else if(feature==='festival'){
+        if(state.phase!=='festival'||!festival())return invalid(socket,'journey-skip-feature');
+      }else return invalid(socket,'journey-skip-feature');
+      state.featureSkip={version:state.featureSkip.version+1,feature};
+      if(feature==='invitation')transition('travelling','festival');
+      else if(feature==='festival')returnHome();
+      else publish();
     });
     socket.on('journey-learning-start', payload => {
       const level = payload?.level;

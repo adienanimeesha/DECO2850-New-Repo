@@ -276,3 +276,50 @@ test('Chinese story retells Chang’e’s legend before connecting it to modern 
   assert.match(ending, /Jade Rabbit/);
   assert.ok(story.chapters[2].beats[2].minSeconds >= 15);
 });
+
+for(const language of ['indonesian','chinese'])test(`${language}: feature skip advances the shared adventure without inventing discoveries`,async t=>{
+ const api=await setup(t),mobile=await api.connect(),aquarium=await api.connect();
+ await api.send(mobile,'journey-start',language);await api.phase('room');
+ await api.send(mobile,'journey-learning-start',{level:1});
+ await answerCurrent(api,mobile);
+ let state=api.journey.snapshot();const earned=state.bag.map(x=>x.id),trip=state.trip;
+ assert.equal(earned.length,1);
+ await api.send(mobile,'journey-skip-feature',{feature:'tutorial',trip});
+ state=api.journey.snapshot();
+ assert.equal(state.learning.active,null);assert.equal(state.learning.storybookUnlocked,true);
+ assert.equal(state.learning.storybookUnlockVersion,1);assert.equal(state.learning.levels[1].unlocked,true);
+ assert.deepEqual(state.bag.map(x=>x.id),earned);
+ assert.equal(aquarium.states.at(-1).featureSkip.feature,'tutorial');
+ await api.send(mobile,'journey-skip-feature',{feature:'tutorial',trip});
+ assert.equal(mobile.errors.at(-1).event,'journey-skip-feature');
+ state=api.journey.snapshot();
+ await api.send(mobile,'journey-skip-feature',{feature:'story',trip,storyId:state.activeStoryId});
+ state=api.journey.snapshot();assert.equal(state.storyDone,true);assert.equal(state.storyPage,5);
+ assert.equal(state.stories[0].invitationAvailable,true);assert.equal(state.invited,false);
+ assert.deepEqual(state.bag.map(x=>x.id),earned,'skipped story pages award no unseen memories');
+ await api.send(mobile,'journey-skip-feature',{feature:'invitation',trip,storyId:state.activeStoryId});
+ await api.phase('festival');state=api.journey.snapshot();
+ assert.equal(state.invited,true);assert.equal(state.outfit,content[language].festivals[0].outfits[0].id);
+ assert.equal(state.festivalId,content[language].festivals[0].id);
+ assert.deepEqual(state.bag.map(x=>x.id),earned);
+ await api.send(mobile,'journey-find',content[language].festivalItems[0].id);
+ state=api.journey.snapshot();assert.equal(state.festivalFeedback,true);assert.equal(state.bag.length,2);
+ const collected=state.bag.map(item=>item.id);
+ await api.send(mobile,'journey-skip-feature',{feature:'festival',trip});await api.phase('aquarium');
+ state=api.journey.snapshot();assert.deepEqual(state.memories.map(x=>x.id),collected);
+ assert.equal(state.memories.length,2,'only genuinely collected items return home');
+ assert.equal(aquarium.states.at(-1).phase,'aquarium');
+ assert.equal(state.featureSkip.feature,'festival');
+});
+
+test('feature skip rejects stale trips, invalid stages and wrong story IDs without changing progress',async t=>{
+ const api=await setup(t),mobile=await api.connect();
+ await api.send(mobile,'journey-start','indonesian');await api.phase('room');
+ let before=api.journey.snapshot();
+ for(const payload of [{feature:'festival',trip:before.trip},{feature:'tutorial',trip:before.trip-1},{feature:'story',trip:before.trip,storyId:before.activeStoryId},{feature:'other',trip:before.trip}]){
+  await api.send(mobile,'journey-skip-feature',payload);assert.deepEqual(api.journey.snapshot(),before);
+ }
+ await api.send(mobile,'journey-skip-feature',{feature:'tutorial',trip:before.trip});
+ before=api.journey.snapshot();await api.send(mobile,'journey-skip-feature',{feature:'story',trip:before.trip,storyId:'wrong'});
+ assert.deepEqual(api.journey.snapshot(),before);
+});

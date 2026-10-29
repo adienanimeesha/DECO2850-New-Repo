@@ -435,3 +435,10 @@ body.mobile-page{-webkit-user-select:none;user-select:none;-webkit-touch-callout
 
 /* Reserve draggable story props for the finger gesture, not browser panning. */
 .mobile-page .chinese-scene [data-legend-elixir],.mobile-page .chinese-scene [data-legend-elixir] *,.mobile-page .chinese-scene [data-chinese-choice="peace-ripple"],.mobile-page .chinese-scene [data-chinese-choice="peace-ripple"] *{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+
+/* A small demonstration shortcut remains accessible over colouring and activities. */
+.skip-feature{position:fixed;z-index:80;right:max(12px,env(safe-area-inset-right));top:max(12px,env(safe-area-inset-top));min-height:44px;padding:8px 14px;border:2px solid #fff5e6;border-radius:14px;background:#745095;color:white;font-weight:900;box-shadow:0 3px 0 #50346f,0 4px 12px #284a5d55}
+.skip-feature:disabled{opacity:.65}
+.mobile-page .vocabulary-overlay{top:max(66px,env(safe-area-inset-top))}
+.mobile-page:has(#activity-screen:not([hidden])) .skip-feature{top:auto;bottom:max(12px,env(safe-area-inset-bottom))}
+.scene-controls .skip-feature-story{background:#745095;box-shadow:0 3px 0 #50346f}

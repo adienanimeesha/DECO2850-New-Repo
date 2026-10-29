@@ -129,6 +129,7 @@ function create({ action, getContent, room = () => window.OceanRoom }) {
   restoreFocus = document.activeElement;
   activePopup = name;
   screen.hidden = false;
+  window.dispatchEvent(new Event('learning-ui-change'));
   room()?.clearMovement?.();
   room()?.lock?.(true);
   screen.querySelector('button:not(:disabled)')?.focus();
@@ -140,6 +141,7 @@ function create({ action, getContent, room = () => window.OceanRoom }) {
   storyScreen.hidden = true;
   unlockScreen.hidden = true;
   activePopup = null;
+  window.dispatchEvent(new Event('learning-ui-change'));
   room()?.lock?.(false);
   if (restore) (restoreFocus?.isConnected ? restoreFocus : $('game'))?.focus();
  }
@@ -316,7 +318,7 @@ function create({ action, getContent, room = () => window.OceanRoom }) {
   if (event.key === 'Escape' && activePopup !== 'unlock') { event.preventDefault(); closePopup(); }
   else if (event.key === 'Tab') trapFocus(event, screen);
  });
- return { sync, stop, openLevels, openStories, approach, get activePopup() { return activePopup; } };
+ return { sync, stop, openLevels, openStories, approach, dismissForSkip:()=>closePopup(false), get activePopup() { return activePopup; } };
 }
 
 window.JellyLearningInterface = { create };

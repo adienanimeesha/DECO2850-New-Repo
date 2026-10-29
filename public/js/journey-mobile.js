@@ -5,7 +5,7 @@ let state = null, selectedLanguage = null, activity = null, outfitChoice = null,
 let collectedMemories = [], memoryPage = 0;
 let learningInterface = null, awaitingSnapshot = true, invitationGuidePending = false;
 let wordSpeech = null, wordAudioStatus = null;
-let lastFestivalCue = null;
+let lastFestivalCue = null, pendingSkip=null, skipTimer=null;
 
 const $ = id => document.getElementById(id);
 const art = window.OceanArt;
@@ -42,10 +42,13 @@ document.addEventListener('keydown', e => {
 });
 function trapFocus(e, root) {
  const nodes = [...root.querySelectorAll('button:not(:disabled),a[href], [tabindex="0"]')].filter(n => !n.hidden && n.getClientRects().length);
+ const shortcut=$('skip-feature');
+ if(root.id==='activity-screen'&&shortcut&&!shortcut.hidden&&!shortcut.disabled&&shortcut.getClientRects().length)nodes.push(shortcut);
+ const inside=root.contains(document.activeElement)||document.activeElement===shortcut&&nodes.includes(shortcut);
  const first = nodes[0], last = nodes.at(-1);
  if (!first) return;
- if (e.shiftKey && (document.activeElement === first || !root.contains(document.activeElement))) { e.preventDefault(); last.focus(); }
- else if (!e.shiftKey && (document.activeElement === last || !root.contains(document.activeElement))) { e.preventDefault(); first.focus(); }
+ if (e.shiftKey && (document.activeElement === first || !inside)) { e.preventDefault(); last.focus(); }
+ else if (!e.shiftKey && (document.activeElement === last || !inside)) { e.preventDefault(); first.focus(); }
 }
 function stopAudio() {
  wordSpeech?.cancel();
@@ -160,6 +163,35 @@ function renderActivity() {
   (target && !target.disabled ? target : $('close-activity')).focus();
  }
 }
+function skipTarget(value){
+ if(value?.phase==='festival')return 'festival';
+ if(value?.phase!=='room'||!value.learning)return null;
+ if(!value.learning.storybookUnlocked)return 'tutorial';
+ return value.storyDone?'invitation':'story';
+}
+function clearSkip(){clearTimeout(skipTimer);skipTimer=null;pendingSkip=null;}
+function updateSkip(){
+ const feature=skipTarget(state),storyOpen=!$('storybook-backdrop').hidden;
+ const labels={tutorial:'Skip tutorial and unlock the storybook',story:'Skip the story and receive the invitation',invitation:'Skip to the festival',festival:'Skip to the aquarium'};
+ const menuOpen=Boolean(learningInterface?.activePopup);
+ for(const [id,show]of [['skip-feature',!storyOpen&&!menuOpen],['skip-feature-story',storyOpen]]){
+  const button=$(id);if(!button)continue;
+  button.hidden=!feature||!show;button.disabled=!socket.connected||Boolean(pendingSkip);
+  if(feature){button.title=labels[feature];button.setAttribute('aria-label',labels[feature]);}
+ }
+}
+function skipFeature(){
+ const feature=skipTarget(state);if(!feature||pendingSkip||!socket.connected)return;
+ pendingSkip={feature,trip:state.trip,version:state.featureSkip?.version||0};
+ skipTimer=setTimeout(()=>{clearSkip();updateSkip();window.OceanRoom?.feedback('Could not move to the next feature. Please try again.');},8000);
+ updateSkip();
+ socket.emit('journey-skip-feature',{feature,trip:state.trip,storyId:state.activeStoryId});
+}
+$('skip-feature')?.addEventListener('click',skipFeature);
+$('skip-feature-story')?.addEventListener('click',skipFeature);
+window.addEventListener('jelly-story-visibility',updateSkip);
+window.addEventListener('learning-ui-change',updateSkip);
+socket.on('journey-error',error=>{if(error?.event==='journey-skip-feature'){clearSkip();updateSkip();}});
 function updateMission() {
  if(!state)return;
  const c=content();let step=1,goal='',detail='';
@@ -217,9 +249,9 @@ learningInterface=window.JellyLearningInterface?.create({
  getContent:value=>window.JOURNEYS[value?.language||selectedLanguage||'indonesian'],
  room:()=>window.OceanRoom
 });
-socket.on('connect', () => { updateContinue(); $('connection-status').textContent='Ocean connected'; $('connection-status').classList.add('online'); $('start-adventure').disabled=!selectedLanguage; });
-socket.on('disconnect', () => { awaitingSnapshot=true; stopAudio(); learningInterface?.stop(); $('connection-status').textContent='Reconnecting…'; $('connection-status').classList.remove('online'); $('start-adventure').disabled=true; updateContinue(); });
-socket.on('connect_error', () => { awaitingSnapshot=true; stopAudio(); learningInterface?.stop(); });
+socket.on('connect', () => { updateContinue(); updateSkip(); $('connection-status').textContent='Ocean connected'; $('connection-status').classList.add('online'); $('start-adventure').disabled=!selectedLanguage; });
+socket.on('disconnect', () => { clearSkip();updateSkip(); awaitingSnapshot=true; stopAudio(); learningInterface?.stop(); $('connection-status').textContent='Reconnecting…'; $('connection-status').classList.remove('online'); $('start-adventure').disabled=true; updateContinue(); });
+socket.on('connect_error', () => { clearSkip();updateSkip(); awaitingSnapshot=true; stopAudio(); learningInterface?.stop(); });
 socket.on('journey-hint', message => {
  window.OceanRoom?.feedback(message);
  const item=state?.phase==='festival'&&content().festivalItems[state.festivalMission];
@@ -253,6 +285,12 @@ socket.on('journey-state', next => {
   if (activity) closeActivity();
   window.OceanRoom?.closeStory();
  }
+ const skipped=prev&&(next.featureSkip?.version||0)>(prev.featureSkip?.version||0)?next.featureSkip.feature:null;
+ if(pendingSkip&&((next.featureSkip?.version||0)>pendingSkip.version||next.trip!==pendingSkip.trip||skipTarget(next)!==pendingSkip.feature))clearSkip();
+ if(skipped==='story'){
+  window.OceanRoom?.closeStory();
+  if(learningInterface?.activePopup)learningInterface.dismissForSkip();
+ }
  if (activity === 'wardrobe' && !wardrobeReady()) closeActivity();
  updateContinue();
  if (activity === 'festival-feedback' && !next.festivalFeedback) closeActivity();
@@ -271,9 +309,9 @@ socket.on('journey-state', next => {
  window.OceanRoom?.sync(next,prev);
  learningInterface?.sync(next,prev);
  if (invitationGuidePending && wardrobeReady()) { invitationGuidePending=false; window.OceanRoom?.clearMovement(); }
- updateMission();
+ updateMission();updateSkip();
  if (activity) renderActivity();
- if (prev && !prev.storyDone && next.storyDone) window.OceanRoom?.feedback('Story complete! You have mail in the top-left corner.',8000);
+ if (prev && !prev.storyDone && next.storyDone) window.OceanRoom?.feedback(skipped==='story'?'You received an invitation! Tap the envelope to open it.':'Story complete! You have mail in the top-left corner.',8000);
  if(next.phase==='festival'&&next.festivalFeedback&&activity!=='festival-feedback')openActivity('festival-feedback');
  if(next.phase==='festival'&&next.festivalMission===c.festivalItems.length&&(!prev||prev.festivalMission!==next.festivalMission))openActivity('festival-complete');
  if(next.phase==='festival'){

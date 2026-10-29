@@ -64,3 +64,22 @@ The backend and all connected screens share one in-memory adventure. Continue ad
 ## Independent learning progression
 
 Level 1 completion permanently unlocks both the storybook and Level 2. Level 2 completion unlocks Level 3. Each unlocked level is selected manually from the common-room bookshelf and runs the existing five-question find-item/colouring loop. Finishing a level leaves `learning.active` null; it never auto-starts another level. The storybook remains available in the common room after its first unlock. Finish or exit a vocabulary activity before selecting a story or another level. Festival completion and return preserve learning progress but are not prerequisites for Level 2. Reconnect restores the unlock state; replay does not duplicate rewards or unlock celebrations. Legacy completed-festival snapshots retain their prior Level 2 availability.
+
+## Next feature shortcut
+
+The mobile screen has a **Next feature** button for moving through the main
+adventure. It sends `journey-skip-feature` with `{ feature, trip, storyId }`;
+the server validates the requested current feature and broadcasts the resulting
+snapshot. `featureSkip` contains `{ version, feature }` so connected clients can
+close the active story and show the invitation notice exactly once.
+
+- `tutorial` ends Level 1 and triggers the normal storybook unlock celebration.
+- `story` finishes the current story and makes its invitation available.
+- `invitation` accepts it and travels to the festival; the existing outfit is
+  retained, or the first festival outfit is selected if none was chosen.
+- `festival` returns to the aquarium with discoveries already in the bag.
+
+Skipping advances the corresponding progression flags but does not award
+objects, artwork, story rewards, or festival keepsakes the player did not earn.
+The shortcut is disabled while its request is pending. Stale trips, wrong story
+IDs, repeated requests, and invalid phases are rejected by the server.

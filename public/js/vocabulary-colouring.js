@@ -63,9 +63,11 @@ function mount(root, item, onDone, onCancel = () => {}) {
  function keydown(event){
   if(event.key==='Escape'){event.preventDefault();event.stopPropagation();cancel();}
   if(event.key==='Tab'){
-   const buttons=[...panel.querySelectorAll('button:not(:disabled)')],first=buttons[0],last=buttons.at(-1);
-   if(event.shiftKey&&(document.activeElement===first||!panel.contains(document.activeElement))){event.preventDefault();last?.focus();}
-   else if(!event.shiftKey&&(document.activeElement===last||!panel.contains(document.activeElement))){event.preventDefault();first?.focus();}
+   const buttons=[...panel.querySelectorAll('button:not(:disabled)')],shortcut=document.getElementById('skip-feature');
+   if(shortcut&&!shortcut.hidden&&!shortcut.disabled&&shortcut.getClientRects().length)buttons.push(shortcut);
+   const first=buttons[0],last=buttons.at(-1),inside=panel.contains(document.activeElement)||document.activeElement===shortcut&&buttons.includes(shortcut);
+   if(event.shiftKey&&(document.activeElement===first||!inside)){event.preventDefault();last?.focus();}
+   else if(!event.shiftKey&&(document.activeElement===last||!inside)){event.preventDefault();first?.focus();}
   }
  }
  document.addEventListener('keydown',keydown,true);panel.querySelector('button').focus();hearInstructions();
