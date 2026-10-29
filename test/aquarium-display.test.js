@@ -24,7 +24,10 @@ test('default aquarium keeps its normal background and has no calibration UI or 
 });
 test('ghost mode clears to pure black, removes tank gradients and preserves Jelly movement and artwork',t=>{
  const normal=setup(t),ghost=setup(t,'?display=ghost');
+ const decorations=[];
+ for(const p of [normal,ghost]){const draw=p.w.OceanArt.canvasIcon;p.w.OceanArt.canvasIcon=(ctx,id,...args)=>{decorations.push(id);return draw(ctx,id,...args);};}
  const n=normal.frame(),g=ghost.frame();
+ assert.deepEqual(decorations,[],'no uncollected coral or ocean decorations in either view');
  assert.equal(ghost.w.AquariumDisplay.ghost,true);assert.equal(ghost.d.querySelector('button'),null);
  assert.equal(g.some(c=>c[0]==='createLinearGradient'),false);
  assert.ok(g.some(c=>c[0]==='set'&&c[1]==='fillStyle'&&c[2]==='#000000'));
@@ -36,12 +39,12 @@ test('ghost mode clears to pure black, removes tank gradients and preserves Jell
  assert.ok(g.some(c=>c[0]==='set'&&c[1]==='shadowBlur'&&c[2]===14));
  assert.ok(g.some(c=>JSON.stringify(c)===JSON.stringify(n.filter(c=>c[0]==='translate').at(-1))),'Jelly keeps the same swimming position');
 });
-test('ghost decorations and collected items glow, with hollow bubbles on a black background',t=>{
+test('collected items glow without habitat decorations, with hollow bubbles on black',t=>{
  const p=setup(t,'?display=ghost');
  p.handlers['journey-state']({revision:1,trip:1,phase:'aquarium',memories:[{id:'moon',icon:'moon'},{id:'fish',icon:'fish'},{id:'star',icon:'star'}],bag:[]});
  const calls=p.frame();
  assert.deepEqual(calls.filter(c=>c[0]==='fillRect').map(c=>c.slice(1)),[[0,0,960,620]],'only the black background fills the scene');
- for(const colour of ['#70f5cf','#b3a1ff','#ffade6','#9af5ff','#e4b0ff','#ffe6a1','#d7b3ff'])assert.ok(calls.some(c=>c[0]==='set'&&c[1]==='shadowColor'&&c[2]===colour),colour+' glow is applied');
+ for(const colour of ['#9af5ff','#e4b0ff','#ffe6a1','#d7b3ff'])assert.ok(calls.some(c=>c[0]==='set'&&c[1]==='shadowColor'&&c[2]===colour),colour+' glow is applied');
  assert.equal(calls.filter(c=>c[0]==='arc').length,34,'each hollow bubble has a bright highlight');
  assert.ok(calls.some(c=>c[0]==='set'&&c[1]==='shadowColor'&&c[2]==='#80efff'));
  const strokes=calls.filter(c=>c[0]==='stroke'&&c[1] instanceof p.w.Path2D);

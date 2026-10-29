@@ -6,7 +6,7 @@ let state={phase:'aquarium',memories:[],bag:[]},changedAt=performance.now(),jell
 const status={aquarium:['Jelly is at home ♡','Ready when you are.','Choose a language on the mobile screen to begin.'],departing:['Swimming to your mobile…','See you in the common room!','Jelly follows a trail of bubbles to your mobile adventure.'],room:['Exploring the common room','Jelly is on an adventure.','Words and cultural stories are waiting on the mobile screen.'],travelling:['On the way to the festival','A special invitation!','Jelly is dressed and swimming toward the celebration.'],festival:['Making festival memories','A festival to remember.','Find the glowing keepsakes with Jelly on the mobile screen.'],returning:['Swimming home with memories…','Welcome home, little explorer.','Jelly is bringing your discoveries into the aquarium.']};
 function round(x,y,w,h,r,fill,stroke){ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=3;ctx.stroke();}}
 function ellipse(x,y,rx,ry,fill,stroke){ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2);ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=2;ctx.stroke();}}
-function plant(x,y,scale,time,colour){ctx.save();ctx.translate(x,y);ctx.scale(scale,scale);for(let i=-2;i<=2;i++){ctx.beginPath();ctx.moveTo(i*7,0);ctx.quadraticCurveTo(i*20+Math.sin(time/700+i)*8,-50,i*16+Math.sin(time/650+i)*8,-80-Math.abs(i)*5);ctx.strokeStyle=colour;ctx.lineWidth=9;ctx.lineCap='round';ctx.stroke();}ctx.restore();}
+
 const reducedMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)');
 function glow(colour,blur=12){ctx.shadowColor=colour;ctx.shadowBlur=blur;}
 function ghostParticles(time,front=false){
@@ -15,39 +15,29 @@ function ghostParticles(time,front=false){
   const depth=front?1:.55+(i%3)*.12;
   const y=575-((clock/(front?48:75)+i*83)%540);
   const x=70+(i*173+(front?89:0))%820+Math.sin(clock/2600+i)*12*depth;
-  const radius=(3+i%5)*depth;
+  const radius=(7+i%5*1.5)*depth;
   const fade=Math.max(0,Math.min(1,(575-y)/40,(y-35)/40));
-  ctx.save();ctx.globalAlpha=fade*(front?.8:.55);
-  glow('#80efff',front?10:7);
+  ctx.save();ctx.globalAlpha=fade*(front?.95:.8);
+  glow('#80efff',front?15:11);
   // Hollow rings and a small highlight emit light without a filled backdrop.
   ctx.beginPath();ctx.ellipse(x,y,radius,radius,0,0,Math.PI*2);
-  ctx.strokeStyle='#b6f5ff';ctx.lineWidth=front?1.4:1;ctx.stroke();
+  ctx.strokeStyle='#d3fbff';ctx.lineWidth=front?2.2:1.7;ctx.stroke();
   ctx.beginPath();ctx.arc(x,y,radius*.65,Math.PI,Math.PI*1.45);
-  ctx.strokeStyle='#f0ffff';ctx.lineWidth=1;ctx.stroke();
+  ctx.strokeStyle='#ffffff';ctx.lineWidth=1.5;ctx.stroke();
   ctx.restore();
  }
 }
 function ghostEnvironment(time){
  ctx.fillStyle='#000000';ctx.fillRect(0,0,960,620);
  ghostParticles(time);
- // Small separated plants suggest a habitat without outlining a tank/floor.
- const clock=reducedMotion?.matches?0:time;
- ctx.save();ctx.globalAlpha=.85;glow('#70f5cf');
- plant(142+Math.sin(clock/7000)*3,532,.65,clock,'#74baa9');
- glow('#b3a1ff');
- plant(816+Math.sin(clock/8200)*3,538,.7,clock,'#a7b0dc');
- glow('#ffade6');
- art.canvasIcon(ctx,'coral',183,535,42);art.canvasIcon(ctx,'coral',784,542,38);
- ctx.restore();
+
 }
 function normalEnvironment(time){
  const gradient=ctx.createLinearGradient(0,0,0,620);gradient.addColorStop(0,'#c3f5f5');gradient.addColorStop(.45,'#86dce7');gradient.addColorStop(1,'#4bb8cf');ctx.fillStyle=gradient;ctx.fillRect(0,0,960,620);
  for(const [x,w] of [[130,75],[380,105],[680,85]]){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x+w,0);ctx.lineTo(x+w+110,590);ctx.lineTo(x+50,590);ctx.fillStyle='#ffffff1c';ctx.fill();}
  round(24,24,912,572,34,'#ffffff09','#8bbace');round(40,40,880,539,24,'#ffffff05','#c9f6f5');
  ctx.beginPath();ctx.moveTo(42,513);ctx.quadraticCurveTo(250,482,500,520);ctx.quadraticCurveTo(740,552,918,506);ctx.lineTo(918,578);ctx.lineTo(42,578);ctx.fillStyle='#d3e5cd';ctx.fill();
- plant(102,530,1.1,time,'#74baa9');plant(846,535,1.2,time,'#a7b0dc');plant(183,538,.65,time,'#b7d3b4');plant(787,540,.6,time,'#d6a1d5');
- art.canvasIcon(ctx,'coral',126,524,88);art.canvasIcon(ctx,'coral',859,540,78);
- for(let i=0;i<23;i++){const x=74+(i*137)%820+Math.sin(time/1300+i)*7,y=548-((time/28+i*79)%495);ellipse(x,y,3+i%5,3+i%5,'#ffffff10','#efffff66');}
+ for(let i=0;i<23;i++){const x=74+(i*137)%820+Math.sin(time/1300+i)*7,y=548-((time/28+i*79)%495);ctx.save();glow('#c6faff',9);ellipse(x,y,7+i%5*1.5,7+i%5*1.5,'#ffffff16','#f1ffffc9');ctx.restore();}
 }
 function draw(time){
  const ghost=window.AquariumDisplay?.ghost===true;
