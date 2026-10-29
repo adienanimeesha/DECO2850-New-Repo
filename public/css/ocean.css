@@ -425,3 +425,13 @@ body.immersive-page{display:block;width:100%;height:100dvh;min-height:0;margin:0
 
 /* A single outlined silhouette avoids font-dependent overlapping arrow strokes. */
 .guidance-arrow>img,.storybook-guidance-arrow>img,.wardrobe-guide>span>img,.memory-guidance-arrow>img{display:block;width:100%;height:100%;object-fit:contain;pointer-events:none}
+
+/* Game taps and drags must not start Safari text selection or image callouts. */
+body.mobile-page{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.mobile-page img{-webkit-user-drag:none;user-select:none}
+.mobile-page button,.mobile-page summary,.mobile-page [role="button"]{touch-action:manipulation}
+.mobile-page .scene-stage{touch-action:none}
+.mobile-page input,.mobile-page textarea,.mobile-page [contenteditable="true"]{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
+
+/* Reserve draggable story props for the finger gesture, not browser panning. */
+.mobile-page .chinese-scene [data-legend-elixir],.mobile-page .chinese-scene [data-legend-elixir] *,.mobile-page .chinese-scene [data-chinese-choice="peace-ripple"],.mobile-page .chinese-scene [data-chinese-choice="peace-ripple"] *{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}

@@ -7,7 +7,7 @@ let storyProximityArmed = true;
 let memoryProximityArmed = true;
 let wardrobeProximityArmed = true,jellySpeaking=false;
 window.addEventListener('jelly-speech',event=>{jellySpeaking=event.detail.speaking&&event.detail.role==='jelly';});
-let storyVoiceTimer = null, storyVoiceListener = null;
+let storyVoiceTimer = null, storyVoiceListener = null, storyDragCleanup = null;
 const art = window.OceanArt;
 const storyBackgroundFiles = {
  indonesian:['id-kingdom-day','id-kingdom-day','id-coast-day','id-coast-twilight','id-coast-day'],
@@ -533,6 +533,7 @@ function openStory(selected = false) {
   document.querySelector("#close-story").focus();
 }
 function closeStory() {
+  storyDragCleanup?.();storyDragCleanup=null;
   if (!storyOpen) return;
   clearTimeout(pageTurnTimer);
   pageTurnVersion++;
@@ -1737,6 +1738,7 @@ function drawFestivalItem(item,time) {
  stationLabel(item.word||'?',item.x,item.y+57);
 }
 function configureChineseStage() {
+ storyDragCleanup?.();storyDragCleanup=null;
  const stage=introElement('scene-stage'),original=stage.querySelector(':scope > svg:not(.chinese-scene)');
  original.toggleAttribute('hidden',journey.state.language==='chinese');
  stage.querySelector('.chinese-scene')?.remove();
@@ -1770,7 +1772,7 @@ function configureChineseStage() {
  const table=[1,2,3,4].includes(pageIndex)?`<g data-story-explore="table" role="button" tabindex="-1" aria-label="Family table"><ellipse data-table-shadow cx="490" cy="497" rx="148" ry="23" fill="#75979d44" pointer-events="none"/><image data-story-table-art href="/assetNEW/table.png" x="343.7" y="342" width="291.84" height="194.56" preserveAspectRatio="xMidYMid meet" pointer-events="none"/><g data-table-hit-area opacity="0"><ellipse cx="490" cy="447" rx="148" ry="23" fill="#75979d44"/><path d="M376 390Q490 370 604 390L591 421Q490 438 389 421Z" fill="#f7dcdd" stroke="#9e78a8" stroke-width="5"/><path d="M404 420V461M576 420V461" stroke="#9e78a8" stroke-width="13"/><ellipse cx="490" cy="390" rx="114" ry="28" fill="#fff0d9" stroke="#9e78a8" stroke-width="5"/></g>${pageIndex===4?icon('mooncake',460,351,57):''}</g>`:'';
  const figure=(x,y,colour,label)=>`<image href="/assetNEW/storybook-zh-${label.startsWith('Hou Yi')?'houyi':'change'}.png" x="${x-65}" y="${y-38}" width="130" height="195" preserveAspectRatio="xMidYMax meet" role="img" aria-label="${label}"/>`;
  // Draw the bottle after the tabletop. Fit its visible pixels, not its wide transparent margins.
- const elixirArt=[1,2].includes(pageIndex)?`<g ${pageIndex===1?'data-gift-elixir':'data-legend-elixir'} role="button" tabindex="-1" aria-disabled="true" aria-label="Drag the magical elixir to Chang’e"><ellipse data-elixir-contact-shadow cx="490" cy="408" rx="17" ry="4" fill="#795f833d"/>${storyPropImage('elixir',468,328,44,80)}<rect data-elixir-hit-area x="462" y="322" width="56" height="92" fill="transparent"/></g>`:'';
+ const elixirArt=[1,2].includes(pageIndex)?`<g ${pageIndex===1?'data-gift-elixir':'data-legend-elixir'} role="button" tabindex="-1" aria-disabled="true" aria-label="Drag the magical elixir to Chang’e"><ellipse data-elixir-contact-shadow cx="490" cy="408" rx="17" ry="4" fill="#795f833d"/>${storyPropImage('elixir',468,328,44,80)}<rect data-elixir-hit-area x="448" y="312" width="84" height="112" fill="transparent"/></g>`:'';
  const legendArt=pageIndex===0?`${figure(450,285,'','Hou Yi, the archer')}<g data-legend-arrow aria-label="Hou Yi’s flying arrow"><path d="M-34 0H4M-5-7L4 0L-5 7M-29 0L-37-6M-29 0L-37 6" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></g><g aria-label="Nine suns Hou Yi removes">${Array.from({length:9},(_,i)=>`<g data-extra-sun="${i}">${icon('sun',45+i*65,45+(i%2)*55,40)}</g>`).join('')}</g>`:pageIndex===2?`<g data-peng-meng role="img" aria-label="Peng Meng, the apprentice trying to take the elixir"><image href="/assetNEW/storybook-zh-pengmeng.png" x="-65" y="245" width="130" height="200" preserveAspectRatio="xMidYMax meet"/></g><g data-flight-trail fill="#fff2c9">${[0,1,2,3,4].map(i=>`<circle cx="${300+i*90}" cy="${390-i*48}" r="${5-i*.6}"/>`).join('')}</g>`:pageIndex===3?figure(755,92,'','Chang’e on the Moon'):'';
  svg.innerHTML=`<defs><linearGradient id="moon-sky" x2="0" y2="1"><stop stop-color="#858cc5"/><stop offset="1" stop-color="#ddd1ec"/></linearGradient></defs><rect data-story-scenery width="960" height="520" fill="url(#moon-sky)"/>${moonTarget}${starsTarget}<path data-story-scenery d="M0 340Q200 285 430 340T960 320V520H0Z" fill="#a5cecd"/><path data-story-scenery d="M0 441Q300 365 500 455T960 418V520H0Z" fill="#d4e4d4"/><path data-story-scenery d="M30 310H225L205 265H60Z" fill="#a288b8"/><path data-story-scenery d="M60 310V399M205 310V399" stroke="#a288b8" stroke-width="14"/><path d="M0 230Q480 280 960 225" stroke="#b195bd" stroke-width="3" fill="none"/><g data-moon-lanterns>${[90,290,480,680,875].map(x=>`<g data-story-explore="lantern" role="button" tabindex="-1" aria-label="Lantern">${icon('lantern',x-23,230,45)}</g>`).join('')}</g>${familyScene}${legendArt}${table}${remembranceOfferings}${elixirArt}<ellipse cx="486" cy="438" rx="93" ry="16" fill="#8daeb544"/><g data-moon-rabbit opacity="0" style="pointer-events:none">${rabbitTarget}</g><g data-moon-prop>${prop}</g>`;
  // These are the objects in the illustration itself, with keyboard semantics
@@ -1791,34 +1793,62 @@ function configureChineseStage() {
   else {const decoration=event.target.closest('[data-story-explore]');if(decoration?.getAttribute('aria-disabled')==='false'){event.preventDefault();exploreObject(decoration.dataset.storyExplore);}}
  });
  svg.addEventListener('keydown',event=>{if(['Enter',' '].includes(event.key)&&event.target.closest('[data-legend-elixir]')&&introState.elixirWaiting){event.preventDefault();deliverElixir();}});
- svg.addEventListener('pointerdown',event=>{
-  const elixir=event.target.closest('[data-legend-elixir]');
-  if(elixir&&introState.elixirWaiting&&introState.playing){event.preventDefault();elixirDrag={object:elixir,x:event.clientX,y:event.clientY,dx:0,dy:0};svg.setPointerCapture?.(event.pointerId);return;}
-  const object=event.target.closest('[data-chinese-choice="peace-ripple"]');
-  if(pageIndex!==2||object?.getAttribute('aria-disabled')!=='false')return;
-  mooncakeDrag={object,x:event.clientX,y:event.clientY,dx:0,dy:0};svg.setPointerCapture?.(event.pointerId);
- });
- svg.addEventListener('pointermove',event=>{
-  if(elixirDrag){const r=svg.getBoundingClientRect();elixirDrag.dx=(event.clientX-elixirDrag.x)*960/r.width;elixirDrag.dy=(event.clientY-elixirDrag.y)*520/r.height;elixirDrag.object.setAttribute('transform',`translate(${elixirDrag.dx} ${elixirDrag.dy})`);return;}
-  if(!mooncakeDrag)return;
-  const rect=svg.getBoundingClientRect();
-  mooncakeDrag.dx=(event.clientX-mooncakeDrag.x)*960/rect.width;
-  mooncakeDrag.dy=(event.clientY-mooncakeDrag.y)*520/rect.height;
-  if(Math.hypot(mooncakeDrag.dx,mooncakeDrag.dy)>10)
-   mooncakeDrag.object.setAttribute('transform',`translate(${mooncakeDrag.dx} ${mooncakeDrag.dy})`);
- });
- svg.addEventListener('pointerup',()=>{
-  if(elixirDrag){const {object,dx,dy}=elixirDrag;elixirDrag=null;
+ // Capture on the stable HTML stage: SVG capture and native panning can
+ // cancel a finger drag on iPad. Window listeners also cover capture failure.
+ const point=event=>{
+  try{
+   const matrix=svg.getScreenCTM?.();
+   if(matrix&&window.DOMPoint)return new DOMPoint(event.clientX,event.clientY).matrixTransform(matrix.inverse());
+  }catch{}
+  const rect=svg.getBoundingClientRect(),scale=Math.min(rect.width/960,rect.height/520)||1;
+  return{x:(event.clientX-rect.left-(rect.width-960*scale)/2)/scale,y:(event.clientY-rect.top-(rect.height-520*scale)/2)/scale};
+ };
+ const activeDrag=()=>elixirDrag||mooncakeDrag;
+ const matches=event=>activeDrag()&&activeDrag().pointerId===event.pointerId;
+ function release(pointerId){try{if(stage.hasPointerCapture?.(pointerId))stage.releasePointerCapture(pointerId);}catch{}}
+ function detach(){
+  window.removeEventListener('pointermove',moveDrag);window.removeEventListener('pointerup',endDrag);
+  window.removeEventListener('pointercancel',cancelDrag);stage.removeEventListener('lostpointercapture',cancelDrag);
+ }
+ function cancelDrag(event){
+  if(event&&!matches(event))return;
+  const drag=activeDrag();elixirDrag=mooncakeDrag=null;
+  drag?.object.removeAttribute('transform');detach();if(drag)release(drag.pointerId);
+ }
+ function moveDrag(event){
+  if(!matches(event))return;event.preventDefault();
+  const drag=activeDrag(),p=point(event);drag.dx=p.x-drag.x;drag.dy=p.y-drag.y;
+  if(elixirDrag||Math.hypot(drag.dx,drag.dy)>10)drag.object.setAttribute('transform',`translate(${drag.dx} ${drag.dy})`);
+ }
+ function endDrag(event){
+  if(!matches(event))return;event.preventDefault();
+  // Use the final finger position even if Safari coalesces its last move.
+  if(event.pointerId!==undefined)moveDrag(event);
+  const elixir=Boolean(elixirDrag),drag=activeDrag(),{object,dx,dy}=drag;
+  elixirDrag=mooncakeDrag=null;detach();release(drag.pointerId);
+  if(elixir){
    if(Math.hypot((490+dx-265)/75,(368+dy-345)/100)<=1)deliverElixir();
-   else {object.removeAttribute('transform');introStatus('Bring the elixir to Chang’e on the left.');}return;}
-  if(!mooncakeDrag)return;
-  const {object,dx,dy}=mooncakeDrag;mooncakeDrag=null;
-  if(Math.hypot(dx,dy)<=10)return;
-  draggedMooncake=true;setTimeout(()=>{draggedMooncake=false;},0);
-  if(Math.hypot(672+dx-490,374+dy-390)<125){chooseIntroObject('peace-ripple');}
+   else {object.removeAttribute('transform');introStatus('Bring the elixir to Chang’e on the left.');}
+   return;
+  }
+  draggedMooncake=true;setTimeout(()=>{draggedMooncake=false;},350);
+  if(Math.hypot(dx,dy)<=10||Math.hypot(672+dx-490,374+dy-390)<125)chooseIntroObject('peace-ripple');
   else {object.removeAttribute('transform');introStatus('The family table is in the middle. Try bringing the mooncake there.');}
+ }
+ svg.addEventListener('pointerdown',event=>{
+  if(activeDrag()||event.isPrimary===false||(event.button!==undefined&&event.button!==0))return;
+  const elixir=event.target.closest('[data-legend-elixir]');
+  const cake=event.target.closest('[data-chinese-choice="peace-ripple"]');
+  const isElixir=elixir&&introState.elixirWaiting&&introState.playing;
+  if(!isElixir&&(pageIndex!==2||cake?.getAttribute('aria-disabled')!=='false'))return;
+  event.preventDefault();const p=point(event);
+  const drag={object:isElixir?elixir:cake,x:p.x,y:p.y,dx:0,dy:0,pointerId:event.pointerId};
+  if(isElixir)elixirDrag=drag;else mooncakeDrag=drag;
+  window.addEventListener('pointermove',moveDrag,{passive:false});window.addEventListener('pointerup',endDrag,{passive:false});
+  window.addEventListener('pointercancel',cancelDrag);stage.addEventListener('lostpointercapture',cancelDrag);
+  try{stage.setPointerCapture?.(event.pointerId);}catch{}
  });
- svg.addEventListener('pointercancel',()=>{mooncakeDrag?.object.removeAttribute('transform');mooncakeDrag=null;elixirDrag?.object.removeAttribute('transform');elixirDrag=null;});
+ storyDragCleanup=()=>cancelDrag();
  stage.insertBefore(svg,stage.firstChild);syncChineseChoices();
 }
 function showElixirPrompt(){

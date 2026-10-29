@@ -193,3 +193,54 @@ test('leaving during memory shelf guidance cannot restore an old request',t=>{
  p.api.sync(first,null);p.api.sync(second,first);p.api.stop();complete();
  assert.equal(p.document.querySelector('#memory-shelf-guidance').hidden,true);assert.equal(p.locks.at(-1),false);
 });
+
+function memoryTutorial(t,{speech=true}={}){
+ const p=setup(t),views=[],callbacks=[],timers=new Map();let now=0,id=0,hidden=false,paused=0,resumed=0;
+ Object.defineProperty(p.document,'hidden',{get:()=>hidden});
+ Object.defineProperty(p.window.performance,'now',{value:()=>now});
+ p.window.setTimeout=(fn,delay)=>{const key=++id;timers.set(key,{fn,at:now+delay});return key;};
+ p.window.clearTimeout=key=>timers.delete(key);
+ p.window.JellyGuidanceContent=require('../public/js/guidance-content');p.window.VocabularyGameplay={};
+ p.window.OceanRoom.configureLearning=()=>({sync(view){views.push(view);},stop(){views.push(null);}});
+ if(speech)p.window.VocabularySpeech={create:()=>({play(parts,c){callbacks.push(c);},cancel(){},pause(){paused++;},resume(){resumed++;}})};
+ const first={...p.base,trip:1,bag:[],learning:{...p.base.learning,active:{level:1,questionIndex:0,attemptId:1},presentation:{key:'first'}}};
+ const second={...first,bag:[{id:'book'}],learning:{...first.learning,active:{level:1,questionIndex:1,attemptId:2},presentation:{key:'second'}}};
+ p.api.sync(first,null);p.api.sync(second,first);
+ return {...p,views,callbacks,first,second,
+  advance(ms){now+=ms;for(const [key,task]of [...timers])if(task.at<=now){timers.delete(key);task.fn();}},
+  visibility(value){hidden=value;p.document.dispatchEvent(new p.window.Event('visibilitychange'));},
+  get paused(){return paused;},get resumed(){return resumed;},get timerCount(){return timers.size;}};
+}
+
+test('lost audio completion automatically resumes the next item without pressing Continue',t=>{
+ const p=memoryTutorial(t);
+ p.advance(10000);assert.equal(p.document.querySelector('#memory-shelf-guidance').hidden,false,'normal narration is not cut short');
+ p.advance(30000);
+ assert.equal(p.document.querySelector('#memory-shelf-guidance').hidden,true);
+ assert.equal(p.views.at(-1).key,'second');assert.equal(p.locks.at(-1),false);
+ const count=p.views.length;p.callbacks[0].onComplete();assert.equal(p.views.length,count,'late completion cannot repeat the request');
+});
+
+test('memory tutorial fallback also advances when speech support is missing',t=>{
+ const p=memoryTutorial(t,{speech:false});p.advance(40000);
+ assert.equal(p.document.querySelector('#memory-shelf-guidance').hidden,true);assert.equal(p.views.at(-1).key,'second');
+});
+
+test('hidden page pauses tutorial recovery and resumes with the remaining time',t=>{
+ const p=memoryTutorial(t);p.advance(5000);p.visibility(true);
+ assert.equal(p.paused,1);assert.equal(p.timerCount,0);
+ p.advance(60000);assert.equal(p.document.querySelector('#memory-shelf-guidance').hidden,false);
+ p.visibility(false);assert.equal(p.resumed,1);assert.equal(p.timerCount,1);
+ p.advance(1000);assert.equal(p.document.querySelector('#memory-shelf-guidance').hidden,false);
+ p.callbacks[0].onComplete();assert.equal(p.timerCount,0);assert.equal(p.views.at(-1).key,'second');
+});
+
+test('old tutorial audio and timeout cannot close a newly started introduction',t=>{
+ const p=memoryTutorial(t),old=p.callbacks[0];p.api.stop();
+ const first={...p.first,trip:2},second={...p.second,trip:2};
+ p.api.sync(first,null);p.api.sync(second,first);
+ old.onComplete();old.onCancel();
+ assert.equal(p.document.querySelector('#memory-shelf-guidance').hidden,false);
+ assert.equal(p.views.at(-1),null);assert.equal(p.timerCount,1);
+ p.callbacks[1].onComplete();assert.equal(p.views.at(-1).key,'second');assert.equal(p.timerCount,0);
+});

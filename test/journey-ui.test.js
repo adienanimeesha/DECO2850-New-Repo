@@ -856,3 +856,38 @@ test('memory book pages every earned item with six cards per screen and preserve
  p.update({memories:[memories[0]]});
  assert.equal(d.querySelectorAll('.memory-card').length,1);assert.equal(d.querySelector('.memory-pagination'),null);
 });
+
+test('touch elixir drag uses stable capture and SVG coordinates at iPad sizes, ignoring other fingers',async t=>{
+ const p=page(t),d=p.w.document;
+ p.update({phase:'room',language:'chinese',trip:1,storyPage:2});p.walk('book');await p.advance(6500);p.click('#scene-continue');
+ const svg=d.querySelector('.chinese-scene'),stage=d.querySelector('#scene-stage'),bottle=svg.querySelector('[data-legend-elixir]');
+ const rect={left:50,top:100,width:600,height:400};svg.getBoundingClientRect=()=>rect;
+ const captures=[];stage.setPointerCapture=id=>captures.push(id);
+ const screen=(x,y)=>({clientX:50+x*.625,clientY:137.5+y*.625});
+ function touch(target,type,x,y,id=1){
+  const e=new p.w.MouseEvent(type,{bubbles:true,cancelable:true,...screen(x,y)});
+  Object.defineProperties(e,{pointerId:{value:id},pointerType:{value:'touch'},isPrimary:{value:id===1}});target.dispatchEvent(e);return e;
+ }
+ assert.ok(Number(bottle.querySelector('[data-elixir-hit-area]').getAttribute('width'))*.625>=44,'finger hit target fits at iPad scale');
+ assert.equal(touch(bottle,'pointerdown',490,368).defaultPrevented,true);
+ assert.deepEqual(captures,[1],'capture belongs to the HTML story stage');
+ touch(p.w,'pointermove',400,350);assert.equal(bottle.getAttribute('transform'),'translate(-90 -18)');
+ await p.advance(300);assert.equal(bottle.getAttribute('transform'),'translate(-90 -18)','animation does not reset the dragged bottle');
+ touch(p.w,'pointermove',800,500,2);touch(p.w,'pointercancel',800,500,2);
+ assert.equal(bottle.getAttribute('transform'),'translate(-90 -18)','second finger cannot move or cancel the bottle');
+ touch(p.w,'pointerup',265,345);
+ assert.equal(bottle.getAttribute('opacity'),'0','final touch position completes the drop even without its last move event');
+});
+
+test('canceled touch drag resets cleanly and can retry even when capture is unavailable',async t=>{
+ const p=page(t),d=p.w.document;
+ p.update({phase:'room',language:'chinese',trip:1,storyPage:2});p.walk('book');await p.advance(6500);p.click('#scene-continue');
+ const svg=d.querySelector('.chinese-scene'),stage=d.querySelector('#scene-stage'),bottle=svg.querySelector('[data-legend-elixir]');
+ svg.getBoundingClientRect=()=>({left:0,top:0,width:960,height:520});
+ stage.setPointerCapture=()=>{throw Error('Capture unavailable');};
+ function touch(target,type,x,y){const e=new p.w.MouseEvent(type,{bubbles:true,cancelable:true,clientX:x,clientY:y});Object.defineProperty(e,'pointerId',{value:7});target.dispatchEvent(e);}
+ touch(bottle,'pointerdown',490,368);touch(p.w,'pointermove',400,350);touch(stage,'lostpointercapture',400,350);
+ assert.equal(bottle.getAttribute('transform'),null);assert.equal(bottle.getAttribute('opacity'),'1');
+ touch(bottle,'pointerdown',490,368);touch(p.w,'pointerup',265,345);
+ assert.equal(bottle.getAttribute('opacity'),'0','fallback listeners permit retry outside the original SVG target');
+});

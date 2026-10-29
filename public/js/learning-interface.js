@@ -16,24 +16,52 @@ function create({ action, getContent, room = () => window.OceanRoom }) {
  const memoryGuide=$('memory-shelf-guidance');
  let memoryIntro=null,memorySpeech=null;
  const memoryIntrosShown=new Set();
+ // A media end event can be lost on mobile browsers. Bound the tutorial
+ // wait, while pausing its remaining time when the page is hidden.
+ function armMemoryIntro(intro){
+  if(memoryIntro!==intro||document.hidden)return;
+  clearTimeout(intro.timer);intro.startedAt=performance.now();
+  intro.timer=setTimeout(()=>{
+   if(memoryIntro===intro)finishMemoryIntro();
+  },intro.remainingMs);
+ }
  function finishMemoryIntro(resume=true){
-  if(!memoryIntro)return;
-  memoryIntro=null;memoryGuide.hidden=true;memorySpeech?.cancel();room()?.lock?.(false);
+  const intro=memoryIntro;if(!intro)return;
+  memoryIntro=null;clearTimeout(intro.timer);memoryGuide.hidden=true;
+  memorySpeech?.cancel();room()?.lock?.(false);
   if(resume&&state?.phase==='room'){
    learningRoom?.sync(presentation(state),{storyUnlocked:levelOneComplete(state)});
    $('game')?.focus();
   }
  }
  function startMemoryIntro(){
-  memoryIntro={language:state.language,trip:state.trip,attemptId:learning(state)?.active?.attemptId};
+  const text=window.JellyGuidanceContent?.memoryShelf;
+  const intro={language:state.language,trip:state.trip,attemptId:learning(state)?.active?.attemptId,
+   remainingMs:Math.max(12000,(text?.length||0)*80+6000),timer:null,startedAt:null};
+  memoryIntro=intro;
   learningRoom?.stop();room()?.clearMovement?.();room()?.lock?.(true);
   memoryGuide.hidden=false;$('continue-memory-guide')?.focus();
-  const text=window.JellyGuidanceContent?.memoryShelf;
+  armMemoryIntro(intro);
+  const finished=()=>{if(memoryIntro===intro)finishMemoryIntro();};
   if(text&&window.VocabularySpeech){
-   memorySpeech ||= window.VocabularySpeech.create({role:'narrator'});
-   memorySpeech.play([{text,lang:'en-US'}],{onComplete:()=>finishMemoryIntro(),onCancel:()=>finishMemoryIntro()});
+   try{
+    memorySpeech ||= window.VocabularySpeech.create({role:'narrator'});
+    memorySpeech.play([{text,lang:'en-US'}],{onComplete:finished,onCancel:finished});
+    if(document.hidden)memorySpeech.pause?.();
+   }catch{finished();}
   }
  }
+ document.addEventListener('visibilitychange',()=>{
+  const intro=memoryIntro;if(!intro)return;
+  if(document.hidden){
+   clearTimeout(intro.timer);
+   if(intro.startedAt!==null)intro.remainingMs=Math.max(0,intro.remainingMs-(performance.now()-intro.startedAt));
+   intro.startedAt=null;memorySpeech?.pause?.();
+  }else{
+   memorySpeech?.resume?.();
+   if(memoryIntro===intro)armMemoryIntro(intro);
+  }
+ });
  $('continue-memory-guide')?.addEventListener('click',()=>finishMemoryIntro());
  function stopGuidance(){if(guidanceActive){guidanceActive=false;guidanceSpeech?.cancel();}}
  function announce(name){
